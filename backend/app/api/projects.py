@@ -1,12 +1,24 @@
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from app.api.deps import CurrentUser
 from app.db.base import get_db
 from app.models.project import Project
+from app.models.project_collaborator import ProjectCollaborator, CollaboratorRole
+from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, Project as ProjectSchema
+from app.schemas.collaborator import (
+    Collaborator,
+    CollaboratorAdd,
+    CollaboratorUpdate,
+)
+from app.services.permissions import (
+    check_project_access,
+    check_is_admin_or_owner,
+    get_user_project_role,
+)
 
 router = APIRouter()
 
@@ -31,9 +43,18 @@ async def list_projects(
     skip: int = 0,
     limit: int = 100,
 ):
+    """List all projects where user is owner or collaborator."""
+    # Get projects where user is owner or collaborator
     result = await db.execute(
         select(Project)
-        .where(Project.owner_id == current_user.id)
+        .outerjoin(ProjectCollaborator)
+        .where(
+            or_(
+                Project.owner_id == current_user.id,
+                ProjectCollaborator.user_id == current_user.id,
+            )
+        )
+        .distinct()
         .offset(skip)
         .limit(limit)
     )
@@ -47,19 +68,8 @@ async def get_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-
-    if project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
-        )
-
+    """Get a project by ID. User must be owner or collaborator."""
+    project = await check_project_access(db, project_id, current_user.id)
     return project
 
 
@@ -70,18 +80,8 @@ async def update_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-
-    if project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
-        )
+    """Update a project. User must be owner or admin."""
+    project = await check_is_admin_or_owner(db, project_id, current_user.id)
 
     for field, value in project_in.model_dump(exclude_unset=True).items():
         setattr(project, field, value)
@@ -97,6 +97,7 @@ async def delete_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    """Delete a project. Only the owner can delete a project."""
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
 
@@ -107,8 +108,163 @@ async def delete_project(
 
     if project.owner_id != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project owner can delete the project"
         )
 
     await db.delete(project)
     await db.commit()
+
+
+# Collaborator Management Endpoints
+
+@router.get("/{project_id}/collaborators", response_model=List[Collaborator])
+async def list_collaborators(
+    project_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List all collaborators of a project. User must have access to the project."""
+    await check_project_access(db, project_id, current_user.id)
+
+    result = await db.execute(
+        select(ProjectCollaborator)
+        .where(ProjectCollaborator.project_id == project_id)
+    )
+    collaborators = result.scalars().all()
+    return collaborators
+
+
+@router.post("/{project_id}/collaborators", response_model=Collaborator, status_code=status.HTTP_201_CREATED)
+async def add_collaborator(
+    project_id: int,
+    collaborator_in: CollaboratorAdd,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Add a collaborator to a project. User must be owner or admin."""
+    await check_is_admin_or_owner(db, project_id, current_user.id)
+
+    # Check if user exists
+    result = await db.execute(select(User).where(User.id == collaborator_in.user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    # Check if user is the owner
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if project.owner_id == collaborator_in.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot add the project owner as a collaborator"
+        )
+
+    # Check if already a collaborator
+    result = await db.execute(
+        select(ProjectCollaborator).where(
+            ProjectCollaborator.project_id == project_id,
+            ProjectCollaborator.user_id == collaborator_in.user_id,
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already a collaborator"
+        )
+
+    # Add collaborator
+    collaborator = ProjectCollaborator(
+        project_id=project_id,
+        user_id=collaborator_in.user_id,
+        role=collaborator_in.role,
+    )
+    db.add(collaborator)
+    await db.commit()
+    await db.refresh(collaborator)
+    return collaborator
+
+
+@router.put("/{project_id}/collaborators/{user_id}", response_model=Collaborator)
+async def update_collaborator_role(
+    project_id: int,
+    user_id: int,
+    collaborator_in: CollaboratorUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update a collaborator's role. User must be owner or admin."""
+    await check_is_admin_or_owner(db, project_id, current_user.id)
+
+    # Get collaborator
+    result = await db.execute(
+        select(ProjectCollaborator).where(
+            ProjectCollaborator.project_id == project_id,
+            ProjectCollaborator.user_id == user_id,
+        )
+    )
+    collaborator = result.scalar_one_or_none()
+
+    if not collaborator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Collaborator not found"
+        )
+
+    # Update role
+    collaborator.role = collaborator_in.role
+    await db.commit()
+    await db.refresh(collaborator)
+    return collaborator
+
+
+@router.delete("/{project_id}/collaborators/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_collaborator(
+    project_id: int,
+    user_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Remove a collaborator from a project.
+    - Owner or admin can remove any collaborator.
+    - Any collaborator can remove themselves (leave the project).
+    """
+    project = await check_project_access(db, project_id, current_user.id)
+
+    # Check if user is trying to leave the project themselves
+    is_leaving_self = user_id == current_user.id
+
+    # If not leaving themselves, must be owner or admin
+    if not is_leaving_self:
+        await check_is_admin_or_owner(db, project_id, current_user.id)
+
+    # Cannot remove the owner
+    if project.owner_id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove the project owner"
+        )
+
+    # Get collaborator
+    result = await db.execute(
+        select(ProjectCollaborator).where(
+            ProjectCollaborator.project_id == project_id,
+            ProjectCollaborator.user_id == user_id,
+        )
+    )
+    collaborator = result.scalar_one_or_none()
+
+    if not collaborator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Collaborator not found"
+        )
+
+    # Remove collaborator
+    await db.delete(collaborator)
+    await db.commit()
+
