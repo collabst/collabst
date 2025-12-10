@@ -11,7 +11,7 @@ from app.schemas.project import ProjectCreate, ProjectUpdate, Project as Project
 router = APIRouter()
 
 
-@router.post("/", response_model=ProjectSchema)
+@router.post("", response_model=ProjectSchema)
 async def create_project(
     project_in: ProjectCreate,
     current_user: CurrentUser,
@@ -24,7 +24,7 @@ async def create_project(
     return project
 
 
-@router.get("/", response_model=List[ProjectSchema])
+@router.get("", response_model=List[ProjectSchema])
 async def list_projects(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],

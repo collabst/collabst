@@ -153,7 +153,7 @@ curl -X POST "http://localhost:8000/api/v1/projects" \
   }'
 ```
 
-### 4. Create a File
+### 4. Create a File (Text File - Stored in PostgreSQL)
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/projects/1/files" \
@@ -167,6 +167,48 @@ curl -X POST "http://localhost:8000/api/v1/projects/1/files" \
     "content": "#heading[Hello World]\\n\\nThis is my first Typst document."
   }'
 ```
+
+### 5. Upload an Asset (Binary File - Stored in MinIO)
+
+Upload an image, PDF, or any binary file to test MinIO object storage:
+
+```bash
+# Create a test image first
+echo "Test image content" > test-image.png
+
+# Upload it
+curl -X POST "http://localhost:8000/api/v1/projects/1/assets/upload" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -F "file=@test-image.png"
+```
+
+Expected response:
+```json
+{
+  "filename": "test-image.png",
+  "mime_type": "image/png",
+  "id": 1,
+  "project_id": 1,
+  "storage_path": "projects/1/assets/test-image.png",
+  "size": 18,
+  "created_at": "2025-12-10T22:30:00.000000",
+  "updated_at": "2025-12-10T22:30:00.000000"
+}
+```
+
+### 6. List All Assets in a Project
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/projects/1/assets" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### 7. Verify in MinIO Console
+
+1. Open http://localhost:9001 (or your MinIO URL)
+2. Login with `minioadmin` / `minioadmin`
+3. Navigate to the `collabst` bucket
+4. You should see: `projects/1/assets/test-image.png`
 
 ## Test Real-Time Collaboration
 
