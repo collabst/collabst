@@ -61,8 +61,8 @@ This is a *test*.
 
     let diagnostics: ParsedDiagnostic[] = [];
     let editorElement: HTMLDivElement;
-    let textareaElement: HTMLTextAreaElement;
-    let highlightElement: HTMLDivElement;
+    let editorDiv: HTMLDivElement;
+    let updateTimer: any = null;
 
     // Semantic token type to CSS class mapping (based on typst-ts highlighter)
     const tokenTypeToClass: Record<string, string> = {
@@ -317,10 +317,61 @@ This is a *test*.
             .replace(/'/g, '&#039;');
     }
 
-    function syncScroll() {
-        if (highlightElement && textareaElement) {
-            highlightElement.scrollTop = textareaElement.scrollTop;
-            highlightElement.scrollLeft = textareaElement.scrollLeft;
+    // Extract plain text from contenteditable div
+    function getPlainText(element: HTMLElement): string {
+        return element.innerText || '';
+    }
+
+    // Save cursor position
+    function saveCursorPosition() {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return null;
+        
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(editorDiv);
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        const offset = preCaretRange.toString().length;
+        
+        return offset;
+    }
+
+    // Restore cursor position
+    function restoreCursorPosition(offset: number) {
+        if (!editorDiv) return;
+        
+        const selection = window.getSelection();
+        if (!selection) return;
+        
+        const range = document.createRange();
+        let currentOffset = 0;
+        let found = false;
+        
+        function traverseNodes(node: Node) {
+            if (found) return;
+            
+            if (node.nodeType === Node.TEXT_NODE) {
+                const length = node.textContent?.length || 0;
+                if (currentOffset + length >= offset) {
+                    range.setStart(node, offset - currentOffset);
+                    range.setEnd(node, offset - currentOffset);
+                    found = true;
+                    return;
+                }
+                currentOffset += length;
+            } else {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    traverseNodes(node.childNodes[i]);
+                    if (found) return;
+                }
+            }
+        }
+        
+        traverseNodes(editorDiv);
+        
+        if (found) {
+            selection.removeAllRanges();
+            selection.addRange(range);
         }
     }
 
@@ -396,13 +447,8 @@ This is a *test*.
         }
 
         await tick();
-        updateHighlight();
-    }
-
-    function updateHighlight() {
-        if (highlightElement) {
-            highlightElement.innerHTML = generateHighlightedHtml(inputValue, diagnostics) + '\n';
-        }
+        // Don't call updateHighlight here - it interferes with contenteditable
+        // Error underlines will be shown in the diagnostics panel instead
     }
 
     // File system management functions
@@ -420,8 +466,8 @@ This is a *test*.
     function selectFile(fileName: string) {
         // Save current file content
         const currentFileObj = findFile(currentFile);
-        if (currentFileObj) {
-            currentFileObj.content = inputValue;
+        if (currentFileObj && editorDiv) {
+            currentFileObj.content = getPlainText(editorDiv);
         }
         
         // Load new file
@@ -429,7 +475,12 @@ This is a *test*.
         if (newFile && !newFile.isFolder) {
             currentFile = fileName;
             inputValue = newFile.content;
-            updateHighlight();
+            
+            // Set content with syntax highlighting (only on file load)
+            if (editorDiv) {
+                editorDiv.innerHTML = applySyntaxHighlighting(inputValue);
+            }
+            
             update();
         }
     }
@@ -535,7 +586,7 @@ This is a *test*.
                     parser = p;
                     semanticTokenLegend = p.get_semantic_token_legend();
                     console.log('Parser loaded, semantic token legend:', semanticTokenLegend);
-                    updateHighlight();
+                    // Parser loaded, but we don't update highlighting here to avoid duplication
                 }).catch((e: any) => {
                     console.warn('Failed to load parser:', e);
                 });
@@ -565,6 +616,11 @@ This is a *test*.
             renderer = await $typst.getRenderer();
             isLoading = false;
             
+            // Set initial editor content with syntax highlighting
+            if (editorDiv) {
+                editorDiv.innerHTML = applySyntaxHighlighting(inputValue);
+            }
+            
             await update();
         };
 
@@ -572,13 +628,31 @@ This is a *test*.
     });
 
     function handleInput() {
+        if (!editorDiv) return;
+        
+        // Extract plain text from contenteditable
+        inputValue = getPlainText(editorDiv);
+        
         // Save content to virtual file
         const file = findFile(currentFile);
         if (file) {
             file.content = inputValue;
         }
-        updateHighlight();
-        update();
+        
+        // Debounce compilation and diagnostics
+        if (updateTimer) clearTimeout(updateTimer);
+        updateTimer = setTimeout(() => {
+            update();
+        }, 500);
+    }
+
+    // Handle paste to strip formatting
+    function handlePaste(event: ClipboardEvent) {
+        event.preventDefault();
+        const text = event.clipboardData?.getData('text/plain');
+        if (text) {
+            document.execCommand('insertText', false, text);
+        }
     }
 
     $: hasErrors = diagnostics.some(d => d.severity === 'error' || d.severity === 'Error');
@@ -699,19 +773,16 @@ This is a *test*.
             </div>
             <div class="editor-wrapper" bind:this={editorElement}>
                 <div 
-                    class="highlight-layer" 
-                    bind:this={highlightElement}
-                    aria-hidden="true"
-                ></div>
-                <textarea 
-                    bind:this={textareaElement}
-                    bind:value={inputValue} 
+                    bind:this={editorDiv}
+                    contenteditable="true"
                     on:input={handleInput}
-                    on:scroll={syncScroll}
-                    class="typst-input"
-                    disabled={isLoading}
+                    on:paste={handlePaste}
+                    class="typst-editor"
+                    class:disabled={isLoading}
                     spellcheck="false"
-                ></textarea>
+                    role="textbox"
+                    aria-multiline="true"
+                ></div>
             </div>
             
             <!-- Diagnostics Panel -->
@@ -1022,12 +1093,12 @@ This is a *test*.
         overflow: hidden;
     }
 
-    .highlight-layer {
+    .typst-editor {
         position: absolute;
         top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
+        width: 100%;
+        height: 100%;
         padding: 10px;
         font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
         font-size: 14px;
@@ -1035,40 +1106,21 @@ This is a *test*.
         white-space: pre-wrap;
         word-wrap: break-word;
         overflow: auto;
-        color: transparent;
-        pointer-events: none;
-        box-sizing: border-box;
-    }
-
-    /* Enable pointer events only on error/warning spans */
-    .highlight-layer :global(.error-underline),
-    .highlight-layer :global(.warning-underline) {
-        pointer-events: auto;
-        cursor: help;
-    }
-
-    .typst-input {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
-        font-size: 14px;
-        line-height: 1.5;
-        padding: 10px;
-        border: none;
-        resize: none;
-        background: transparent;
+        background: #fff;
         color: #333;
         caret-color: #333;
         box-sizing: border-box;
         outline: none;
     }
 
-    .typst-input:disabled {
+    .typst-editor.disabled {
         background: #f9f9f9;
         color: #999;
+        pointer-events: none;
+    }
+
+    .typst-editor:focus {
+        outline: none;
     }
 
     .typst-output {
