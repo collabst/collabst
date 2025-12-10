@@ -1,5 +1,5 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.png';
+	import favicon from '$lib/assets/collabst-logo.svg';
 
 	let { children } = $props();
 </script>
