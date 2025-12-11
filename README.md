@@ -1,11 +1,7 @@
-<table>
-  <tr>
-    <img src="assets/collabst-logo+txt.svg" width="150" />
-  </td>
-  <td>
-    <em>(pronounced collapsed, /kəˈlæpst/)</em>.
-  </td>
-</table> 
+<p float="left">
+  <img src="assets/collabst-logo+txt.svg" width="150" />
+  <em>(pronounced collapsed, /kəˈlæpst/)</em>
+</p>
 
 ______
 <br />
