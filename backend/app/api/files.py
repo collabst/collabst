@@ -12,6 +12,8 @@ from app.models.asset import Asset
 from app.schemas.file import FileCreate, FileUpdate, File as FileSchema
 from app.schemas.asset import Asset as AssetSchema
 from app.services.storage import storage_service
+from app.services.permissions import check_project_access
+from app.websocket.project_ws import project_manager
 
 router = APIRouter()
 
@@ -23,18 +25,32 @@ async def create_file(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project or project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
 
     file = File(**file_in.model_dump())
     db.add(file)
     await db.commit()
     await db.refresh(file)
+
+    # Broadcast file creation to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "file_created",
+            "file": {
+                "id": file.id,
+                "project_id": file.project_id,
+                "name": file.name,
+                "path": file.path,
+                "type": file.type,
+                "content": file.content,
+                "created_at": file.created_at.isoformat(),
+                "updated_at": file.updated_at.isoformat(),
+            }
+        }
+    )
+
     return file
 
 
@@ -44,13 +60,8 @@ async def list_files(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project or project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
 
     result = await db.execute(select(File).where(File.project_id == project_id))
     files = result.scalars().all()
@@ -65,13 +76,8 @@ async def update_file(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project or project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
 
     result = await db.execute(
         select(File).where(File.id == file_id, File.project_id == project_id)
@@ -88,6 +94,25 @@ async def update_file(
 
     await db.commit()
     await db.refresh(file)
+
+    # Broadcast file update to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "file_updated",
+            "file": {
+                "id": file.id,
+                "project_id": file.project_id,
+                "name": file.name,
+                "path": file.path,
+                "type": file.type,
+                "content": file.content,
+                "created_at": file.created_at.isoformat(),
+                "updated_at": file.updated_at.isoformat(),
+            }
+        }
+    )
+
     return file
 
 
@@ -98,13 +123,8 @@ async def upload_asset(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project or project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
 
     file_content = await file.read()
     file_size = len(file_content)
@@ -128,6 +148,24 @@ async def upload_asset(
     db.add(asset)
     await db.commit()
     await db.refresh(asset)
+
+    # Broadcast asset creation to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "asset_created",
+            "asset": {
+                "id": asset.id,
+                "project_id": asset.project_id,
+                "filename": asset.filename,
+                "storage_path": asset.storage_path,
+                "mime_type": asset.mime_type,
+                "size": asset.size,
+                "created_at": asset.created_at.isoformat(),
+            }
+        }
+    )
+
     return asset
 
 
@@ -137,14 +175,80 @@ async def list_assets(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-
-    if not project or project.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
 
     result = await db.execute(select(Asset).where(Asset.project_id == project_id))
     assets = result.scalars().all()
     return assets
+
+
+@router.get("/{project_id}/assets/{asset_id}/url")
+async def get_asset_url(
+    project_id: int,
+    asset_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get a presigned URL for accessing an asset from MinIO"""
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
+
+    result = await db.execute(
+        select(Asset).where(Asset.id == asset_id, Asset.project_id == project_id)
+    )
+    asset = result.scalar_one_or_none()
+
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found"
+        )
+
+    # Generate presigned URL (valid for 1 hour)
+    url = storage_service.get_presigned_url(asset.storage_path, expires=3600)
+
+    return {
+        "url": url,
+        "filename": asset.filename,
+        "mime_type": asset.mime_type,
+    }
+
+
+@router.delete("/{project_id}/assets/{asset_id}")
+async def delete_asset(
+    project_id: int,
+    asset_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete an asset"""
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
+
+    result = await db.execute(
+        select(Asset).where(Asset.id == asset_id, Asset.project_id == project_id)
+    )
+    asset = result.scalar_one_or_none()
+
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found"
+        )
+
+    # Delete from storage
+    storage_service.delete_file(asset.storage_path)
+
+    # Delete from database
+    await db.delete(asset)
+    await db.commit()
+
+    # Broadcast asset deletion to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "asset_deleted",
+            "asset_id": asset_id,
+        }
+    )
+
+    return {"message": "Asset deleted successfully"}

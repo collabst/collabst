@@ -1,9 +1,6 @@
 from datetime import datetime
+from typing import Optional, Literal
 from pydantic import BaseModel
-from typing import List, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from app.schemas.collaborator import Collaborator
 
 
 class ProjectBase(BaseModel):
@@ -25,6 +22,10 @@ class Project(ProjectBase):
     owner_id: int
     created_at: datetime
     updated_at: datetime
-    collaborators: List["Collaborator"] = []
 
     model_config = {"from_attributes": True}
+
+
+class ProjectWithRole(Project):
+    """Project with the current user's role."""
+    current_user_role: Literal['owner', 'admin', 'editor', 'reader']

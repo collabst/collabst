@@ -8,7 +8,7 @@ from app.db.base import get_db
 from app.models.project import Project
 from app.models.project_collaborator import ProjectCollaborator, CollaboratorRole
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectUpdate, Project as ProjectSchema
+from app.schemas.project import ProjectCreate, ProjectUpdate, Project as ProjectSchema, ProjectWithRole
 from app.schemas.collaborator import (
     Collaborator,
     CollaboratorAdd,
@@ -62,7 +62,7 @@ async def list_projects(
     return projects
 
 
-@router.get("/{project_id}", response_model=ProjectSchema)
+@router.get("/{project_id}", response_model=ProjectWithRole)
 async def get_project(
     project_id: int,
     current_user: CurrentUser,
@@ -70,7 +70,24 @@ async def get_project(
 ):
     """Get a project by ID. User must be owner or collaborator."""
     project = await check_project_access(db, project_id, current_user.id)
-    return project
+    
+    # Determine user's role
+    if project.owner_id == current_user.id:
+        role = 'owner'
+    else:
+        user_role = await get_user_project_role(db, project_id, current_user.id)
+        role = user_role.value if user_role else 'reader'
+    
+    # Return project with role
+    return ProjectWithRole(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        owner_id=project.owner_id,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+        current_user_role=role,
+    )
 
 
 @router.put("/{project_id}", response_model=ProjectSchema)

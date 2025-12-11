@@ -4,14 +4,21 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.services.redis_service import redis_service
-from app.api import auth, projects, files
-from app.websocket.yjs_server import websocket_endpoint
+from app.api import auth, projects, files, invitations
+from app.websocket.yjs_server import websocket_endpoint, manager as yjs_manager
+from app.websocket.project_ws import project_websocket_endpoint
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize services
     await redis_service.connect()
+    await yjs_manager.initialize()
+    
     yield
+    
+    # Cleanup services
+    await yjs_manager.shutdown()
     await redis_service.disconnect()
 
 
@@ -33,6 +40,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["projects"])
 app.include_router(files.router, prefix=f"{settings.API_V1_STR}/projects", tags=["files"])
+app.include_router(invitations.router, prefix=f"{settings.API_V1_STR}/projects", tags=["invitations"])
 
 
 @app.get("/")
@@ -43,3 +51,8 @@ def read_root():
 @app.websocket("/ws/{document_id}")
 async def websocket_route(websocket: WebSocket, document_id: str):
     await websocket_endpoint(websocket, document_id)
+
+
+@app.websocket("/ws/project/{project_id}")
+async def project_websocket_route(websocket: WebSocket, project_id: int):
+    await project_websocket_endpoint(websocket, project_id)

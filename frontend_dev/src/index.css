@@ -1,0 +1,83 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+input:focus,
+textarea:focus,
+button:focus {
+  outline: none;
+}
+
+input:hover,
+button:hover {
+  opacity: 0.9;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3e3e42;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.cm-editor {
+  height: 100%;
+}
+
+/* y-codemirror.next cursor styles */
+.yRemoteSelection {
+  background-color: var(--cursor-color, rgba(100, 100, 255, 0.3));
+}
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid var(--cursor-color, #6366f1);
+  border-top: 2px solid var(--cursor-color, #6366f1);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.yRemoteSelectionHead::after {
+  position: absolute;
+  content: attr(data-name);
+  left: 0;
+  top: -1.2em;
+  font-size: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--cursor-color, #6366f1);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 3px 3px 3px 0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.cm-scroller {
+  overflow: auto;
+}
