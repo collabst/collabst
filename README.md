@@ -5,6 +5,15 @@
 
 <br />
 
-Self-hosted collaborative workspace for Typst.
-______
+Self-host a collaborative workspace for Typst.
+___
+<br />
 
+
+## TODOs
+
+### Frontend
+- [ ] Faire un todo list
+
+### Backend
+- [ ] Faire un todo list
