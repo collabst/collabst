@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { IndexeddbPersistence } from 'y-indexeddb'
+import { getWsUrl } from '../utils/urls'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
+const WS_URL = getWsUrl()
 
 /**
  * Hook to create a single YJS document for an entire project.

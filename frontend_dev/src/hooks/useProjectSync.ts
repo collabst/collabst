@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { File as ProjectFile, Asset } from '../types'
+import { getWsUrl } from '../utils/urls'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
+const WS_URL = getWsUrl()
 
 interface ProjectSyncCallbacks {
   onFileCreated: (file: ProjectFile) => void

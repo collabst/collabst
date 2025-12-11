@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { User, Project, File, Asset, AuthResponse, Collaborator, Invitation } from '../types'
+import { getApiUrl } from '../utils/urls'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = getApiUrl()
 
 const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
