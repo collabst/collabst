@@ -3,6 +3,8 @@
   <em>(pronounced collapsed, /kəˈlæpst/)</em>
 </p>
 
+<br />
+
 Self-hosted collaborative workspace for Typst.
 ______
 
