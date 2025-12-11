@@ -1,0 +1,106 @@
+/* Typst Syntax Highlighting Colors */
+
+:global(.cm-typst-comment) {
+  color: #57a64a;
+  font-style: italic;
+}
+
+:global(.cm-typst-keyword) {
+  color: #ff79c6;
+  font-weight: 600;
+}
+
+:global(.cm-typst-function) {
+  color: #50fa7b;
+}
+
+:global(.cm-typst-string) {
+  color: #ffc164;
+}
+
+:global(.cm-typst-number) {
+  color: #bd93f9;
+}
+
+:global(.cm-typst-heading) {
+  color: #8be9fd;
+  font-weight: 700;
+}
+
+:global(.cm-typst-emphasis) {
+  font-style: italic;
+  color: #ffb86c;
+}
+
+:global(.cm-typst-strong) {
+  font-weight: 700;
+  color: #ff5555;
+}
+
+:global(.cm-typst-strong-emphasis) {
+  font-weight: 700;
+  font-style: italic;
+  color: #ff6e6e;
+}
+
+:global(.cm-typst-raw) {
+  color: #f8f8f2;
+  background: rgba(98, 114, 164, 0.3);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+:global(.cm-typst-operator) {
+  color: #ff79c6;
+}
+
+:global(.cm-typst-punctuation) {
+  color: #6272a4;
+}
+
+:global(.cm-typst-bool) {
+  color: #bd93f9;
+}
+
+:global(.cm-typst-escape) {
+  color: #ff79c6;
+}
+
+:global(.cm-typst-link) {
+  color: #8be9fd;
+  text-decoration: underline;
+}
+
+:global(.cm-typst-label) {
+  color: #50fa7b;
+}
+
+:global(.cm-typst-ref) {
+  color: #8be9fd;
+}
+
+:global(.cm-typst-marker) {
+  color: #ff79c6;
+}
+
+:global(.cm-typst-term) {
+  font-style: italic;
+  color: #ffb86c;
+}
+
+:global(.cm-typst-pol) {
+  color: #bd93f9;
+}
+
+:global(.cm-typst-delim) {
+  color: #f8f8f2;
+}
+
+:global(.cm-typst-math) {
+  color: #50fa7b;
+}
+
+:global(.cm-typst-error) {
+  color: #ff5555;
+  text-decoration: wavy underline #f44747;
+}
