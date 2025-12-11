@@ -110,7 +110,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
   - [ ]  `ctrl+f` feature for find/replace bottom bar to pop up
 
 #### PREVIEW
-- [ ] Move preview to cursor location button
+- [ ] Move preview to cursor location button (could editor+preview scroll be locked together as option ?)
 - [ ] Detach preview as separate window button
 - Zoom options:
   - [ ] + | - and display cureent amount
