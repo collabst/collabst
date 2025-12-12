@@ -1,7 +1,6 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
   import CommentsPanel from './CommentsPanel.svelte'
-  import CreateCommentModal from './CreateCommentModal.svelte'
   import type { File as ProjectFile, Asset, Comment } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
@@ -20,10 +19,12 @@
   let assetPreviewUrl: string | null = null
   let codeEditor: any = null
   let comments: Comment[] = []
-  let isCommentModalOpen = false
-  let selectedText = ''
-  let selectionRange: { from: number; to: number } | null = null
+  let newCommentDraft: { text: string; range: { from: number; to: number }; selectedText: string } | null = null
   let commentsVersion = 0 // Simple counter to trigger reactivity
+  let showCommentButton = false
+  let commentButtonPosition = { top: 0, left: 0 }
+  let editorContainer: HTMLElement | null = null
+  let listenersSetup = false
 
   $: if (selectedAsset && onGetAssetUrl) {
     loadAssetPreview()
@@ -36,6 +37,20 @@
     updateCommentsFromTracker()
   }
 
+  // Reset listeners flag when file changes
+  $: if (selectedFile) {
+    listenersSetup = false
+  }
+
+  // Setup selection listeners when editor is ready
+  $: if (codeEditor && !listenersSetup) {
+    const view = codeEditor.getView()
+    if (view) {
+      setupSelectionListener(view)
+      listenersSetup = true
+    }
+  }
+
   function handleTrackerReady(tracker: any) {
     // Set up callback for when comments change
     tracker.onCommentsChange(() => {
@@ -43,6 +58,33 @@
     })
     // Trigger initial update
     commentsVersion++
+  }
+
+  function setupSelectionListener(view: any) {
+    const editorDom = view.dom
+
+    const handleSelectionChange = () => {
+      setTimeout(() => {
+        const selection = codeEditor?.getSelection()
+        if (selection && selection.from !== selection.to && selection.text.trim()) {
+          // Get the coordinates of the selection
+          const coords = view.coordsAtPos(selection.to)
+          if (coords && editorContainer) {
+            const containerRect = editorContainer.getBoundingClientRect()
+            showCommentButton = true
+            commentButtonPosition = {
+              top: coords.top - containerRect.top + 20,
+              left: coords.left - containerRect.left
+            }
+          }
+        } else {
+          showCommentButton = false
+        }
+      }, 10)
+    }
+
+    editorDom.addEventListener('mouseup', handleSelectionChange)
+    editorDom.addEventListener('keyup', handleSelectionChange)
   }
 
   function updateCommentsFromTracker() {
@@ -77,26 +119,36 @@
 
     const selection = codeEditor.getSelection()
     if (!selection || selection.from === selection.to) {
-      alert('Please select some text to comment on')
       return
     }
 
-    selectedText = selection.text
-    selectionRange = { from: selection.from, to: selection.to }
-    isCommentModalOpen = true
+    // Create a draft comment and open it in the panel
+    newCommentDraft = {
+      text: '',
+      range: { from: selection.from, to: selection.to },
+      selectedText: selection.text
+    }
+
+    // Hide the button
+    showCommentButton = false
   }
 
-  function handleCommentSubmit(event: CustomEvent) {
-    if (!codeEditor || !selectionRange || !selectedFile || !ydoc) return
+  function handleSubmitNewComment(content: string) {
+    if (!codeEditor || !newCommentDraft || !selectedFile || !ydoc) return
 
     const tracker = codeEditor.getCommentTracker()
     if (!tracker) return
+
+    const view = codeEditor.getView()
+    if (!view) return
+
+    const line = view.state.doc.lineAt(newCommentDraft.range.from).number
 
     const commentId = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const comment: Comment = {
       id: commentId,
       fileId: selectedFile.id,
-      content: event.detail.content,
+      content: content,
       author: {
         id: currentUserId,
         username: currentUserName,
@@ -105,14 +157,18 @@
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       resolved: false,
-      replies: []
+      replies: [],
+      line: line
     }
 
-    tracker.addComment(commentId, selectionRange.from, selectionRange.to, comment)
-    // No need to call updateCommentsList() - the observer will handle it
+    tracker.addComment(commentId, newCommentDraft.range.from, newCommentDraft.range.to, comment)
 
-    selectedText = ''
-    selectionRange = null
+    // Clear the draft
+    newCommentDraft = null
+  }
+
+  function handleCancelNewComment() {
+    newCommentDraft = null
   }
 
   function handleCommentResolve(event: CustomEvent) {
@@ -158,12 +214,6 @@
   }
 </script>
 
-<CreateCommentModal
-  bind:isOpen={isCommentModalOpen}
-  {selectedText}
-  on:submit={handleCommentSubmit}
-/>
-
 <div class="editor-pane">
   {#if selectedFile && ytext && provider && ydoc}
     <div class="editor-wrapper">
@@ -172,11 +222,8 @@
           <span class="file-name">{selectedFile.name}</span>
           <span class="file-type">{selectedFile.type}</span>
         </div>
-        <button class="add-comment-btn" on:click={handleAddComment} title="Add comment (select text first)">
-          💬 Comment
-        </button>
       </div>
-      <div class="editor-container">
+      <div class="editor-container" bind:this={editorContainer}>
         <div class="editor-content">
           <CodeEditor
             bind:this={codeEditor}
@@ -186,13 +233,26 @@
             fileId={selectedFile.id}
             onTrackerReady={handleTrackerReady}
           />
+
+          {#if showCommentButton}
+            <button
+              class="floating-comment-btn"
+              style="top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"
+              on:click={handleAddComment}
+            >
+              💬 Add comment
+            </button>
+          {/if}
         </div>
         <CommentsPanel
           {comments}
           {currentUserId}
+          {newCommentDraft}
           on:resolve={handleCommentResolve}
           on:delete={handleCommentDelete}
           on:reply={handleCommentReply}
+          on:submitNew={e => handleSubmitNewComment(e.detail.content)}
+          on:cancelNew={handleCancelNewComment}
         />
       </div>
     </div>
@@ -272,22 +332,6 @@
     text-transform: uppercase;
   }
 
-  .add-comment-btn {
-    background: #4a9eff;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.2s;
-    font-weight: 500;
-  }
-
-  .add-comment-btn:hover {
-    background: #3a8eef;
-  }
-
   .download-btn {
     background: #0e639c;
     color: white;
@@ -307,11 +351,35 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+    position: relative;
   }
 
   .editor-content {
     flex: 1;
     overflow: auto;
+    position: relative;
+  }
+
+  .floating-comment-btn {
+    position: absolute;
+    background: #4a9eff;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-weight: 500;
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .floating-comment-btn:hover {
+    background: #3a8eef;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
   .preview-content {

@@ -97,6 +97,7 @@ export interface Comment {
   updatedAt: string
   resolved: boolean
   replies: CommentReply[]
+  line: number
 }
 
 export interface CommentReply {

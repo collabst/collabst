@@ -133,10 +133,20 @@ export class CommentRangeTracker {
       if (anchorPos && headPos) {
         const from = Math.min(anchorPos.index, headPos.index)
         const to = Math.max(anchorPos.index, headPos.index)
-        comments.set(commentId, { from, to })
+
+        // Only add decoration if range is not empty
+        if (from < to) {
+          comments.set(commentId, { from, to })
+        }
 
         // Update cache
         this.rangeCache.set(commentId, { anchor, head })
+
+        // Update line number in Yjs
+        const line = this.view.state.doc.lineAt(from).number
+        if (commentData.line !== line) {
+          this.yComments.set(commentId, { ...commentData, line })
+        }
       }
     })
 
@@ -151,10 +161,14 @@ export class CommentRangeTracker {
     const anchor = Y.createRelativePositionFromTypeIndex(this.yText, from)
     const head = Y.createRelativePositionFromTypeIndex(this.yText, to)
 
-    // Store in Yjs
+    // Get the line number
+    const line = this.view.state.doc.lineAt(from).number
+
+    // Store in Yjs (without the selected text)
     this.yComments.set(commentId, {
       anchor: Y.relativePositionToJSON(anchor),
       head: Y.relativePositionToJSON(head),
+      line: line,
       fileId: comment.fileId,
       content: comment.content,
       author: comment.author,
@@ -192,7 +206,8 @@ export class CommentRangeTracker {
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       resolved: data.resolved,
-      replies: data.replies || []
+      replies: data.replies || [],
+      line: data.line || 1
     }
   }
 
@@ -207,7 +222,8 @@ export class CommentRangeTracker {
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
         resolved: data.resolved,
-        replies: data.replies || []
+        replies: data.replies || [],
+        line: data.line || 1
       })
     })
     return comments
@@ -255,11 +271,11 @@ export function commentsExtension(): Extension {
     commentField,
     EditorView.baseTheme({
       '.cm-comment-highlight': {
-        cursor: 'pointer',
-        transition: 'background-color 0.2s'
+        // cursor: 'pointer',
+        // transition: 'background-color 0.2s'
       },
       '.cm-comment-highlight:hover': {
-        filter: 'brightness(1.1)'
+        // filter: 'brightness(1.1)'
       }
     })
   ]
