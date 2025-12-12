@@ -28,7 +28,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 
 ### UX Features
 
-#### Projects Dashboard
+#### Projects Dashboard 📁📁📁
 - [ ] Create/Remove **Document** (document=project)
 - [ ] Create/Remove/Move elements in **Folders**
 - Dashboard sections:
@@ -41,7 +41,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
   - [ ] **Duplicate** project
   - [ ] **Rename**
 
-#### Settings Menu
+#### Settings Menu ⚙️
 - Account settings
   - [ ] Change current **pwd**
   - [ ] Change **profil pic**
@@ -49,7 +49,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 - Other settings
   - [ ] **Theme** (Light | Dark | System)
 
-#### Editor UI
+#### Editor UI 📁+✏️+👁
 - Left bar quick menus:
   - [ ] Project **Files**
   - [ ] **Global Search** & Replace
@@ -65,7 +65,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
     - [ ] Download as exported pdf by default
     - [ ] In dropdown: export as PDF | as PNG | as SVG | sources as ZIP
 
-#### Editor Settings
+#### Editor Settings ⚙️
 - Project Specific Settings:
   - [ ] Project name (maybe display in top left corner like in gdoc)
   - [ ] Typst **compiler version** (latest | specific in list)
@@ -75,7 +75,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
   - [ ] **Line numbers** (Normal | Relative | Disabled)
   - [ ] *Spell check* ? (included in tiny mist ?)
 
-#### Editor Project Files menu
+#### Editor Project Files menu 📁
 - [ ] Buttons for new File | new Folder | Upload
 - [ ] Drag & drop in file list to upload file
 - [ ] List of every folder & files at root (folders first, alphabetically)
@@ -93,7 +93,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
     - [ ] Remove (with warning message)
 - [ ] Shortcut support (`suppr` current selected file is files menu in focus with confirmation warning, `F2` for renaming)
 
-#### EDITOR
+#### EDITOR ✏️
 - Editor top buttons:
   - [ ] Bold | Italic | Underline
   - [ ] Font
@@ -107,9 +107,12 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
   - [ ] Semantic suggestions
   - [ ] See collaborator's cursor & highlighing
   - [ ] *Spellcheck* (see with tiny mist) ?
-  - [ ]  `ctrl+f` feature for find/replace bottom bar to pop up
+  - Quality of life keyboard shortcuts:
+    - [ ]  `ctrl+f` feature for find/replace bottom bar to pop up
+    - [ ] `ctrl+b` for bold `ctrl+i` for italic
+    - [ ] Smart indent with `tab` and `shift+tab`
 
-#### PREVIEW
+#### PREVIEW 👁
 - [ ] Move preview to cursor location button (could editor+preview scroll be locked together as option ?)
 - [ ] Detach preview as separate window button
 - Zoom options:
