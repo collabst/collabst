@@ -78,3 +78,34 @@ export interface Invitation {
   created_at: string
   updated_at: string
 }
+
+export interface CommentRange {
+  anchor: number // Absolute position for initial creation
+  head: number   // Absolute position for initial creation
+}
+
+export interface Comment {
+  id: string
+  fileId: number
+  content: string
+  author: {
+    id: number
+    username: string
+    color: string
+  }
+  createdAt: string
+  updatedAt: string
+  resolved: boolean
+  replies: CommentReply[]
+}
+
+export interface CommentReply {
+  id: string
+  content: string
+  author: {
+    id: number
+    username: string
+    color: string
+  }
+  createdAt: string
+}

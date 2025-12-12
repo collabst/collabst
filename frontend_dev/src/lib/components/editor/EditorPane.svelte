@@ -1,6 +1,8 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
-  import type { File as ProjectFile, Asset } from '$lib/types'
+  import CommentsPanel from './CommentsPanel.svelte'
+  import CreateCommentModal from './CreateCommentModal.svelte'
+  import type { File as ProjectFile, Asset, Comment } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
 
@@ -10,13 +12,46 @@
   export let provider: WebsocketProvider | null
   export let isConnected: boolean
   export let onGetAssetUrl: ((assetId: number) => Promise<string>) | null = null
+  export let ydoc: Y.Doc | null
+  export let currentUserId: number
+  export let currentUserName: string
+  export let currentUserColor: string
 
   let assetPreviewUrl: string | null = null
+  let codeEditor: any = null
+  let comments: Comment[] = []
+  let isCommentModalOpen = false
+  let selectedText = ''
+  let selectionRange: { from: number; to: number } | null = null
+  let commentsVersion = 0 // Simple counter to trigger reactivity
 
   $: if (selectedAsset && onGetAssetUrl) {
     loadAssetPreview()
   } else {
     assetPreviewUrl = null
+  }
+
+  // Update comments whenever the version changes or file changes
+  $: if (codeEditor && selectedFile && (commentsVersion >= 0)) {
+    updateCommentsFromTracker()
+  }
+
+  function handleTrackerReady(tracker: any) {
+    // Set up callback for when comments change
+    tracker.onCommentsChange(() => {
+      commentsVersion++
+    })
+    // Trigger initial update
+    commentsVersion++
+  }
+
+  function updateCommentsFromTracker() {
+    const tracker = codeEditor?.getCommentTracker()
+    if (tracker) {
+      comments = tracker.getAllComments()
+    } else {
+      comments = []
+    }
   }
 
   async function loadAssetPreview() {
@@ -36,22 +71,128 @@
   function isPdf(mimeType: string) {
     return mimeType === 'application/pdf'
   }
+
+  function handleAddComment() {
+    if (!codeEditor) return
+
+    const selection = codeEditor.getSelection()
+    if (!selection || selection.from === selection.to) {
+      alert('Please select some text to comment on')
+      return
+    }
+
+    selectedText = selection.text
+    selectionRange = { from: selection.from, to: selection.to }
+    isCommentModalOpen = true
+  }
+
+  function handleCommentSubmit(event: CustomEvent) {
+    if (!codeEditor || !selectionRange || !selectedFile || !ydoc) return
+
+    const tracker = codeEditor.getCommentTracker()
+    if (!tracker) return
+
+    const commentId = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const comment: Comment = {
+      id: commentId,
+      fileId: selectedFile.id,
+      content: event.detail.content,
+      author: {
+        id: currentUserId,
+        username: currentUserName,
+        color: currentUserColor
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      resolved: false,
+      replies: []
+    }
+
+    tracker.addComment(commentId, selectionRange.from, selectionRange.to, comment)
+    // No need to call updateCommentsList() - the observer will handle it
+
+    selectedText = ''
+    selectionRange = null
+  }
+
+  function handleCommentResolve(event: CustomEvent) {
+    if (!codeEditor) return
+
+    const tracker = codeEditor.getCommentTracker()
+    if (!tracker) return
+
+    tracker.resolveComment(event.detail.commentId)
+    // No need to call updateCommentsList() - the observer will handle it
+  }
+
+  function handleCommentDelete(event: CustomEvent) {
+    if (!codeEditor) return
+
+    const tracker = codeEditor.getCommentTracker()
+    if (!tracker) return
+
+    tracker.removeComment(event.detail.commentId)
+    // No need to call updateCommentsList() - the observer will handle it
+  }
+
+  function handleCommentReply(event: CustomEvent) {
+    if (!codeEditor) return
+
+    const tracker = codeEditor.getCommentTracker()
+    if (!tracker) return
+
+    const replyId = `reply-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const reply = {
+      id: replyId,
+      content: event.detail.content,
+      author: {
+        id: currentUserId,
+        username: currentUserName,
+        color: currentUserColor
+      },
+      createdAt: new Date().toISOString()
+    }
+
+    tracker.addReply(event.detail.commentId, reply)
+    // No need to call updateCommentsList() - the observer will handle it
+  }
 </script>
 
+<CreateCommentModal
+  bind:isOpen={isCommentModalOpen}
+  {selectedText}
+  on:submit={handleCommentSubmit}
+/>
+
 <div class="editor-pane">
-  {#if selectedFile && ytext && provider}
+  {#if selectedFile && ytext && provider && ydoc}
     <div class="editor-wrapper">
       <div class="editor-header">
         <div class="file-info">
           <span class="file-name">{selectedFile.name}</span>
           <span class="file-type">{selectedFile.type}</span>
         </div>
+        <button class="add-comment-btn" on:click={handleAddComment} title="Add comment (select text first)">
+          💬 Comment
+        </button>
       </div>
-      <div class="editor-content">
-        <CodeEditor
-          {ytext}
-          {provider}
-          fileId={selectedFile.id}
+      <div class="editor-container">
+        <div class="editor-content">
+          <CodeEditor
+            bind:this={codeEditor}
+            {ytext}
+            {provider}
+            {ydoc}
+            fileId={selectedFile.id}
+            onTrackerReady={handleTrackerReady}
+          />
+        </div>
+        <CommentsPanel
+          {comments}
+          {currentUserId}
+          on:resolve={handleCommentResolve}
+          on:delete={handleCommentDelete}
+          on:reply={handleCommentReply}
         />
       </div>
     </div>
@@ -131,6 +272,22 @@
     text-transform: uppercase;
   }
 
+  .add-comment-btn {
+    background: #4a9eff;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 500;
+  }
+
+  .add-comment-btn:hover {
+    background: #3a8eef;
+  }
+
   .download-btn {
     background: #0e639c;
     color: white;
@@ -144,6 +301,12 @@
 
   .download-btn:hover {
     background: #0a4d7a;
+  }
+
+  .editor-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
   }
 
   .editor-content {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte'
   import { EditorView, basicSetup } from 'codemirror'
   import { EditorState } from '@codemirror/state'
   import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
@@ -7,15 +7,40 @@
   import { keymap } from '@codemirror/view'
   import * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
+  import { commentsExtension, CommentRangeTracker } from '$lib/codemirror/comments'
 
   export let ytext: Y.Text
   export let provider: WebsocketProvider
   export let fileId: number
+  export let ydoc: Y.Doc
+  export let onTrackerReady: ((tracker: CommentRangeTracker) => void) | null = null
+
+  const dispatch = createEventDispatcher()
 
   let editorElement: HTMLDivElement
   let view: EditorView | null = null
   let undoManager: Y.UndoManager | null = null
   let currentFileId: number | null = null
+  let commentTracker: CommentRangeTracker | null = null
+
+  // Export methods for comment management
+  export function getView() {
+    return view
+  }
+
+  export function getCommentTracker() {
+    return commentTracker
+  }
+
+  export function getSelection() {
+    if (!view) return null
+    const { from, to } = view.state.selection.main
+    return {
+      from,
+      to,
+      text: view.state.doc.sliceString(from, to)
+    }
+  }
 
   function initializeEditor() {
     if (!editorElement || !ytext || !provider) return
@@ -32,6 +57,7 @@
         oneDark,
         yCollab(ytext, provider.awareness, { undoManager }),
         keymap.of(yUndoManagerKeymap),
+        commentsExtension(),
       ],
     })
 
@@ -39,6 +65,14 @@
       state,
       parent: editorElement,
     })
+
+    // Initialize comment tracker
+    commentTracker = new CommentRangeTracker(ydoc, fileId, view)
+
+    // Notify parent that tracker is ready
+    if (onTrackerReady) {
+      onTrackerReady(commentTracker)
+    }
   }
 
   function switchFile() {
@@ -53,6 +87,11 @@
     }
     undoManager = new Y.UndoManager(ytext)
 
+    // Destroy old comment tracker
+    if (commentTracker) {
+      commentTracker.destroy()
+    }
+
     view.setState(EditorState.create({
       doc: ytext.toString(),
       extensions: [
@@ -60,8 +99,17 @@
         oneDark,
         yCollab(ytext, provider.awareness, { undoManager }),
         keymap.of(yUndoManagerKeymap),
+        commentsExtension(),
       ],
     }))
+
+    // Initialize new comment tracker for this file
+    commentTracker = new CommentRangeTracker(ydoc, fileId, view)
+
+    // Notify parent that tracker is ready
+    if (onTrackerReady) {
+      onTrackerReady(commentTracker)
+    }
   }
 
   $: if (view && ytext && provider && currentFileId !== fileId) {
@@ -74,6 +122,10 @@
 
   onDestroy(() => {
     console.log('[CodeEditor] Destroying editor')
+    if (commentTracker) {
+      commentTracker.destroy()
+      commentTracker = null
+    }
     if (view) {
       view.destroy()
       view = null
@@ -86,7 +138,7 @@
   })
 </script>
 
-<div bind:this={editorElement} class="editor" />
+<div bind:this={editorElement} class="editor"></div>
 
 <style>
   .editor {

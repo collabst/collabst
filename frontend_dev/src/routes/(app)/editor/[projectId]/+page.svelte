@@ -335,6 +335,10 @@
         provider={yjsConnection?.provider || null}
         {isConnected}
         onGetAssetUrl={handleGetAssetUrl}
+        ydoc={yjsConnection?.ydoc || null}
+        currentUserId={$auth.user?.id || 0}
+        currentUserName={$auth.user?.username || 'Unknown'}
+        currentUserColor={yjsConnection?.awareness?.getLocalState()?.color || '#3b82f6'}
       />
     </div>
 
