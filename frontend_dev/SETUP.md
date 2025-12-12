@@ -7,10 +7,11 @@
 ```bash
 cd ../backend
 docker-compose up -d
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8002
+uv run alembic upgrade head
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-
-Backend will be at: http://reva-dl:8002
+Make sure you created a .env based on .env.example
+Backend will be at: http://localhost:8000
 
 ### 2. Start the Frontend
 
@@ -19,6 +20,7 @@ cd frontend_dev
 npm install
 npm run dev
 ```
+Make sure your .env has the correct port for the backend (e.g 8000)
 
 Frontend will be at: http://localhost:5173
 
