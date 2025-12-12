@@ -23,7 +23,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 
 ### ICONS GUIDELINES
 - We should use outline style svg icons
--> **where to find ?**
+-> **where to find ?** Maybe check https://iconoir.com/
 - Most ui buttons should be icon first (and label on hover)
 
 ### UX Features
