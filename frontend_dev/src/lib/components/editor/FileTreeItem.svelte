@@ -5,6 +5,7 @@
   export let isSelected: boolean = false
   export let onSelect: () => void
   export let onDelete: (() => void) | null = null
+  export let usersViewing: { name: string; color: string }[] = []
 
   function getFileIcon(item: ProjectFile | Asset): string {
     // Check if it's an asset
@@ -56,7 +57,20 @@
 >
   <span class="icon">{getFileIcon(item)}</span>
   <div class="info">
-    <span class="name">{getFileName(item)}</span>
+    <div class="name-row">
+      <span class="name">{getFileName(item)}</span>
+      {#if usersViewing.length > 0}
+        <div class="user-indicators">
+          {#each usersViewing as user}
+            <div
+              class="user-dot"
+              style="background-color: {user.color}"
+              title="{user.name} is viewing"
+            />
+          {/each}
+        </div>
+      {/if}
+    </div>
     {#if getFileSize(item)}
       <span class="size">{getFileSize(item)}</span>
     {/if}
@@ -111,11 +125,35 @@
     gap: 0.125rem;
   }
 
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
   .name {
     font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .user-indicators {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .user-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
   .size {

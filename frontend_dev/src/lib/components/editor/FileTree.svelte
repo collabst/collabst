@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte'
   import FileTreeItem from './FileTreeItem.svelte'
   import { IconButton, Tooltip } from '$lib/components/ui'
   import File from '@lucide/svelte/icons/file'
   import Folder from '@lucide/svelte/icons/folder'
   import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
   import type { File as ProjectFile, Asset } from '$lib/types'
+  import type { WebsocketProvider } from 'y-websocket'
 
   export let files: ProjectFile[]
   export let assets: Asset[]
@@ -16,6 +18,34 @@
   export let onCreateFile: (() => void) | null = null
   export let onCreateFolder: (() => void) | null = null
   export let onUploadAsset: (() => void) | null = null
+  export let provider: WebsocketProvider | null = null
+
+  let awarenessStates: [number, any][] = []
+
+  function updateAwareness() {
+    if (provider?.awareness) {
+      awarenessStates = Array.from(provider.awareness.getStates().entries())
+    } else {
+      awarenessStates = []
+    }
+  }
+
+  $: if (provider) {
+    updateAwareness()
+  }
+
+  onMount(() => {
+    if (provider?.awareness) {
+      provider.awareness.on('change', updateAwareness)
+      updateAwareness()
+    }
+  })
+
+  onDestroy(() => {
+    if (provider?.awareness) {
+      provider.awareness.off('change', updateAwareness)
+    }
+  })
 
   type TreeItem = (ProjectFile | Asset) & { isAsset?: boolean }
 
@@ -36,11 +66,32 @@
   $: selectedId = selectedItem?.id
   $: selectedIsAsset = selectedItem ? 'filename' in selectedItem : false
 
-  // Create a reactive map of which items are selected
-  $: itemsWithSelection = allItems.map(item => ({
-    item,
-    isSelected: selectedId ? (item.id === selectedId && item.isAsset === selectedIsAsset) : false
-  }))
+  // Create a reactive map of which items are selected and which users are viewing them
+  $: itemsWithSelection = allItems.map(item => {
+    const isSelected = selectedId ? (item.id === selectedId && item.isAsset === selectedIsAsset) : false
+
+    // Find users viewing this item (file or asset, excluding the local user)
+    const usersViewing = awarenessStates
+      .filter(([clientId, state]) => {
+        // Exclude local user and check if they're viewing this item
+        return (
+          state.user?.name &&
+          clientId !== provider?.awareness?.clientID &&
+          state.currentItem?.id === item.id &&
+          state.currentItem?.isAsset === item.isAsset
+        )
+      })
+      .map(([_, state]) => ({
+        name: state.user?.name,
+        color: state.user?.color || '#999'
+      }))
+
+    return {
+      item,
+      isSelected,
+      usersViewing
+    }
+  })
 
   function handleSelect(item: TreeItem) {
     if (item.isAsset) {
@@ -100,10 +151,11 @@
     {#if itemsWithSelection.length === 0}
       <div class="empty">No files or assets yet</div>
     {:else}
-      {#each itemsWithSelection as {item, isSelected} (`${item.isAsset ? 'asset' : 'file'}-${item.id}`)}
+      {#each itemsWithSelection as {item, isSelected, usersViewing} (`${item.isAsset ? 'asset' : 'file'}-${item.id}`)}
         <FileTreeItem
           {item}
           {isSelected}
+          {usersViewing}
           onSelect={() => handleSelect(item)}
           onDelete={onDeleteFile || onDeleteAsset ? () => handleDelete(item) : null}
         />

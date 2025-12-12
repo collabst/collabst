@@ -139,11 +139,27 @@
   function handleSelectFile(file: ProjectFile) {
     selectedFile = file
     selectedAsset = null
+
+    // Update awareness to broadcast which file this user is viewing
+    if (yjsConnection?.provider?.awareness) {
+      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+        id: file.id,
+        isAsset: false
+      })
+    }
   }
 
   function handleSelectAsset(asset: Asset) {
     selectedAsset = asset
     selectedFile = null
+
+    // Update awareness to broadcast which asset this user is viewing
+    if (yjsConnection?.provider?.awareness) {
+      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+        id: asset.id,
+        isAsset: true
+      })
+  }
   }
 
   async function handleDeleteFile(fileId: number) {
@@ -287,6 +303,21 @@
   }
 
   $: selectedItem = selectedFile || selectedAsset
+
+  // Update awareness when selected item changes
+  $: if (selectedFile && yjsConnection?.provider?.awareness) {
+    yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+      id: selectedFile.id,
+      isAsset: false
+    })
+  } else if (selectedAsset && yjsConnection?.provider?.awareness) {
+    yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+      id: selectedAsset.id,
+      isAsset: true
+    })
+  } else if (yjsConnection?.provider?.awareness) {
+    yjsConnection.provider.awareness.setLocalStateField('currentItem', null)
+  }
 </script>
 
 {#if !project}
@@ -330,6 +361,7 @@
         onCreateFile={() => showCreateFileModal = true}
         onCreateFolder={() => console.log('Create folder - to be implemented')}
         onUploadAsset={() => showUploadAssetModal = true}
+        provider={yjsConnection?.provider || null}
       />
 
       <EditorPane
