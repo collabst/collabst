@@ -16,7 +16,6 @@
   export let ydoc: Y.Doc
   export let onTrackerReady: ((tracker: CommentRangeTracker) => void) | null = null
 
-  const dispatch = createEventDispatcher()
 
   let editorElement: HTMLDivElement
   let view: EditorView | null = null
@@ -45,6 +44,8 @@
       effects: themeCompartment.reconfigure(getThemeExtensions())
     })
   }
+  // Store cursor positions as Yjs relative positions per file
+  let cursorPositions: Map<number, any> = new Map()
 
   // Export methods for comment management
   export function getView() {
@@ -89,6 +90,9 @@
       parent: editorElement,
     })
 
+    // Focus the editor
+    view.focus()
+
     // Initialize comment tracker
     commentTracker = new CommentRangeTracker(ydoc, fileId, view)
 
@@ -103,6 +107,15 @@
     if (currentFileId === fileId) return
 
     console.log('[CodeEditor] Switching from file', currentFileId, 'to', fileId)
+
+    // Save current cursor position as relative position before switching
+    if (currentFileId !== null) {
+      const currentYtext = ydoc.getText(`file-${currentFileId}`)
+      const selection = view.state.selection.main
+      const relativePos = Y.createRelativePositionFromTypeIndex(currentYtext, selection.head)
+      cursorPositions.set(currentFileId, Y.relativePositionToJSON(relativePos))
+    }
+
     currentFileId = fileId
 
     if (undoManager) {
@@ -125,6 +138,21 @@
         commentsExtension(),
       ],
     }))
+
+    // Restore cursor position if we have one saved
+    const savedPosition = cursorPositions.get(fileId)
+    if (savedPosition) {
+      const relativePos = Y.createRelativePositionFromJSON(savedPosition)
+      const absolutePos = Y.createAbsolutePositionFromRelativePosition(relativePos, ydoc)
+      if (absolutePos) {
+        view.dispatch({
+          selection: { anchor: absolutePos.index, head: absolutePos.index }
+        })
+      }
+    }
+
+    // Focus the editor
+    view.focus()
 
     // Initialize new comment tracker for this file
     commentTracker = new CommentRangeTracker(ydoc, fileId, view)

@@ -40,9 +40,10 @@
     updateCommentsFromTracker()
   }
 
-  // Reset listeners flag when file changes
+  // Reset listeners flag and hide comment button when file changes
   $: if (selectedFile) {
     listenersSetup = false
+    showCommentButton = false
   }
 
   // Setup selection listeners when editor is ready

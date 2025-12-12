@@ -271,11 +271,11 @@ export function commentsExtension(): Extension {
     commentField,
     EditorView.baseTheme({
       '.cm-comment-highlight': {
-        // cursor: 'pointer',
-        // transition: 'background-color 0.2s'
+        cursor: 'pointer',
+        transition: 'background-color 0.2s'
       },
       '.cm-comment-highlight:hover': {
-        // filter: 'brightness(1.1)'
+        filter: 'brightness(1.1)'
       }
     })
   ]
