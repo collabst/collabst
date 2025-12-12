@@ -93,8 +93,8 @@
   }
 
   .modal {
-    background: #1e1e1e;
-    border: 1px solid #3e3e3e;
+    background: var(--surface-primary);
+    border: 1px solid var(--border-primary);
     border-radius: 8px;
     width: 90%;
     max-width: 500px;
@@ -118,20 +118,20 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border-bottom: 1px solid #3e3e3e;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .modal-header h3 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #888;
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 28px;
     line-height: 1;
@@ -146,8 +146,8 @@
   }
 
   .close-btn:hover {
-    background: #2e2e2e;
-    color: #e0e0e0;
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .modal-body {
@@ -158,15 +158,15 @@
   }
 
   .selected-text {
-    background: #2a2a2a;
-    border: 1px solid #3e3e3e;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 12px;
   }
 
   .selected-text .label {
     font-size: 11px;
-    color: #888;
+    color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 6px;
     font-weight: 600;
@@ -175,7 +175,7 @@
 
   .selected-text .text {
     font-size: 13px;
-    color: #d0d0d0;
+    color: var(--text-primary);
     line-height: 1.5;
     max-height: 80px;
     overflow-y: auto;
@@ -185,11 +185,11 @@
 
   textarea {
     width: 100%;
-    background: #2a2a2a;
-    border: 1px solid #3e3e3e;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 12px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 14px;
     font-family: inherit;
     resize: vertical;
@@ -198,12 +198,12 @@
 
   textarea:focus {
     outline: none;
-    border-color: #4a9eff;
+    border-color: var(--color-primary-600);
   }
 
   .hint {
     font-size: 11px;
-    color: #666;
+    color: var(--text-tertiary);
     text-align: right;
   }
 
@@ -212,7 +212,7 @@
     justify-content: flex-end;
     gap: 12px;
     padding: 16px 20px;
-    border-top: 1px solid #3e3e3e;
+    border-top: 1px solid var(--border-primary);
   }
 
   .btn {
@@ -226,21 +226,21 @@
   }
 
   .btn-cancel {
-    background: #2a2a2a;
-    color: #d0d0d0;
+    background: var(--surface-secondary);
+    color: var(--text-primary);
   }
 
   .btn-cancel:hover {
-    background: #3a3a3a;
+    background: var(--surface-hover);
   }
 
   .btn-submit {
-    background: #4a9eff;
+    background: var(--color-primary-600);
     color: white;
   }
 
   .btn-submit:hover:not(:disabled) {
-    background: #3a8eef;
+    background: var(--color-primary-700);
   }
 
   .btn-submit:disabled {

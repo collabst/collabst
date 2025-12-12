@@ -140,8 +140,8 @@
 
 <style>
   .comments-panel {
-    background: #1a1a1a;
-    border-left: 1px solid #3e3e3e;
+    background: var(--bg-comments-panel);
+    border-left: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
     width: 320px;
@@ -158,8 +158,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #3e3e3e;
-    background: #1e1e1e;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--surface-primary);
     min-height: 48px;
   }
 
@@ -169,7 +169,7 @@
     gap: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: #e0e0e0;
+    color: var(--text-primary);
     white-space: nowrap;
   }
 
@@ -191,19 +191,19 @@
   }
 
   .count-badge.unresolved {
-    background: #3b82f6;
+    background: var(--color-primary-600);
     color: white;
   }
 
   .count-badge.resolved {
-    background: #10b981;
+    background: var(--color-success);
     color: white;
   }
 
   .toggle-btn {
     background: none;
     border: none;
-    color: #888;
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 20px;
     padding: 4px 8px;
@@ -216,8 +216,8 @@
   }
 
   .toggle-btn:hover {
-    background: #2e2e2e;
-    color: #e0e0e0;
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .panel-content {
@@ -229,7 +229,7 @@
 
   .filter-section {
     padding: 12px 16px;
-    border-bottom: 1px solid #2e2e2e;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .filter-toggle {
@@ -238,7 +238,7 @@
     gap: 8px;
     cursor: pointer;
     font-size: 13px;
-    color: #d0d0d0;
+    color: var(--text-primary);
     user-select: none;
   }
 
@@ -246,7 +246,7 @@
     cursor: pointer;
     width: 16px;
     height: 16px;
-    accent-color: #4a9eff;
+    accent-color: var(--color-primary-600);
   }
 
   .empty-state {
@@ -267,14 +267,14 @@
 
   .empty-state p {
     font-size: 14px;
-    color: #888;
+    color: var(--text-secondary);
     margin: 0 0 8px 0;
     font-weight: 500;
   }
 
   .empty-state span {
     font-size: 12px;
-    color: #666;
+    color: var(--text-tertiary);
   }
 
   .comments-list {
@@ -283,8 +283,8 @@
   }
 
   .new-comment-draft {
-    background: #1e1e1e;
-    border: 2px solid #4a9eff;
+    background: var(--surface-primary);
+    border: 2px solid var(--color-primary-600);
     border-radius: 6px;
     padding: 12px;
     margin-bottom: 16px;
@@ -297,7 +297,7 @@
   .draft-label {
     font-size: 12px;
     font-weight: 600;
-    color: #4a9eff;
+    color: var(--color-primary-600);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -305,11 +305,11 @@
   .draft-selected-text {
     margin-top: 6px;
     padding: 8px;
-    background: #2a2a2a;
-    border-left: 3px solid #4a9eff;
+    background: var(--surface-secondary);
+    border-left: 3px solid var(--color-primary-600);
     border-radius: 4px;
     font-size: 12px;
-    color: #d0d0d0;
+    color: var(--text-primary);
     font-family: monospace;
     white-space: pre-wrap;
     word-break: break-word;
@@ -319,11 +319,11 @@
 
   .new-comment-textarea {
     width: 100%;
-    background: #2a2a2a;
-    border: 1px solid #3e3e3e;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 8px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     font-family: inherit;
     resize: vertical;
@@ -332,7 +332,7 @@
 
   .new-comment-textarea:focus {
     outline: none;
-    border-color: #4a9eff;
+    border-color: var(--color-primary-600);
   }
 
   .draft-actions {
@@ -352,21 +352,21 @@
   }
 
   .btn-cancel {
-    background: #2a2a2a;
-    color: #d0d0d0;
+    background: var(--surface-secondary);
+    color: var(--text-primary);
   }
 
   .btn-cancel:hover {
-    background: #3a3a3a;
+    background: var(--surface-hover);
   }
 
   .btn-submit {
-    background: #4a9eff;
+    background: var(--color-primary-600);
     color: white;
   }
 
   .btn-submit:hover:not(:disabled) {
-    background: #3a8eef;
+    background: var(--color-primary-700);
   }
 
   .btn-submit:disabled {
@@ -380,15 +380,15 @@
   }
 
   .panel-content::-webkit-scrollbar-track {
-    background: #1a1a1a;
+    background: var(--scrollbar-track);
   }
 
   .panel-content::-webkit-scrollbar-thumb {
-    background: #3e3e3e;
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
   }
 
   .panel-content::-webkit-scrollbar-thumb:hover {
-    background: #4e4e4e;
+    background: var(--scrollbar-thumb-hover);
   }
 </style>

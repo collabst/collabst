@@ -3,8 +3,13 @@
   import { goto } from '$app/navigation'
   import { auth } from '$lib/stores/auth'
   import { projectsApi, invitationsApi } from '$lib/services/api'
+  import { ThemeToggle, ProfileMenu } from '$lib/components/ui'
   import InvitationsPanel from '$lib/components/InvitationsPanel.svelte'
   import type { Project } from '$lib/types'
+  import fileIcon from '../../../assets/collabst-file.svg'
+  import Play from '@lucide/svelte/icons/play'
+  import Trash2 from '@lucide/svelte/icons/trash-2'
+  import UserPlus from '@lucide/svelte/icons/user-plus'
 
   let projects: Project[] = []
   let loading = true
@@ -97,24 +102,10 @@
   <div class="container">
     <header>
       <div class="header-left">
-        <h1>My Projects</h1>
-        {#if $auth.user}
-          <div class="user-badge">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span>{$auth.user.username}</span>
-          </div>
-        {/if}
       </div>
-      <div class="header-actions">
-        <button on:click={() => showCreateModal = true} class="create-btn">
-          + New Project
-        </button>
-        <button on:click={auth.logout} class="logout-btn">
-          Logout
-        </button>
+      <div class="header-right">
+        <ThemeToggle />
+        <ProfileMenu />
       </div>
     </header>
 
@@ -122,91 +113,70 @@
       <InvitationsPanel />
     </div>
 
-    <div class="projects-grid">
-      {#if projects.length === 0}
-        <div class="empty">
-          <h2>No projects yet</h2>
-          <p>Create your first project to get started!</p>
-        </div>
-      {:else}
-        {#each projects as project (project.id)}
-          <div class="project-card" on:click={() => goto(`/editor/${project.id}`)}>
-            <div class="project-header">
-              <h3>{project.name}</h3>
-              {#if project.current_user_role}
-                <span class="role-badge {getRoleBadgeClass(project.current_user_role)}">
-                  {project.current_user_role}
-                </span>
-              {/if}
-            </div>
+    <div class="content">
+      <h1 class="page-title">Dashboard</h1>
+      <button on:click={() => showCreateModal = true} class="create-btn">
+        + New Project
+      </button>
 
-            {#if isCollaborator(project) && project.owner}
-              <div class="owner-info">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span>Owned by <strong>{project.owner.username}</strong></span>
-              </div>
-            {/if}
-
-            <p class="description">
-              {project.description || 'No description'}
-            </p>
-
-            {#if project.collaborators_count !== undefined && project.collaborators_count > 0}
-              <div class="collaborators-count">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-                <span>{project.collaborators_count} collaborator{project.collaborators_count !== 1 ? 's' : ''}</span>
-              </div>
-            {/if}
-
-            <div class="project-footer" on:click|stopPropagation>
-              <button
-                on:click={() => goto(`/editor/${project.id}`)}
-                class="open-btn"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-                Open
-              </button>
-              {#if project.current_user_role === 'owner' || project.current_user_role === 'admin'}
-                <button
-                  on:click={() => handleOpenInviteModal(project.id)}
-                  class="invite-btn"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="8.5" cy="7" r="4"></circle>
-                    <line x1="20" y1="8" x2="20" y2="14"></line>
-                    <line x1="23" y1="11" x2="17" y2="11"></line>
-                  </svg>
-                  Invite
-                </button>
-              {/if}
-              {#if project.current_user_role === 'owner'}
-                <button
-                  on:click={() => handleDeleteProject(project.id)}
-                  class="delete-btn"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                  Delete
-                </button>
-              {/if}
-            </div>
+      <div class="projects-grid">
+        {#if projects.length === 0}
+          <div class="empty">
+            <h2>No projects yet</h2>
+            <p>Create your first project to get started!</p>
           </div>
-        {/each}
-      {/if}
+        {:else}
+          {#each projects as project (project.id)}
+            <div class="project-card" on:click={() => goto(`/editor/${project.id}`)}>
+              <div class="file-icon-container">
+                <img src={fileIcon} alt="Project file" class="file-icon" />
+                
+                <div class="action-buttons">
+                  <button
+                    on:click|stopPropagation={() => goto(`/editor/${project.id}`)}
+                    class="action-btn open-action"
+                    title="Open"
+                  >
+                    <Play size={16} />
+                    <span class="action-label">Open</span>
+                  </button>
+                  
+                  {#if project.current_user_role === 'owner' || project.current_user_role === 'admin'}
+                    <button
+                      on:click|stopPropagation={() => handleOpenInviteModal(project.id)}
+                      class="action-btn invite-action"
+                      title="Invite"
+                    >
+                      <UserPlus size={16} />
+                      <span class="action-label">Invite</span>
+                    </button>
+                  {/if}
+                  
+                  {#if project.current_user_role === 'owner'}
+                    <button
+                      on:click|stopPropagation={() => handleDeleteProject(project.id)}
+                      class="action-btn delete-action"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                      <span class="action-label">Delete</span>
+                    </button>
+                  {/if}
+                </div>
+              </div>
+
+              <div class="project-info">
+                <h3>{project.name}</h3>
+                {#if project.current_user_role}
+                  <span class="role-badge {getRoleBadgeClass(project.current_user_role)}">
+                    {project.current_user_role}
+                  </span>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        {/if}
+      </div>
     </div>
 
     {#if showCreateModal}
@@ -283,84 +253,32 @@
 <style>
   .container {
     min-height: 100vh;
-    background: #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-canvas, var(--bg-primary));
   }
 
   header {
-    background: #252526;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid #3e3e42;
+    background: var(--bg-top-bar);
+    border-bottom: 1px solid var(--border-primary);
+    padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    color: var(--text-primary);
   }
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-  }
-
-  h1 {
-    font-size: 24px;
-    font-weight: 600;
-    color: #e8e8e8;
-    margin: 0;
-  }
-
-  .user-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(14, 99, 156, 0.2);
-    border: 1px solid rgba(79, 195, 247, 0.3);
-    border-radius: 20px;
-    font-size: 14px;
-    color: #4fc3f7;
-  }
-
-  .user-badge svg {
-    opacity: 0.8;
-  }
-
-  .header-actions {
-    display: flex;
     gap: 1rem;
   }
 
-  .create-btn {
-    background: #0e639c;
-    color: white;
-    border: 1px solid #1177bb;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-weight: 500;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-  }
-
-  .create-btn:hover {
-    background: #1177bb;
-    border-color: #1a8ad4;
-  }
-
-  .logout-btn {
-    background: transparent;
-    color: #e8e8e8;
-    border: 1px solid #3e3e42;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-weight: 500;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-  }
-
-  .logout-btn:hover {
-    background: #3e3e42;
-    border-color: #555;
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
   }
 
   .loading {
@@ -369,8 +287,8 @@
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: #999;
-    background: #1e1e1e;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
   }
 
   .invitations-section {
@@ -378,76 +296,211 @@
     padding-bottom: 1rem;
   }
 
-  .projects-grid {
+  .content {
     padding: 2rem;
+    padding-top: 1rem;
+    flex: 1;
+  }
+
+  .page-title {
+    font-size: 48px;
+    font-weight: 700;
+    margin: 0 0 2rem 0;
+    color: var(--text-primary);
+    text-align: left;
+    font-family: 'DM Serif Display', Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+
+  .create-btn {
+    background: var(--bg-canvas, var(--bg-primary));
+    color: var(--text-primary);
+    border: 2px solid var(--border-primary);
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    margin-bottom: 2rem;
+  }
+
+  .create-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-secondary);
+  }
+
+  .projects-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 2rem;
   }
 
   .empty {
     grid-column: 1 / -1;
     text-align: center;
     padding: 4rem;
-    color: #999;
+    color: var(--text-secondary);
   }
 
   .empty h2 {
-    color: #e8e8e8;
+    color: var(--text-primary);
     font-weight: 600;
     margin-bottom: 0.5rem;
   }
 
   .project-card {
-    background: #252526;
-    padding: 1.5rem;
-    border-radius: 6px;
-    border: 1px solid #3e3e42;
     display: flex;
     flex-direction: column;
-    gap: 0.875rem;
+    align-items: center;
     cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
+    transition: transform 0.2s;
   }
 
   .project-card:hover {
-    background: #2d2d30;
-    border-color: #555;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
   }
 
-  .project-header {
+  .file-icon-container {
+    position: relative;
+    width: 120px;
+    height: 140px;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .file-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+  }
+
+  .action-buttons {
+    position: absolute;
+    top: 65%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .file-icon-container:hover .action-buttons {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .action-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+  }
+
+  .action-btn .action-label {
+    position: absolute;
+    top: -2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .action-btn:hover .action-label {
+    opacity: 1;
+  }
+
+  .action-btn:hover {
+    background: var(--surface-hover);
+    transform: scale(1.1);
+  }
+
+  .open-action:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .invite-action:hover {
+    border-color: #81c784;
+    color: #81c784;
+  }
+
+  /* Light theme: darker green for better contrast */
+  :global([data-theme="light"]) .invite-action:hover {
+    border-color: #4caf50;
+    color: #4caf50;
+  }
+
+  .delete-action:hover {
+    border-color: #e57373;
+    color: #e57373;
+  }
+
+  /* Light theme: darker red for better contrast */
+  :global([data-theme="light"]) .delete-action:hover {
+    border-color: #d32f2f;
+    color: #d32f2f;
+  }
+
+  .project-info {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
   }
 
   .project-card h3 {
-    font-size: 17px;
-    font-weight: 600;
-    color: #e8e8e8;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
     margin: 0;
-    flex: 1;
-    line-height: 1.4;
+    word-break: break-word;
+    max-width: 100%;
   }
 
   .role-badge {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    padding: 0.25rem 0.625rem;
+    padding: 0.25rem 0.5rem;
     border-radius: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    white-space: nowrap;
   }
 
   .role-owner {
     background: rgba(14, 99, 156, 0.3);
     color: #4fc3f7;
     border: 1px solid rgba(79, 195, 247, 0.3);
+  }
+
+  /* Light theme: darker blue for better contrast */
+  :global([data-theme="light"]) .role-owner {
+    background: rgba(14, 99, 156, 0.15);
+    color: #0d47a1;
+    border: 1px solid rgba(13, 71, 161, 0.3);
   }
 
   .role-admin {
@@ -468,108 +521,6 @@
     border: 1px solid rgba(189, 189, 189, 0.3);
   }
 
-  .owner-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 13px;
-    color: #b0b0b0;
-    padding: 0.375rem 0;
-  }
-
-  .owner-info svg {
-    opacity: 0.7;
-  }
-
-  .owner-info strong {
-    color: #4fc3f7;
-    font-weight: 600;
-  }
-
-  .collaborators-count {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 13px;
-    color: #999;
-    padding: 0.25rem 0;
-  }
-
-  .collaborators-count svg {
-    opacity: 0.6;
-  }
-
-  .description {
-    color: #b0b0b0;
-    font-size: 13px;
-    flex: 1;
-    margin: 0;
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .project-footer {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid #3e3e42;
-  }
-
-  .project-footer button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 13px;
-    padding: 0.5rem 0.875rem;
-    border-radius: 4px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-  }
-
-  .project-footer button svg {
-    opacity: 0.8;
-  }
-
-  .open-btn {
-    flex: 1;
-    background: #0e639c;
-    color: white;
-    border-color: #1177bb;
-  }
-
-  .open-btn:hover {
-    background: #1177bb;
-    border-color: #1a8ad4;
-  }
-
-  .invite-btn {
-    background: rgba(76, 175, 80, 0.15);
-    color: #81c784;
-    border-color: rgba(129, 199, 132, 0.3);
-  }
-
-  .invite-btn:hover {
-    background: rgba(76, 175, 80, 0.25);
-    border-color: rgba(129, 199, 132, 0.5);
-  }
-
-  .delete-btn {
-    background: rgba(244, 67, 54, 0.15);
-    color: #e57373;
-    border-color: rgba(229, 115, 115, 0.3);
-  }
-
-  .delete-btn:hover {
-    background: rgba(244, 67, 54, 0.25);
-    border-color: rgba(229, 115, 115, 0.5);
-  }
-
   .modal {
     position: fixed;
     top: 0;
@@ -585,10 +536,10 @@
   }
 
   .modal-content {
-    background: #252526;
+    background: var(--bg-secondary);
     padding: 2rem;
     border-radius: 6px;
-    border: 1px solid #3e3e42;
+    border: 1px solid var(--border-primary);
     width: 100%;
     max-width: 500px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -598,7 +549,7 @@
     font-size: 20px;
     font-weight: 600;
     margin: 0 0 1.5rem 0;
-    color: #e8e8e8;
+    color: var(--text-primary);
   }
 
   .field {
@@ -611,27 +562,27 @@
   label {
     font-size: 13px;
     font-weight: 500;
-    color: #e8e8e8;
+    color: var(--text-primary);
   }
 
   input, textarea, select {
     padding: 0.75rem;
-    border: 1px solid #3e3e42;
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     font-size: 14px;
-    background: #1e1e1e;
-    color: #e8e8e8;
+    background: var(--bg-input);
+    color: var(--text-primary);
     transition: all 0.2s;
   }
 
   input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: #0e639c;
-    background: #252526;
+    border-color: var(--color-primary);
+    background: var(--bg-secondary);
   }
 
   input::placeholder, textarea::placeholder {
-    color: #6a6a6a;
+    color: var(--text-muted);
   }
 
   textarea {
@@ -641,8 +592,8 @@
   }
 
   select option {
-    background: #252526;
-    color: #e8e8e8;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
   }
 
   .modal-actions {
@@ -654,8 +605,8 @@
   .cancel-btn {
     flex: 1;
     background: transparent;
-    color: #e8e8e8;
-    border: 1px solid #3e3e42;
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
     padding: 0.75rem;
     border-radius: 4px;
     font-weight: 500;
@@ -665,15 +616,15 @@
   }
 
   .cancel-btn:hover {
-    background: #3e3e42;
-    border-color: #555;
+    background: var(--surface-hover);
+    border-color: var(--border-secondary);
   }
 
   .submit-btn {
     flex: 1;
-    background: #0e639c;
+    background: var(--color-primary);
     color: white;
-    border: 1px solid #1177bb;
+    border: 1px solid var(--color-primary-hover);
     padding: 0.75rem;
     border-radius: 4px;
     font-weight: 500;
@@ -683,7 +634,6 @@
   }
 
   .submit-btn:hover {
-    background: #1177bb;
-    border-color: #1a8ad4;
+    background: var(--color-primary-hover);
   }
 </style>

@@ -1,5 +1,9 @@
 <script lang="ts">
   import FileTreeItem from './FileTreeItem.svelte'
+  import { IconButton, Tooltip } from '$lib/components/ui'
+  import File from '@lucide/svelte/icons/file'
+  import Folder from '@lucide/svelte/icons/folder'
+  import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
   import type { File as ProjectFile, Asset } from '$lib/types'
 
   export let files: ProjectFile[]
@@ -10,6 +14,7 @@
   export let onDeleteFile: ((fileId: number) => void) | null = null
   export let onDeleteAsset: ((assetId: number) => void) | null = null
   export let onCreateFile: (() => void) | null = null
+  export let onCreateFolder: (() => void) | null = null
   export let onUploadAsset: (() => void) | null = null
 
   type TreeItem = (ProjectFile | Asset) & { isAsset?: boolean }
@@ -59,14 +64,34 @@
     <h3>Files</h3>
     <div class="actions">
       {#if onCreateFile}
-        <button on:click={onCreateFile} class="action-btn" title="New file">
-          📄+
-        </button>
+        <Tooltip text="New file" position="bottom">
+          <IconButton 
+            icon={File}
+            onclick={onCreateFile}
+            size="sm"
+            variant="ghost"
+          />
+        </Tooltip>
+      {/if}
+      {#if onCreateFolder}
+        <Tooltip text="New folder" position="bottom">
+          <IconButton 
+            icon={Folder}
+            onclick={onCreateFolder}
+            size="sm"
+            variant="ghost"
+          />
+        </Tooltip>
       {/if}
       {#if onUploadAsset}
-        <button on:click={onUploadAsset} class="action-btn" title="Upload asset">
-          📎+
-        </button>
+        <Tooltip text="Upload asset" position="bottom">
+          <IconButton 
+            icon={ArrowUpFromLine}
+            onclick={onUploadAsset}
+            size="sm"
+            variant="ghost"
+          />
+        </Tooltip>
       {/if}
     </div>
   </div>
@@ -90,16 +115,16 @@
 <style>
   .file-tree {
     width: 280px;
-    background: #252526;
-    border-right: 1px solid #3e3e42;
+    background: var(--bg-file-panel);
+    border-right: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
   .tree-header {
-    padding: 1rem;
-    border-bottom: 1px solid #3e3e42;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -107,33 +132,14 @@
 
   h3 {
     margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: white;
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
   }
 
   .actions {
     display: flex;
-    gap: 0.5rem;
-  }
-
-  .action-btn {
-    background: #0e639c;
-    color: white;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-  }
-
-  .action-btn:hover {
-    background: #0a4d7a;
+    gap: var(--space-2);
   }
 
   .tree-content {
@@ -142,27 +148,10 @@
     overflow-x: hidden;
   }
 
-  .tree-content::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .tree-content::-webkit-scrollbar-track {
-    background: #1e1e1e;
-  }
-
-  .tree-content::-webkit-scrollbar-thumb {
-    background: #3e3e42;
-    border-radius: 4px;
-  }
-
-  .tree-content::-webkit-scrollbar-thumb:hover {
-    background: #4e4e52;
-  }
-
   .empty {
-    padding: 2rem 1rem;
+    padding: var(--space-8) var(--space-4);
     text-align: center;
-    color: #888;
-    font-size: 13px;
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
 </style>

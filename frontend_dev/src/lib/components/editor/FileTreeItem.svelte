@@ -81,17 +81,17 @@
     cursor: pointer;
     border-left: 3px solid transparent;
     transition: background 0.15s;
-    color: #ccc;
+    color: var(--text-secondary);
   }
 
   .file-item:hover {
-    background: #2a2d2e;
+    background: var(--surface-hover);
   }
 
   .file-item.active {
-    background: #2a2d2e;
-    color: white;
-    border-left-color: #0e639c;
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-left-color: var(--color-primary-600);
   }
 
   .file-item.asset {
@@ -120,13 +120,13 @@
 
   .size {
     font-size: 11px;
-    color: #888;
+    color: var(--text-tertiary);
   }
 
   .delete-btn {
     background: transparent;
     border: none;
-    color: #888;
+    color: var(--text-tertiary);
     font-size: 20px;
     cursor: pointer;
     padding: 0 0.25rem;
@@ -139,6 +139,6 @@
   }
 
   .delete-btn:hover {
-    color: #ef4444;
+    color: var(--color-error);
   }
 </style>

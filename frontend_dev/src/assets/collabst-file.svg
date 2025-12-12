@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Generator: Adobe Illustrator 13.0.2, SVG Export Plug-In . SVG Version: 6.00 Build 14948)  -->
+
+<svg
+   id="Layer_1"
+   xml:space="preserve"
+   viewBox="0 0 83.326594 108.7695"
+   version="1.1"
+   y="0px"
+   x="0px"
+   width="83.326591"
+   height="108.7695"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"><defs
+   id="defs1"><linearGradient
+     id="linearGradient141"><stop
+       style="stop-color:#64ceb7;stop-opacity:1;"
+       offset="0"
+       id="stop139" /><stop
+       style="stop-color:#5ec3bf;stop-opacity:1;"
+       offset="0.49771217"
+       id="stop140" /><stop
+       style="stop-color:#59b9c6;stop-opacity:1"
+       offset="1"
+       id="stop141" /></linearGradient><linearGradient
+     id="linearGradient25"><stop
+       style="stop-color:#6adaaf;stop-opacity:1;"
+       offset="0"
+       id="stop25" /><stop
+       style="stop-color:#53adce;stop-opacity:1;"
+       offset="0.74842769"
+       id="stop27" /><stop
+       style="stop-color:#3cb7cc;stop-opacity:1;"
+       offset="1"
+       id="stop26" /></linearGradient><linearGradient
+     xlink:href="#linearGradient141"
+     id="linearGradient151"
+     gradientUnits="userSpaceOnUse"
+     gradientTransform="matrix(0.90383986,0,0,0.90383986,-348.99183,-2.70485)"
+     x1="441.05573"
+     y1="4.8886938"
+     x2="476.45099"
+     y2="40.25209" /><linearGradient
+     xlink:href="#linearGradient25"
+     id="linearGradient152"
+     gradientUnits="userSpaceOnUse"
+     gradientTransform="matrix(0.91706143,0,0,0.91706143,-141.78393,0.43774)"
+     x1="394.69901"
+     y1="2.7508903"
+     x2="476.31186"
+     y2="114.87547" /></defs>
+
+
+<metadata
+   id="metadata1"><rdf:RDF><cc:Work><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><cc:license
+         rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" /><dc:publisher><cc:Agent
+           rdf:about="http://openclipart.org/"><dc:title>Openclipart</dc:title></cc:Agent></dc:publisher><dc:title>Signs Hazard Warning</dc:title><dc:date>2006-09-11T08:59:16</dc:date><dc:description /><dc:source>https://openclipart.org/detail/14422/signs-hazard-warning-by-h0us3s-14422</dc:source><dc:creator><cc:Agent><dc:title>h0us3s</dc:title></cc:Agent></dc:creator><dc:subject><rdf:Bag><rdf:li>hazard</rdf:li><rdf:li>sign</rdf:li><rdf:li>warning</rdf:li></rdf:Bag></dc:subject></cc:Work><cc:License
+       rdf:about="http://creativecommons.org/publicdomain/zero/1.0/"><cc:permits
+         rdf:resource="http://creativecommons.org/ns#Reproduction" /><cc:permits
+         rdf:resource="http://creativecommons.org/ns#Distribution" /><cc:permits
+         rdf:resource="http://creativecommons.org/ns#DerivativeWorks" /></cc:License></rdf:RDF></metadata><path
+   d="M 297.94603,30.561132 268.68733,1.3024333 A 4.4467846,4.4467846 22.500002 0 0 265.54298,0 h -37.35705 c -6.79338,0 -12.26406,5.4707 -12.26406,12.2641 v 84.24127 c 0,6.79343 5.47068,12.26413 12.26406,12.26413 h 58.80733 c 6.79338,0 12.2552,-5.4707 12.2552,-12.26413 V 33.705484 a 4.4467856,4.4467856 67.500002 0 0 -1.30243,-3.144352 z"
+   style="fill:url(#linearGradient152);fill-rule:nonzero;stroke:none;stroke-width:6.72573;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
+   id="path136"
+   transform="translate(-215.92187)" /><path
+   id="path138"
+   style="fill:#ffffff;fill-opacity:1;stroke:url(#linearGradient151);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+   d="M 51.316406,3.38867 V 20.5332 c 0,6.35775 5.11103,11.47656 11.46875,11.47656 h 17.15235 z" /></svg>

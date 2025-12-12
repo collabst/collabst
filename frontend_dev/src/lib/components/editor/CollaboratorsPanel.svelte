@@ -44,19 +44,19 @@
 <style>
   .collaborators-panel {
     width: 300px;
-    background: #252526;
-    border-left: 1px solid #3e3e42;
+    background: var(--surface-primary);
+    border-left: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
   }
 
   .panel-header {
     padding: 1rem;
-    border-bottom: 1px solid #3e3e42;
+    border-bottom: 1px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: white;
+    color: var(--text-primary);
   }
 
   h3 {
@@ -67,7 +67,7 @@
 
   .close-btn {
     background: transparent;
-    color: white;
+    color: var(--text-primary);
     border: none;
     font-size: 24px;
     cursor: pointer;
@@ -76,22 +76,22 @@
   }
 
   .close-btn:hover {
-    color: #ef4444;
+    color: var(--color-error);
   }
 
   .panel-content {
     flex: 1;
     padding: 1rem;
-    color: white;
+    color: var(--text-primary);
     overflow-y: auto;
   }
 
   .info {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 13px;
     margin: 0 0 1.5rem 0;
     padding: 0.75rem;
-    background: #1e1e1e;
+    background: var(--surface-secondary);
     border-radius: 4px;
   }
 
@@ -99,7 +99,7 @@
     margin: 0 0 1rem 0;
     font-size: 13px;
     font-weight: 600;
-    color: #ccc;
+    color: var(--text-secondary);
   }
 
   .user-list {
@@ -113,7 +113,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem;
-    background: #1e1e1e;
+    background: var(--surface-secondary);
     border-radius: 4px;
   }
 
@@ -126,11 +126,11 @@
 
   .user-name {
     font-size: 13px;
-    color: white;
+    color: var(--text-primary);
   }
 
   .no-users {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 13px;
     text-align: center;
     padding: 1rem;

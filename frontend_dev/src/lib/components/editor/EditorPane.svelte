@@ -1,6 +1,9 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
   import CommentsPanel from './CommentsPanel.svelte'
+  import { IconButton, Tooltip } from '$lib/components/ui'
+  import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
+  import Download from '@lucide/svelte/icons/download'
   import type { File as ProjectFile, Asset, Comment } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
@@ -235,13 +238,15 @@
           />
 
           {#if showCommentButton}
-            <button
-              class="floating-comment-btn"
-              style="top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"
-              on:click={handleAddComment}
-            >
-              💬 Add comment
-            </button>
+            <Tooltip text="Add comment to selection">
+              <IconButton
+                icon={MessageSquarePlus}
+                variant="primary"
+                class="floating-comment-btn"
+                style="position: absolute; top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"
+                onclick={handleAddComment}
+              />
+            </Tooltip>
           {/if}
         </div>
         <CommentsPanel
@@ -263,9 +268,13 @@
           <span class="file-name">{selectedAsset.filename}</span>
           <span class="file-type">{selectedAsset.mime_type}</span>
         </div>
-        <a href={assetPreviewUrl} download={selectedAsset.filename} class="download-btn">
-          Download
-        </a>
+        <Tooltip text="Download file">
+          <IconButton
+            icon={Download}
+            variant="primary"
+            onclick={() => window.open(assetPreviewUrl || '', '_blank')}
+          />
+        </Tooltip>
       </div>
       <div class="preview-content">
         {#if isImage(selectedAsset.mime_type)}
@@ -306,9 +315,9 @@
   }
 
   .editor-header {
-    background: #252526;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #3e3e42;
+    background: var(--surface-primary);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -317,34 +326,19 @@
   .file-info {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: var(--space-4);
   }
 
   .file-name {
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
   }
 
   .file-type {
-    color: #888;
-    font-size: 12px;
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
     text-transform: uppercase;
-  }
-
-  .download-btn {
-    background: #0e639c;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 13px;
-    cursor: pointer;
-    text-decoration: none;
-  }
-
-  .download-btn:hover {
-    background: #0a4d7a;
   }
 
   .editor-container {
@@ -360,32 +354,27 @@
     position: relative;
   }
 
-  .floating-comment-btn {
-    position: absolute;
-    background: #4a9eff;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s;
-    font-weight: 500;
+  :global(.floating-comment-btn) {
     z-index: 100;
-    white-space: nowrap;
+    box-shadow: var(--shadow-lg);
+    animation: fadeIn var(--transition-fast);
   }
 
-  .floating-comment-btn:hover {
-    background: #3a8eef;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   .preview-content {
     flex: 1;
     overflow: auto;
-    background: #1e1e1e;
+    background: var(--bg-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -405,18 +394,20 @@
 
   .no-preview {
     text-align: center;
-    color: #888;
-    padding: 2rem;
+    color: var(--text-tertiary);
+    padding: var(--space-8);
   }
 
   .download-link {
-    color: #0e639c;
+    color: var(--color-primary-500);
     text-decoration: none;
     display: block;
-    margin-top: 1rem;
+    margin-top: var(--space-4);
+    transition: color var(--transition-fast);
   }
 
   .download-link:hover {
+    color: var(--color-primary-400);
     text-decoration: underline;
   }
 
@@ -425,7 +416,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #888;
-    font-size: 16px;
+    color: var(--text-tertiary);
+    font-size: var(--text-lg);
   }
 </style>

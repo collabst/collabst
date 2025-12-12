@@ -129,8 +129,8 @@
 
 <style>
   .comment-thread {
-    background: #1e1e1e;
-    border: 1px solid #3e3e3e;
+    background: var(--surface-primary);
+    border: 1px solid var(--border-primary);
     border-radius: 6px;
     padding: 12px;
     margin-bottom: 12px;
@@ -139,7 +139,7 @@
 
   .comment-thread.resolved {
     opacity: 0.6;
-    background: #1a1a1a;
+    background: var(--bg-primary);
   }
 
   .comment-header {
@@ -177,12 +177,12 @@
   .author-name {
     font-size: 13px;
     font-weight: 600;
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .comment-time {
     font-size: 11px;
-    color: #888;
+    color: var(--text-secondary);
   }
 
   .comment-actions {
@@ -193,7 +193,7 @@
   .action-btn {
     background: none;
     border: none;
-    color: #888;
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 4px;
@@ -202,21 +202,21 @@
   }
 
   .action-btn:hover {
-    background: #2e2e2e;
-    color: #e0e0e0;
+    background: var(--surface-hover);
+    color: var(--text-primary);
   }
 
   .resolve-btn:hover {
-    color: #10b981;
+    color: var(--color-success);
   }
 
   .delete-btn:hover {
-    color: #ef4444;
+    color: var(--color-error);
   }
 
   .comment-content {
     font-size: 13px;
-    color: #d0d0d0;
+    color: var(--text-primary);
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
@@ -225,7 +225,7 @@
   .replies {
     margin-top: 12px;
     padding-left: 12px;
-    border-left: 2px solid #3e3e3e;
+    border-left: 2px solid var(--border-primary);
   }
 
   .reply {
@@ -255,17 +255,17 @@
   .reply-author {
     font-size: 12px;
     font-weight: 600;
-    color: #d0d0d0;
+    color: var(--text-primary);
   }
 
   .reply-time {
     font-size: 10px;
-    color: #888;
+    color: var(--text-secondary);
   }
 
   .reply-content {
     font-size: 12px;
-    color: #c0c0c0;
+    color: var(--text-secondary);
     line-height: 1.4;
     white-space: pre-wrap;
     word-break: break-word;
@@ -281,11 +281,11 @@
 
   .reply-form textarea {
     width: 100%;
-    background: #2a2a2a;
-    border: 1px solid #3e3e3e;
+    background: var(--surface-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 8px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: inherit;
     resize: vertical;
@@ -293,7 +293,7 @@
 
   .reply-form textarea:focus {
     outline: none;
-    border-color: #4a9eff;
+    border-color: var(--color-primary-600);
   }
 
   .reply-form-actions {
@@ -313,21 +313,21 @@
   }
 
   .btn-cancel {
-    background: #2a2a2a;
-    color: #d0d0d0;
+    background: var(--surface-secondary);
+    color: var(--text-primary);
   }
 
   .btn-cancel:hover {
-    background: #3a3a3a;
+    background: var(--surface-hover);
   }
 
   .btn-submit {
-    background: #4a9eff;
+    background: var(--color-primary-600);
     color: white;
   }
 
   .btn-submit:hover:not(:disabled) {
-    background: #3a8eef;
+    background: var(--color-primary-700);
   }
 
   .btn-submit:disabled {
@@ -339,17 +339,17 @@
     margin-top: 8px;
     padding: 6px 12px;
     background: none;
-    border: 1px solid #3e3e3e;
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
-    color: #888;
+    color: var(--text-secondary);
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .reply-btn:hover {
-    background: #2a2a2a;
-    border-color: #4e4e4e;
-    color: #d0d0d0;
+    background: var(--surface-secondary);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
   }
 </style>

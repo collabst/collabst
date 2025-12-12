@@ -72,12 +72,12 @@
   }
 
   .modal-content {
-    background: #252526;
+    background: var(--surface-primary);
     padding: 2rem;
     border-radius: 8px;
     width: 100%;
     max-width: 400px;
-    color: white;
+    color: var(--text-primary);
   }
 
   h2 {
@@ -99,16 +99,16 @@
 
   input[type="file"] {
     padding: 0.75rem;
-    border: 1px solid #3e3e42;
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     font-size: 14px;
-    background: #1e1e1e;
-    color: white;
+    background: var(--surface-secondary);
+    color: var(--text-primary);
   }
 
   .file-info {
     font-size: 13px;
-    color: #888;
+    color: var(--text-secondary);
     margin: 0;
   }
 
@@ -133,20 +133,20 @@
   }
 
   .cancel-btn {
-    background: #3e3e42;
-    color: white;
+    background: var(--surface-secondary);
+    color: var(--text-primary);
   }
 
   .cancel-btn:hover {
-    background: #4a4a4e;
+    background: var(--surface-hover);
   }
 
   .submit-btn {
-    background: #0e639c;
+    background: var(--color-primary-600);
     color: white;
   }
 
   .submit-btn:hover:not(:disabled) {
-    background: #0a4d7a;
+    background: var(--color-primary-700);
   }
 </style>

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher } from 'svelte'
   import { EditorView, basicSetup } from 'codemirror'
-  import { EditorState } from '@codemirror/state'
+  import { EditorState, Compartment } from '@codemirror/state'
   import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
-  import { oneDark } from '@codemirror/theme-one-dark'
+  import { greyDark, greyLight } from '$lib/codemirror/greyTheme'
   import { keymap } from '@codemirror/view'
   import * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
   import { commentsExtension, CommentRangeTracker } from '$lib/codemirror/comments'
+  import { theme as themeStore } from '$lib/stores/theme'
 
   export let ytext: Y.Text
   export let provider: WebsocketProvider
@@ -22,6 +23,28 @@
   let undoManager: Y.UndoManager | null = null
   let currentFileId: number | null = null
   let commentTracker: CommentRangeTracker | null = null
+  let currentTheme: 'light' | 'dark' = $themeStore
+  const themeCompartment = new Compartment()
+
+  // Subscribe to theme changes
+  $: currentTheme = $themeStore
+  $: if (view && currentTheme) {
+    updateEditorTheme()
+  }
+
+  // Get theme extensions based on current theme
+  function getThemeExtensions() {
+    return currentTheme === 'light' ? [greyLight] : [greyDark]
+  }
+
+  // Update editor theme when theme changes
+  function updateEditorTheme() {
+    if (!view) return
+    
+    view.dispatch({
+      effects: themeCompartment.reconfigure(getThemeExtensions())
+    })
+  }
 
   // Export methods for comment management
   export function getView() {
@@ -54,7 +77,7 @@
       doc: ytext.toString(),
       extensions: [
         basicSetup,
-        oneDark,
+        themeCompartment.of(getThemeExtensions()),
         yCollab(ytext, provider.awareness, { undoManager }),
         keymap.of(yUndoManagerKeymap),
         commentsExtension(),
@@ -96,7 +119,7 @@
       doc: ytext.toString(),
       extensions: [
         basicSetup,
-        oneDark,
+        themeCompartment.of(getThemeExtensions()),
         yCollab(ytext, provider.awareness, { undoManager }),
         keymap.of(yUndoManagerKeymap),
         commentsExtension(),

@@ -7,6 +7,7 @@
   import { createProjectYjs, destroyYjsConnection, getFileText } from '$lib/yjs'
   import { createProjectSync } from '$lib/projectSync'
   import { auth } from '$lib/stores/auth'
+  import { ThemeToggle, ProfileMenu } from '$lib/components/ui'
   import FileTree from '$lib/components/editor/FileTree.svelte'
   import EditorPane from '$lib/components/editor/EditorPane.svelte'
   import CreateFileModal from '$lib/components/editor/CreateFileModal.svelte'
@@ -301,7 +302,9 @@
       </div>
 
       <div class="header-rightr">
+        <ThemeToggle />
         <UserPresence provider={yjsConnection?.provider || null} />
+        <ProfileMenu />
       </div>
     </header>
 
@@ -325,6 +328,7 @@
         onDeleteFile={handleDeleteFile}
         onDeleteAsset={handleDeleteAsset}
         onCreateFile={() => showCreateFileModal = true}
+        onCreateFolder={() => console.log('Create folder - to be implemented')}
         onUploadAsset={() => showUploadAssetModal = true}
       />
 
@@ -361,23 +365,29 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background: #1e1e1e;
+    background: var(--bg-primary);
   }
 
   header {
-    background: #252526;
-    border-bottom: 1px solid #3e3e42;
+    background: var(--bg-top-bar);
+    border-bottom: 1px solid var(--border-primary);
     padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: white;
+    color: var(--text-primary);
   }
 
   .header-left {
     display: flex;
     align-items: center;
     gap: 1rem;
+  }
+
+  .header-rightr {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .header-center {
@@ -391,8 +401,8 @@
 
   .back-btn {
     background: transparent;
-    color: white;
-    border: 1px solid #3e3e42;
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
     padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;
@@ -400,7 +410,7 @@
   }
 
   .back-btn:hover {
-    background: #3e3e42;
+    background: var(--surface-hover);
   }
 
   h1 {
@@ -451,21 +461,21 @@
   }
 
   .notification-info {
-    background: #1e3a8a;
-    color: #93c5fd;
-    border: 1px solid #3b82f6;
+    background: var(--color-info-bg);
+    color: var(--color-info-text);
+    border: 1px solid var(--color-info);
   }
 
   .notification-warning {
-    background: #78350f;
-    color: #fbbf24;
-    border: 1px solid #f59e0b;
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    border: 1px solid var(--color-warning);
   }
 
   .notification-error {
-    background: #7f1d1d;
-    color: #fca5a5;
-    border: 1px solid #ef4444;
+    background: var(--color-error-bg);
+    color: var(--color-error-text);
+    border: 1px solid var(--color-error);
   }
 
   .notification-close {
@@ -499,6 +509,6 @@
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: #666;
+    color: var(--text-secondary);
   }
 </style>

@@ -112,7 +112,7 @@
   }
 
   .avatar.more {
-    background: #3e3e42;
+    background: var(--surface-secondary);
   }
 
   .avatar.more .avatar-initial {
@@ -126,8 +126,8 @@
     transform: translateX(-50%);
     margin-top: 8px;
     padding: 4px 8px;
-    background: #1e1e1e;
-    color: #fff;
+    background: var(--surface-primary);
+    color: var(--text-primary);
     font-size: 12px;
     white-space: nowrap;
     border-radius: 4px;
@@ -135,7 +135,7 @@
     opacity: 0;
     transition: opacity 0.2s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    border: 1px solid #3e3e42;
+    border: 1px solid var(--border-primary);
   }
 
   .tooltip::after {
@@ -145,7 +145,7 @@
     left: 50%;
     transform: translateX(-50%);
     border: 4px solid transparent;
-    border-top-color: #3e3e42;
+    border-top-color: var(--border-primary);
   }
 
   .avatar:hover .tooltip {
