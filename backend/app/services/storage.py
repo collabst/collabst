@@ -58,6 +58,20 @@ class StorageService:
             url = self.client.presigned_get_object(
                 self.bucket_name, object_name, expires=timedelta(seconds=expires)
             )
+
+            # Replace internal endpoint with public endpoint for browser access
+            if settings.MINIO_ENDPOINT != settings.MINIO_PUBLIC_ENDPOINT:
+                # Determine protocol for internal endpoint
+                internal_protocol = "https" if settings.MINIO_SECURE else "http"
+                internal_base = f"{internal_protocol}://{settings.MINIO_ENDPOINT}"
+
+                # Determine protocol for public endpoint
+                public_protocol = "https" if settings.MINIO_PUBLIC_SECURE else "http"
+                public_base = f"{public_protocol}://{settings.MINIO_PUBLIC_ENDPOINT}"
+
+                # Replace the base URL
+                url = url.replace(internal_base, public_base)
+
             return url
         except S3Error as e:
             raise Exception(f"Error generating presigned URL: {e}")

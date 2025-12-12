@@ -36,14 +36,14 @@ async def create_project(
     return project
 
 
-@router.get("", response_model=List[ProjectSchema])
+@router.get("", response_model=List[ProjectWithRole])
 async def list_projects(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     skip: int = 0,
     limit: int = 100,
 ):
-    """List all projects where user is owner or collaborator."""
+    """List all projects where user is owner or collaborator with role and owner info."""
     # Get projects where user is owner or collaborator
     result = await db.execute(
         select(Project)
@@ -59,7 +59,46 @@ async def list_projects(
         .limit(limit)
     )
     projects = result.scalars().all()
-    return projects
+
+    # Build response with role and owner info
+    projects_with_role = []
+    for project in projects:
+        # Determine user's role
+        if project.owner_id == current_user.id:
+            role = 'owner'
+        else:
+            user_role = await get_user_project_role(db, project.id, current_user.id)
+            role = user_role.value if user_role else 'reader'
+
+        # Get owner info
+        owner_result = await db.execute(select(User).where(User.id == project.owner_id))
+        owner = owner_result.scalar_one_or_none()
+
+        # Count collaborators
+        collab_result = await db.execute(
+            select(ProjectCollaborator).where(ProjectCollaborator.project_id == project.id)
+        )
+        collaborators_count = len(collab_result.scalars().all())
+
+        projects_with_role.append(
+            ProjectWithRole(
+                id=project.id,
+                name=project.name,
+                description=project.description,
+                owner_id=project.owner_id,
+                created_at=project.created_at,
+                updated_at=project.updated_at,
+                current_user_role=role,
+                owner={
+                    'id': owner.id,
+                    'username': owner.username,
+                    'email': owner.email,
+                } if owner else None,
+                collaborators_count=collaborators_count,
+            )
+        )
+
+    return projects_with_role
 
 
 @router.get("/{project_id}", response_model=ProjectWithRole)
@@ -70,15 +109,25 @@ async def get_project(
 ):
     """Get a project by ID. User must be owner or collaborator."""
     project = await check_project_access(db, project_id, current_user.id)
-    
+
     # Determine user's role
     if project.owner_id == current_user.id:
         role = 'owner'
     else:
         user_role = await get_user_project_role(db, project_id, current_user.id)
         role = user_role.value if user_role else 'reader'
-    
-    # Return project with role
+
+    # Get owner info
+    owner_result = await db.execute(select(User).where(User.id == project.owner_id))
+    owner = owner_result.scalar_one_or_none()
+
+    # Count collaborators
+    collab_result = await db.execute(
+        select(ProjectCollaborator).where(ProjectCollaborator.project_id == project.id)
+    )
+    collaborators_count = len(collab_result.scalars().all())
+
+    # Return project with role and owner info
     return ProjectWithRole(
         id=project.id,
         name=project.name,
@@ -87,6 +136,12 @@ async def get_project(
         created_at=project.created_at,
         updated_at=project.updated_at,
         current_user_role=role,
+        owner={
+            'id': owner.id,
+            'username': owner.username,
+            'email': owner.email,
+        } if owner else None,
+        collaborators_count=collaborators_count,
     )
 
 

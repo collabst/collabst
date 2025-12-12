@@ -52,6 +52,7 @@ button:hover {
 /* y-codemirror.next cursor styles */
 .yRemoteSelection {
   background-color: var(--cursor-color, rgba(100, 100, 255, 0.3));
+  z-index: 100;
 }
 
 .yRemoteSelectionHead {
@@ -60,14 +61,21 @@ button:hover {
   border-top: 2px solid var(--cursor-color, #6366f1);
   height: 100%;
   box-sizing: border-box;
+  z-index: 100;
 }
 
+.ͼ1 .cm-ySelectionInfo{
+  position: absolute;
+  pointer-events: none;
+  z-index: 200;
+  font-size: 1em;
+}
 .yRemoteSelectionHead::after {
   position: absolute;
   content: attr(data-name);
   left: 0;
   top: -1.2em;
-  font-size: 10px;
+  font-size: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--cursor-color, #6366f1);
   color: white;

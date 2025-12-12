@@ -8,6 +8,12 @@ export interface User {
   updated_at: string
 }
 
+export interface OwnerInfo {
+  id: number
+  username: string
+  email: string
+}
+
 export interface Project {
   id: number
   name: string
@@ -17,6 +23,8 @@ export interface Project {
   updated_at: string
   collaborators?: Collaborator[]
   current_user_role?: 'owner' | 'admin' | 'editor' | 'reader'
+  owner?: OwnerInfo
+  collaborators_count?: number
 }
 
 export interface Collaborator {
@@ -52,7 +60,9 @@ export interface Asset {
 
 export interface AuthResponse {
   access_token: string
+  refresh_token: string
   token_type: string
+  user: User
 }
 
 export interface Invitation {

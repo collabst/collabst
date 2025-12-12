@@ -1,20 +1,22 @@
 """
-YJS WebSocket Server with PostgreSQL Persistence
+YJS WebSocket Server with Redis + PostgreSQL Persistence
 
 Uses pycrdt-websocket WebsocketServer for proper Y.js sync protocol and awareness handling.
-Uses a custom YStore for PostgreSQL persistence.
+Uses a custom RedisYStore for fast in-memory state with PostgreSQL snapshots.
 
 Architecture:
-- PostgreSQL: Source of truth for YJS document states (full state vector)
+- Redis: Live in-memory storage for real-time CRDT state
+- PostgreSQL: Durable storage for periodic snapshots
 - WebsocketServer: Manages rooms, handles sync protocol and awareness
-- Custom PostgresYStore: Persists updates to PostgreSQL
+- Custom RedisYStore: Writes to Redis immediately, snapshots to PostgreSQL periodically
 
 Flow:
 1. Client connects → WebsocketServer gets/creates room
-2. Room loads state from PostgresYStore (PostgreSQL)
+2. Room loads state from Redis (fast) or PostgreSQL (fallback)
 3. YRoom handles sync protocol and awareness broadcasting automatically
-4. Updates are persisted to PostgreSQL via YStore
-5. Last client disconnects → Room is auto-cleaned
+4. Updates are written to Redis immediately for low latency
+5. Background task periodically snapshots to PostgreSQL
+6. Last client disconnects → Final snapshot saved, Redis cleaned up
 """
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import AsyncIterator
@@ -28,6 +30,7 @@ from anyio import TASK_STATUS_IGNORED
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
+import redis.asyncio as redis
 
 from pycrdt import Doc
 from pycrdt_websocket import WebsocketServer, YRoom
@@ -81,47 +84,65 @@ class FastAPIWebsocket:
             self._closed = True
 
 
-class PostgresYStore(BaseYStore):
-    """YStore implementation that persists to PostgreSQL.
-    
-    This stores the full document state as a single blob per project,
-    rather than storing individual updates.
+class RedisYStore(BaseYStore):
+    """YStore implementation with Redis for live state and PostgreSQL for snapshots.
+
+    Architecture:
+    - Redis: Fast in-memory storage for live CRDT state
+    - PostgreSQL: Durable storage for periodic snapshots
+    - Updates are written to Redis immediately
+    - Snapshots are saved to PostgreSQL periodically
     """
-    
+
     # Required class attributes for BaseYStore
     _started: Event | None = None
     _stopped: Event
     __start_lock: Lock | None = None
-    
-    def __init__(self, path: str, async_session_factory: sessionmaker, metadata_callback=None, log=None):
+
+    def __init__(
+        self,
+        path: str,
+        redis_client: redis.Redis,
+        async_session_factory: sessionmaker,
+        snapshot_interval: int = 30,
+        metadata_callback=None,
+        log=None
+    ):
         """
         Args:
             path: The room/document path (e.g., "project-123")
-            async_session_factory: SQLAlchemy async session factory
+            redis_client: Redis client for live state
+            async_session_factory: SQLAlchemy async session factory for snapshots
+            snapshot_interval: Seconds between PostgreSQL snapshots
         """
         self._path = path
+        self._redis_client = redis_client
         self._async_session_factory = async_session_factory
         self._project_id = self._extract_project_id(path)
-        self._updates: list[tuple[bytes, bytes, float]] = []  # Store updates in memory
+        self._snapshot_interval = snapshot_interval
         self._metadata_callback = metadata_callback
         self._log = log
         self._stopped = Event()
+        self._db_session: AsyncSession | None = None
+        self._internal_doc: Doc | None = None
+        self._snapshot_task: asyncio.Task | None = None
+        self._last_snapshot_time = 0.0
+        self._updates_since_snapshot = 0
     
     @property
     def started(self) -> Event:
         if self._started is None:
             self._started = Event()
         return self._started
-    
+
     @property
     def start_lock(self) -> Lock:
         if self.__start_lock is None:
             self.__start_lock = Lock()
         return self.__start_lock
-    
+
     def _extract_project_id(self, path: str) -> int | None:
         """Extract project ID from path (e.g., 'project-123' -> 123)."""
-        # Remove leading slash if present
         path = path.lstrip("/")
         if path.startswith("project-"):
             try:
@@ -129,121 +150,215 @@ class PostgresYStore(BaseYStore):
             except (IndexError, ValueError):
                 return None
         return None
-    
-    @asynccontextmanager
-    async def _get_db(self):
-        """Get database session."""
-        async with self._async_session_factory() as session:
-            yield session
-    
+
+    def _redis_key(self) -> str:
+        """Get the Redis key for this document."""
+        return f"yjs:doc:{self._path}"
+
+    async def _snapshot_to_postgres(self) -> None:
+        """Save current state snapshot to PostgreSQL."""
+        if self._project_id is None or self._internal_doc is None:
+            return
+
+        update_bytes = self._internal_doc.get_update()
+        if not update_bytes:
+            return
+
+        try:
+            result = await self._db_session.execute(
+                select(YjsDocumentState).where(YjsDocumentState.project_id == self._project_id)
+            )
+            yjs_state = result.scalar_one_or_none()
+
+            if yjs_state:
+                yjs_state.state = update_bytes
+            else:
+                yjs_state = YjsDocumentState(project_id=self._project_id, state=update_bytes)
+                self._db_session.add(yjs_state)
+
+            await self._db_session.commit()
+            self._last_snapshot_time = time.time()
+            self._updates_since_snapshot = 0
+            print(f"[YJS] Snapshot saved to PostgreSQL: {self._path} ({len(update_bytes)} bytes)")
+        except Exception as e:
+            await self._db_session.rollback()
+            print(f"[YJS] Error saving snapshot to PostgreSQL: {e}")
+
+    async def _periodic_snapshot_loop(self) -> None:
+        """Periodically snapshot to PostgreSQL."""
+        while not self._stopped.is_set():
+            try:
+                await asyncio.sleep(self._snapshot_interval)
+                if self._updates_since_snapshot > 0:
+                    await self._snapshot_to_postgres()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"[YJS] Error in snapshot loop: {e}")
+
     async def start(
         self,
         *,
         task_status: TaskStatus[None] = TASK_STATUS_IGNORED,
         from_context_manager: bool = False,
     ):
-        """Start the store."""
+        """Start the store and background snapshot task."""
+        # Create long-lived database session for snapshots
+        self._db_session = self._async_session_factory()
+
+        # Start periodic snapshot task
+        self._snapshot_task = asyncio.create_task(self._periodic_snapshot_loop())
+
         task_status.started()
         self.started.set()
-    
+        print(f"[YJS] RedisYStore started for {self._path}")
+
     async def stop(self) -> None:
-        """Stop the store."""
+        """Stop the store, save final snapshot, and cleanup resources."""
+        # Cancel snapshot task
+        if self._snapshot_task:
+            self._snapshot_task.cancel()
+            try:
+                await self._snapshot_task
+            except asyncio.CancelledError:
+                pass
+
+        # Save final snapshot to PostgreSQL
+        if self._updates_since_snapshot > 0:
+            await self._snapshot_to_postgres()
+
+        # Clean up Redis state
+        if self._project_id is not None:
+            try:
+                await self._redis_client.delete(self._redis_key())
+                print(f"[YJS] Cleaned up Redis state for {self._path}")
+            except Exception as e:
+                print(f"[YJS] Error cleaning up Redis: {e}")
+
+        # Clean up internal doc to free memory
+        if self._internal_doc is not None:
+            del self._internal_doc
+            self._internal_doc = None
+
+        # Close the long-lived database session
+        if self._db_session is not None:
+            await self._db_session.close()
+            self._db_session = None
+
         self._stopped.set()
+        print(f"[YJS] RedisYStore stopped for {self._path}")
     
     async def read(self) -> AsyncIterator[tuple[bytes, bytes, float]]:
-        """Read stored updates.
-        
+        """Read stored updates from Redis (live) or PostgreSQL (fallback).
+
         Yields:
             Tuples of (update, metadata, timestamp)
         """
         if self._project_id is None:
             return
-        
-        async with self._get_db() as db:
-            result = await db.execute(
+
+        # Try Redis first (live state)
+        try:
+            redis_state = await self._redis_client.get(self._redis_key())
+            if redis_state:
+                print(f"[YJS] Loaded state from Redis: {self._path} ({len(redis_state)} bytes)")
+                yield (redis_state, b"", time.time())
+                return
+        except Exception as e:
+            print(f"[YJS] Error reading from Redis: {e}")
+
+        # Fallback to PostgreSQL (snapshot)
+        if self._db_session is None:
+            return
+
+        try:
+            result = await self._db_session.execute(
                 select(YjsDocumentState).where(YjsDocumentState.project_id == self._project_id)
             )
             yjs_state = result.scalar_one_or_none()
-            
+
             if yjs_state and yjs_state.state:
-                # Return the full state as a single "update"
+                print(f"[YJS] Loaded state from PostgreSQL: {self._path} ({len(yjs_state.state)} bytes)")
+                # Also restore to Redis for future fast access
+                await self._redis_client.set(self._redis_key(), yjs_state.state)
                 yield (yjs_state.state, b"", time.time())
+        except Exception as e:
+            print(f"[YJS] Error reading from PostgreSQL: {e}")
     
     async def write(self, data: bytes) -> None:
-        """Store an update.
-        
+        """Store an update to Redis immediately.
+
         This is called by YRoom for each document update.
-        We apply the update to our internal doc and save the full state.
+        Updates are written to Redis immediately for fast access.
+        Periodic snapshots are saved to PostgreSQL.
         """
         if self._project_id is None:
             return
-        
+
         # Apply update to internal doc to build full state
-        if not hasattr(self, '_internal_doc'):
+        if self._internal_doc is None:
             self._internal_doc = Doc()
             # Load existing state first
             async for update, metadata, timestamp in self.read():
                 self._internal_doc.apply_update(update)
-        
+
         # Apply new update
         self._internal_doc.apply_update(data)
-        
-        # Save full document as update (NOT state vector - they're different formats!)
-        # get_update() returns bytes that can be applied with apply_update()
-        # get_state() returns a state vector which is NOT compatible with apply_update()
+
+        # Save full document state to Redis immediately
         update_bytes = self._internal_doc.get_update()
         if not update_bytes:
             return
-        
+
         try:
-            async with self._get_db() as db:
-                result = await db.execute(
-                    select(YjsDocumentState).where(YjsDocumentState.project_id == self._project_id)
-                )
-                yjs_state = result.scalar_one_or_none()
-                
-                if yjs_state:
-                    yjs_state.state = update_bytes
-                else:
-                    yjs_state = YjsDocumentState(project_id=self._project_id, state=update_bytes)
-                    db.add(yjs_state)
-                
-                await db.commit()
-            print(f"[YJS] Saved update to PostgreSQL: {self._path} ({len(update_bytes)} bytes)")
+            # Write to Redis for fast real-time access
+            await self._redis_client.set(self._redis_key(), update_bytes)
+            self._updates_since_snapshot += 1
+            # Note: No logging here to avoid spam - updates are frequent
         except Exception as e:
-            print(f"[YJS] Error saving update to PostgreSQL: {e}")
+            print(f"[YJS] Error writing to Redis: {e}")
     
     async def apply_updates(self, ydoc: Doc) -> None:
-        """Apply all stored updates to the YDoc."""
+        """Apply all stored updates to the YDoc from Redis or PostgreSQL."""
         async for update, metadata, timestamp in self.read():
             ydoc.apply_update(update)
-    
+
     async def encode_state_as_update(self, ydoc: Doc) -> None:
-        """Store the YDoc state as an update."""
+        """Store the YDoc state to both Redis and PostgreSQL."""
         if self._project_id is None:
             return
-        
+
         # Use get_update() NOT get_state() - they return different formats!
         update_bytes = ydoc.get_update()
         if not update_bytes:
             return
-        
+
+        # Save to Redis immediately
         try:
-            async with self._get_db() as db:
-                result = await db.execute(
-                    select(YjsDocumentState).where(YjsDocumentState.project_id == self._project_id)
-                )
-                yjs_state = result.scalar_one_or_none()
-                
-                if yjs_state:
-                    yjs_state.state = update_bytes
-                else:
-                    yjs_state = YjsDocumentState(project_id=self._project_id, state=update_bytes)
-                    db.add(yjs_state)
-                
-                await db.commit()
-            print(f"[YJS] Saved state to PostgreSQL: {self._path} ({len(update_bytes)} bytes)")
+            await self._redis_client.set(self._redis_key(), update_bytes)
         except Exception as e:
+            print(f"[YJS] Error saving to Redis: {e}")
+
+        # Save to PostgreSQL as well
+        if self._db_session is None:
+            return
+
+        try:
+            result = await self._db_session.execute(
+                select(YjsDocumentState).where(YjsDocumentState.project_id == self._project_id)
+            )
+            yjs_state = result.scalar_one_or_none()
+
+            if yjs_state:
+                yjs_state.state = update_bytes
+            else:
+                yjs_state = YjsDocumentState(project_id=self._project_id, state=update_bytes)
+                self._db_session.add(yjs_state)
+
+            await self._db_session.commit()
+            print(f"[YJS] Saved final state to PostgreSQL: {self._path} ({len(update_bytes)} bytes)")
+        except Exception as e:
+            await self._db_session.rollback()
             print(f"[YJS] Error saving to PostgreSQL: {e}")
     
     async def get_metadata(self) -> bytes:
@@ -254,24 +369,35 @@ class PostgresYStore(BaseYStore):
 
 
 class YjsConnectionManager:
-    """Manages YJS WebSocket connections using pycrdt-websocket."""
-    
+    """Manages YJS WebSocket connections using pycrdt-websocket with Redis."""
+
     def __init__(self):
         self._websocket_server: WebsocketServer | None = None
         self._async_session_factory: sessionmaker | None = None
+        self._redis_client: redis.Redis | None = None
         self._initialized = False
         self._server_task: asyncio.Task | None = None
+        self._room_creation_locks: dict[str, asyncio.Lock] = {}  # Lock per room path
+        self._locks_lock = asyncio.Lock()  # Lock for the locks dictionary itself
     
     async def initialize(self):
-        """Initialize the WebSocket server and database connections."""
+        """Initialize the WebSocket server, Redis, and database connections."""
         if self._initialized:
             return
-        
-        # Database engine and session factory
+
+        # Redis client for live state
+        self._redis_client = await redis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=False  # Keep as bytes for CRDT data
+        )
+        print("[YJS] Redis client connected")
+
+        # Database engine and session factory for snapshots
         engine = create_async_engine(settings.DATABASE_URL)
         self._async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         print("[YJS] Database session factory created")
-        
+
         # Create WebsocketServer - it manages rooms automatically
         # exception_logger logs errors instead of crashing
         self._websocket_server = WebsocketServer(
@@ -279,28 +405,28 @@ class YjsConnectionManager:
             auto_clean_rooms=True,
             exception_handler=exception_logger,
         )
-        
+
         # Start the server in a background task
         # WebsocketServer.start() blocks until stop() is called
         self._server_task = asyncio.create_task(self._websocket_server.start())
         # Wait for it to be ready
         await self._websocket_server.started.wait()
         print("[YJS] WebsocketServer started")
-        
+
         self._initialized = True
     
     async def shutdown(self):
         """Clean shutdown."""
         print("[YJS] Shutting down...")
-        
+
         if self._websocket_server:
             # Save all room states before shutting down
             for room_name, room in list(self._websocket_server.rooms.items()):
                 if room.ystore:
                     await room.ystore.encode_state_as_update(room.ydoc)
-            
+
             await self._websocket_server.stop()
-        
+
         # Cancel the background task
         if self._server_task:
             self._server_task.cancel()
@@ -308,12 +434,29 @@ class YjsConnectionManager:
                 await self._server_task
             except asyncio.CancelledError:
                 pass
-        
+
+        # Close Redis connection
+        if self._redis_client:
+            await self._redis_client.close()
+            print("[YJS] Redis client closed")
+
         print("[YJS] Shutdown complete")
     
-    def _create_ystore(self, path: str) -> PostgresYStore:
-        """Create a YStore for a given path."""
-        return PostgresYStore(path, self._async_session_factory)
+    async def _get_room_lock(self, room_path: str) -> asyncio.Lock:
+        """Get or create a lock for a specific room path."""
+        async with self._locks_lock:
+            if room_path not in self._room_creation_locks:
+                self._room_creation_locks[room_path] = asyncio.Lock()
+            return self._room_creation_locks[room_path]
+
+    def _create_ystore(self, path: str) -> RedisYStore:
+        """Create a RedisYStore for a given path."""
+        return RedisYStore(
+            path=path,
+            redis_client=self._redis_client,
+            async_session_factory=self._async_session_factory,
+            snapshot_interval=settings.YJS_SNAPSHOT_INTERVAL_SECONDS
+        )
     
     async def serve(self, websocket: WebSocket, document_id: str):
         """Handle a WebSocket connection for Y.js synchronization."""
@@ -321,31 +464,34 @@ class YjsConnectionManager:
             await self.initialize()
         
         await websocket.accept()
-        
+
         # Create adapter for FastAPI websocket
         # The path is used by WebsocketServer to determine the room name
         room_path = f"/{document_id}"
         ws_adapter = FastAPIWebsocket(websocket, room_path)
-        
+
         print(f"[YJS] Client connecting to room: {room_path}")
-        
-        # Check if room exists, if not we need to set up the ystore
-        if room_path not in self._websocket_server.rooms:
-            # Pre-create the room with ystore
-            ystore = self._create_ystore(room_path)
-            room = YRoom(ready=False, ystore=ystore)  # ready=False until we load state
-            
-            # Load existing state from PostgreSQL
-            ydoc = room.ydoc
-            await ystore.apply_updates(ydoc)
-            
-            # Now mark as ready
-            room.ready = True
-            
-            # Add to server's rooms
-            self._websocket_server.rooms[room_path] = room
-            await self._websocket_server.start_room(room)
-            print(f"[YJS] Created room with persistence: {room_path}")
+
+        # Use a lock to prevent race conditions when creating rooms
+        room_lock = await self._get_room_lock(room_path)
+        async with room_lock:
+            # Check if room exists, if not we need to set up the ystore
+            if room_path not in self._websocket_server.rooms:
+                # Pre-create the room with ystore
+                ystore = self._create_ystore(room_path)
+                room = YRoom(ready=False, ystore=ystore)  # ready=False until we load state
+
+                # Load existing state from PostgreSQL
+                ydoc = room.ydoc
+                await ystore.apply_updates(ydoc)
+
+                # Now mark as ready
+                room.ready = True
+
+                # Add to server's rooms
+                self._websocket_server.rooms[room_path] = room
+                await self._websocket_server.start_room(room)
+                print(f"[YJS] Created room with persistence: {room_path}")
         
         try:
             # WebsocketServer.serve handles everything:

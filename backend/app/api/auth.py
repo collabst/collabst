@@ -1,13 +1,14 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.security import verify_password, get_password_hash, create_access_token, generate_refresh_token
 from app.db.base import get_db
 from app.models.user import User
+from app.models.refresh_token import RefreshToken
 from app.schemas.user import UserCreate, User as UserSchema, Token
 
 router = APIRouter()
@@ -58,9 +59,105 @@ async def login(
             detail="Incorrect email or password",
         )
 
+    # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Create refresh token
+    refresh_token_str = generate_refresh_token()
+    refresh_token_expires = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    refresh_token = RefreshToken(
+        token=refresh_token_str,
+        user_id=user.id,
+        expires_at=refresh_token_expires,
+    )
+    db.add(refresh_token)
+    await db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer",
+        "user": UserSchema.from_orm(user)
+    }
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    refresh_token: Annotated[str, Form()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    # Find and validate refresh token
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token == refresh_token)
+    )
+    db_refresh_token = result.scalar_one_or_none()
+
+    if not db_refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    # Check if token is revoked
+    if db_refresh_token.is_revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked",
+        )
+
+    # Check if token is expired
+    if db_refresh_token.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired",
+        )
+
+    # Get user
+    result = await db.execute(select(User).where(User.id == db_refresh_token.user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    # Create new access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
+    )
+
+    # Extend refresh token expiration (sliding window)
+    db_refresh_token.expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    await db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": UserSchema.from_orm(user)
+    }
+
+
+@router.post("/logout")
+async def logout(
+    refresh_token: Annotated[str, Form()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    # Find refresh token
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token == refresh_token)
+    )
+    db_refresh_token = result.scalar_one_or_none()
+
+    if db_refresh_token:
+        # Revoke the refresh token
+        db_refresh_token.is_revoked = True
+        await db.commit()
+
+    return {"message": "Successfully logged out"}

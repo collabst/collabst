@@ -12,15 +12,21 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # YJS collaboration settings
+    YJS_SNAPSHOT_INTERVAL_SECONDS: int = 30  # How often to snapshot to PostgreSQL
+
     MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_PUBLIC_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
+    MINIO_PUBLIC_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "collabst"
 
     SECRET_KEY: str = "your-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Short-lived access token
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token with sliding expiration
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 

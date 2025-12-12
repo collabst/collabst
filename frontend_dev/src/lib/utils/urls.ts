@@ -1,3 +1,5 @@
+import { browser } from '$app/environment'
+
 /**
  * Utility functions to generate dynamic API and WebSocket URLs
  * based on the current browser hostname instead of hardcoding
@@ -8,10 +10,10 @@
  * Uses http/https based on current protocol
  */
 export const getApiUrl = (): string => {
-  // In development, allow full override via env variable
-// if (import.meta.env.VITE_API_URL) {
-//   return import.meta.env.VITE_API_URL
-// }
+  // Default for SSR
+  if (!browser) {
+    return `http://localhost:${import.meta.env.VITE_API_PORT || '8000'}`
+  }
 
   // Use current browser protocol and hostname with port from env
   const protocol = window.location.protocol // 'http:' or 'https:'
@@ -26,10 +28,10 @@ export const getApiUrl = (): string => {
  * Automatically converts http -> ws and https -> wss
  */
 export const getWsUrl = (): string => {
-  // In development, allow full override via env variable
-  // if (import.meta.env.VITE_WS_URL) {
-  //   return import.meta.env.VITE_WS_URL
-  // }
+  // Default for SSR
+  if (!browser) {
+    return `ws://localhost:${import.meta.env.VITE_API_PORT || '8000'}`
+  }
 
   // Use current browser protocol and hostname with port from env
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'

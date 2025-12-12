@@ -17,6 +17,103 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Handle token refresh on 401 errors
+let isRefreshing = false
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void
+  reject: (reason?: unknown) => void
+}> = []
+
+const processQueue = (error: Error | null, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+
+    // If error is 401 and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(() => {
+          return api(originalRequest)
+        }).catch(err => {
+          return Promise.reject(err)
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      const refreshToken = localStorage.getItem('refreshToken')
+
+      if (!refreshToken) {
+        // No refresh token, clear storage and reject
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('user')
+        return Promise.reject(error)
+      }
+
+      try {
+        // Call refresh endpoint
+        const formData = new URLSearchParams()
+        formData.append('refresh_token', refreshToken)
+
+        const { data } = await api.post<AuthResponse>('/auth/refresh', formData, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          _retry: true // Mark this request to avoid infinite loop
+        } as any)
+
+        const newAccessToken = data.access_token
+        const newRefreshToken = data.refresh_token
+
+        // Update tokens in localStorage
+        localStorage.setItem('token', newAccessToken)
+        localStorage.setItem('refreshToken', newRefreshToken)
+
+        // Update the authorization header
+        api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
+        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`
+
+        // Process queued requests
+        processQueue(null, newAccessToken)
+
+        // Retry original request
+        return api(originalRequest)
+      } catch (refreshError) {
+        // Refresh failed, clear storage and logout
+        processQueue(refreshError as Error, null)
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('user')
+
+        // Redirect to login (optional - depends on your app structure)
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
+
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
 // Auth
 export const authApi = {
   register: async (email: string, username: string, password: string): Promise<User> => {
@@ -33,6 +130,25 @@ export const authApi = {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
     return data
+  },
+
+  refresh: async (refreshToken: string): Promise<AuthResponse> => {
+    const formData = new URLSearchParams()
+    formData.append('refresh_token', refreshToken)
+
+    const { data } = await api.post<AuthResponse>('/auth/refresh', formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    return data
+  },
+
+  logout: async (refreshToken: string): Promise<void> => {
+    const formData = new URLSearchParams()
+    formData.append('refresh_token', refreshToken)
+
+    await api.post('/auth/logout', formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
   },
 }
 

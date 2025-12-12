@@ -116,6 +116,43 @@ async def update_file(
     return file
 
 
+@router.delete("/{project_id}/files/{file_id}")
+async def delete_file(
+    project_id: int,
+    file_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a file"""
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
+
+    result = await db.execute(
+        select(File).where(File.id == file_id, File.project_id == project_id)
+    )
+    file = result.scalar_one_or_none()
+
+    if not file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
+
+    # Delete from database
+    await db.delete(file)
+    await db.commit()
+
+    # Broadcast file deletion to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "file_deleted",
+            "file_id": file_id,
+        }
+    )
+
+    return {"message": "File deleted successfully"}
+
+
 @router.post("/{project_id}/assets/upload", response_model=AssetSchema)
 async def upload_asset(
     project_id: int,

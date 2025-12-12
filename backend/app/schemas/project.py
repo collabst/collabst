@@ -26,6 +26,17 @@ class Project(ProjectBase):
     model_config = {"from_attributes": True}
 
 
+class OwnerInfo(BaseModel):
+    """Basic owner information."""
+    id: int
+    username: str
+    email: str
+
+    model_config = {"from_attributes": True}
+
+
 class ProjectWithRole(Project):
-    """Project with the current user's role."""
+    """Project with the current user's role and owner information."""
     current_user_role: Literal['owner', 'admin', 'editor', 'reader']
+    owner: Optional[OwnerInfo] = None
+    collaborators_count: int = 0
