@@ -8,7 +8,9 @@
   import { createProjectSync } from '$lib/projectSync'
   import { auth } from '$lib/stores/auth'
   import { ThemeToggle, ProfileMenu } from '$lib/components/ui'
+  import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
   import FileTree from '$lib/components/editor/FileTree.svelte'
+  import PlaceholderPanel from '$lib/components/editor/PlaceholderPanel.svelte'
   import EditorPane from '$lib/components/editor/EditorPane.svelte'
   import CreateFileModal from '$lib/components/editor/CreateFileModal.svelte'
   import UploadAssetModal from '$lib/components/editor/UploadAssetModal.svelte'
@@ -27,6 +29,16 @@
   let showCreateFileModal = false
   let showUploadAssetModal = false
   let showCollaborators = false
+  let activePanel: string | null = 'files'
+
+  function handleActivityClick(activityId: string) {
+    // Toggle: if clicking the same panel, close it; otherwise open the new panel
+    if (activePanel === activityId) {
+      activePanel = null
+    } else {
+      activePanel = activityId
+    }
+  }
 
   let yjsConnection: YjsConnection | null = null
   let projectSync: any = null
@@ -337,19 +349,33 @@
     {/if}
 
     <div class="main">
-      <FileTree
-        {files}
-        {assets}
-        selectedItem={selectedItem}
-        onSelectFile={handleSelectFile}
-        onSelectAsset={handleSelectAsset}
-        onDeleteFile={handleDeleteFile}
-        onDeleteAsset={handleDeleteAsset}
-        onCreateFile={() => showCreateFileModal = true}
-        onCreateFolder={() => console.log('Create folder - to be implemented')}
-        onUploadAsset={() => showUploadAssetModal = true}
-        provider={yjsConnection?.provider || null}
-      />
+      <ActivityBar {activePanel} onActivityClick={handleActivityClick} />
+      
+      {#if activePanel === 'files'}
+        <FileTree
+          {files}
+          {assets}
+          selectedItem={selectedItem}
+          onSelectFile={handleSelectFile}
+          onSelectAsset={handleSelectAsset}
+          onDeleteFile={handleDeleteFile}
+          onDeleteAsset={handleDeleteAsset}
+          onCreateFile={() => showCreateFileModal = true}
+          onCreateFolder={() => console.log('Create folder - to be implemented')}
+          onUploadAsset={() => showUploadAssetModal = true}
+          provider={yjsConnection?.provider || null}
+        />
+      {:else if activePanel === 'search'}
+        <PlaceholderPanel title="Search" />
+      {:else if activePanel === 'outline'}
+        <PlaceholderPanel title="Outline" />
+      {:else if activePanel === 'issues'}
+        <PlaceholderPanel title="Issues and Suggestions" />
+      {:else if activePanel === 'comments'}
+        <PlaceholderPanel title="Comments" />
+      {:else if activePanel === 'settings'}
+        <PlaceholderPanel title="Settings" />
+      {/if}
 
       <EditorPane
         {selectedFile}

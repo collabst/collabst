@@ -29,14 +29,14 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 ### UX Features
 
 #### Projects Dashboard 📁📁📁
-- [ ] Create/Remove **Document** (document=project)
+- [x] Create/Remove **Document** (document=project)
 - [ ] Create/Remove/Move elements in **Folders**
 - Dashboard sections:
   - [ ] Projects (+sort options last modified | last created | alphabetical)
   - [ ] Shared with me
   - [ ] Display style (projects and folders as big icons(/thumbnails) | as a file list)
 - When hovering on project:
-  - [ ] **Open** (Equivalent to double click)
+  - [x] **Open** (Equivalent to double click)
   - [ ] **Download** pdf (+or source?)
   - [ ] **Duplicate** project
   - [ ] **Rename**
@@ -51,10 +51,10 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 
 #### Editor UI 📁+✏️+👁
 - Left bar quick menus:
-  - [ ] Project **Files**
+  - [x] Project **Files**
   - [ ] **Global Search** & Replace
   - [ ] Document **Outline**
-  - [ ] Eventually at the bottom Typst universe and Doc buttons
+  - [x] Eventually at the bottom Typst universe and Doc buttons
   - [ ] *Clicking on a menu button hides the menu if its already selected*
 - [ ] (Menu|Editor|Preview) window separators can be dynamically moved
 - Export|Share buttons:
@@ -76,10 +76,10 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
   - [ ] *Spell check* ? (included in tiny mist ?)
 
 #### Editor Project Files menu 📁
-- [ ] Buttons for new File | new Folder | Upload
+- [x] Buttons for new File | new Folder | Upload
 - [ ] Drag & drop in file list to upload file
 - [ ] List of every folder & files at root (folders first, alphabetically)
-- [ ] How icon of type of file next to name
+- [x] Icon of type of file next to name
 - [ ] Button for selected file to preview
 - OPENING BEHAVIOURS:
   - [ ] Click folder for expand | close
@@ -108,6 +108,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
   - [ ] See collaborator's cursor & highlighing
   - [ ] *Spellcheck* (see with tiny mist) ?
   - Quality of life keyboard shortcuts:
+    - [ ] `ctrl+z` and `ctrl+y` for undo and redo
     - [ ]  `ctrl+f` feature for find/replace bottom bar to pop up
     - [ ] `ctrl+b` for bold `ctrl+i` for italic
     - [ ] Smart indent with `tab` and `shift+tab`

@@ -1,5 +1,12 @@
 <script lang="ts">
   import type { File as ProjectFile, Asset } from '$lib/types'
+  import File from '@lucide/svelte/icons/file'
+  import FileText from '@lucide/svelte/icons/file-text'
+  import Image from '@lucide/svelte/icons/image'
+  import BookOpen from '@lucide/svelte/icons/book-open'
+  import Video from '@lucide/svelte/icons/video'
+  import Music from '@lucide/svelte/icons/music'
+  import Paperclip from '@lucide/svelte/icons/paperclip'
 
   export let item: ProjectFile | Asset
   export let isSelected: boolean = false
@@ -7,24 +14,23 @@
   export let onDelete: (() => void) | null = null
   export let usersViewing: { name: string; color: string }[] = []
 
-  function getFileIcon(item: ProjectFile | Asset): string {
+  function getFileIconComponent(item: ProjectFile | Asset) {
     // Check if it's an asset
     if ('mime_type' in item) {
-      if (item.mime_type.startsWith('image/')) return '🖼️'
-      if (item.mime_type.startsWith('video/')) return '🎥'
-      if (item.mime_type.startsWith('audio/')) return '🎵'
-      if (item.mime_type === 'application/pdf') return '📄'
-      return '📎'
+      if (item.mime_type.startsWith('image/')) return Image
+      if (item.mime_type.startsWith('video/')) return Video
+      if (item.mime_type.startsWith('audio/')) return Music
+      if (item.mime_type === 'application/pdf') return FileText
+      return Paperclip
     }
 
-    // It's a file
+    // It's a file - check extension
     const name = item.name.toLowerCase()
-    if (name.endsWith('.typ')) return '📝'
-    if (name.endsWith('.md')) return '📖'
-    if (name.endsWith('.txt')) return '📄'
-    if (name.endsWith('.json')) return '{ }'
-    if (name.endsWith('.js') || name.endsWith('.ts')) return '⚡'
-    return '📄'
+    if (name.endsWith('.bib')) return BookOpen
+    if (name.endsWith('.pdf')) return FileText
+    if (name.endsWith('.svg') || name.endsWith('.png') || name.endsWith('.jpg') || 
+        name.endsWith('.jpeg') || name.endsWith('.gif') || name.endsWith('.webp')) return Image
+    return File
   }
 
   function getFileName(item: ProjectFile | Asset): string {
@@ -55,7 +61,9 @@
   tabindex="0"
   on:keydown={(e) => e.key === 'Enter' && onSelect()}
 >
-  <span class="icon">{getFileIcon(item)}</span>
+  <span class="icon">
+    <svelte:component this={getFileIconComponent(item)} size={16} />
+  </span>
   <div class="info">
     <div class="name-row">
       <span class="name">{getFileName(item)}</span>
@@ -93,9 +101,8 @@
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
     cursor: pointer;
-    border-left: 3px solid transparent;
     transition: background 0.15s;
-    color: var(--text-secondary);
+    color: var(--text-primary);
   }
 
   .file-item:hover {
@@ -104,8 +111,6 @@
 
   .file-item.active {
     background: var(--surface-hover);
-    color: var(--text-primary);
-    border-left-color: var(--color-primary-600);
   }
 
   .file-item.asset {
@@ -113,8 +118,10 @@
   }
 
   .icon {
-    font-size: 18px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    color: inherit;
   }
 
   .info {

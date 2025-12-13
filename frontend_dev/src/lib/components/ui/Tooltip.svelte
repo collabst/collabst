@@ -4,22 +4,37 @@
   interface TooltipProps {
     text: string
     position?: 'top' | 'bottom' | 'left' | 'right'
+    delay?: number
     children?: Snippet
   }
   
   let {
     text,
     position = 'top',
+    delay = 300,
     children
   }: TooltipProps = $props()
   
   let showTooltip = $state(false)
+  let timeoutId: number | null = null
+
+  function handleMouseEnter() {
+    if (timeoutId) clearTimeout(timeoutId)
+    timeoutId = window.setTimeout(() => {
+      showTooltip = true
+    }, delay)
+  }
+
+  function handleMouseLeave() {
+    if (timeoutId) clearTimeout(timeoutId)
+    showTooltip = false
+  }
 </script>
 
 <div 
   class="tooltip-wrapper"
-  onmouseenter={() => showTooltip = true}
-  onmouseleave={() => showTooltip = false}
+  onmouseenter={handleMouseEnter}
+  onmouseleave={handleMouseLeave}
   role="tooltip"
 >
   {@render children?.()}
