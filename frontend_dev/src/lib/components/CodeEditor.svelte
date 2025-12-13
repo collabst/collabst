@@ -2,6 +2,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte'
   import { EditorView, basicSetup } from 'codemirror'
   import { EditorState, Compartment } from '@codemirror/state'
+  import { lintGutter, setDiagnostics } from '@codemirror/lint'
   import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
   import { greyDark, greyLight } from '$lib/codemirror/greyTheme'
   import { keymap } from '@codemirror/view'
@@ -9,12 +10,16 @@
   import type { WebsocketProvider } from 'y-websocket'
   import { commentsExtension, CommentRangeTracker } from '$lib/codemirror/comments'
   import { theme as themeStore } from '$lib/stores/theme'
+  import { convertDiagnosticsToLint } from '$lib/preview/diagnostics'
+  import type { Diagnostic } from '$lib/types'
 
   export let ytext: Y.Text
   export let provider: WebsocketProvider
   export let fileId: number
   export let ydoc: Y.Doc
   export let onTrackerReady: ((tracker: CommentRangeTracker) => void) | null = null
+  export let diagnostics: Diagnostic[] = []
+  export let fileName = ''
 
 
   let editorElement: HTMLDivElement
@@ -82,6 +87,7 @@
         yCollab(ytext, provider.awareness, { undoManager }),
         keymap.of(yUndoManagerKeymap),
         commentsExtension(),
+        lintGutter(),
       ],
     })
 
@@ -136,6 +142,7 @@
         yCollab(ytext, provider.awareness, { undoManager }),
         keymap.of(yUndoManagerKeymap),
         commentsExtension(),
+        lintGutter(),
       ],
     }))
 
@@ -165,6 +172,12 @@
 
   $: if (view && ytext && provider && currentFileId !== fileId) {
     switchFile()
+  }
+
+  // Update lint markers when diagnostics change
+  $: if (view) {
+    const lintDiagnostics = convertDiagnosticsToLint(diagnostics || [], view, fileName)
+    setDiagnostics(view, lintDiagnostics)
   }
 
   onMount(() => {

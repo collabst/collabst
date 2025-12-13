@@ -16,8 +16,11 @@
   import UploadAssetModal from '$lib/components/editor/UploadAssetModal.svelte'
   import CollaboratorsPanel from '$lib/components/editor/CollaboratorsPanel.svelte'
   import UserPresence from '$lib/components/editor/UserPresence.svelte'
-  import type { Project, File as ProjectFile, Asset } from '$lib/types'
+  import type { Project, File as ProjectFile, Asset, Diagnostic } from '$lib/types'
   import type { YjsConnection } from '$lib/yjs'
+  import { addFileToCompiler, compileTypst, renderTypst } from "$lib/preview/compiler";
+  import { parseRange } from '$lib/preview/diagnostics'
+  import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
 
   $: projectId = $page.params.projectId
 
@@ -282,6 +285,7 @@
   })
 
   onDestroy(() => {
+    if (detachYtextObserver) detachYtextObserver();
     if (yjsConnection) destroyYjsConnection(yjsConnection)
     if (projectSync) projectSync.destroy()
     if (notificationTimeout) clearTimeout(notificationTimeout)
@@ -290,6 +294,20 @@
   $: selectedYtext = selectedFile && yjsConnection?.ydoc
     ? getFileText(yjsConnection.ydoc, selectedFile.id)
     : null
+
+  $: if (browser) {
+    if (detachYtextObserver) {
+      detachYtextObserver()
+      detachYtextObserver = null
+    }
+
+    if (selectedYtext && selectedFile) {
+      const handler = () => triggerCompile()
+      selectedYtext.observe(handler)
+      detachYtextObserver = () => selectedYtext.unobserve(handler)
+      triggerCompile()
+    }
+  }
 
   $: if (yjsConnection?.ydoc && files.length > 0) {
     files.forEach(file => {
@@ -316,6 +334,116 @@
     })
   } else if (yjsConnection?.provider?.awareness) {
     yjsConnection.provider.awareness.setLocalStateField('currentItem', null)
+  }
+
+  // Typst compiler and renderer
+  let compiler: any = null;
+  let renderer: any = null;
+  let diagnostics: Diagnostic[] = [];
+  let previewHtml: string = "";
+
+  let isLoading: boolean = true;
+  let version: string = "0.7.0-rc1";
+  let isCompiling = false;
+  let pendingCompile = false;
+  let detachYtextObserver: (() => void) | null = null;
+
+  const triggerCompile = debounce(() => update(), 400);
+
+  function debounce<T extends (...args: any[]) => void>(fn: T, delay = 400) {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return (...args: Parameters<T>) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  onMount(async () => {
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts@${version}/dist/esm/contrib/all-in-one-lite.bundle.js`;
+
+    script.onload = async () => {
+      const $typst = (window as any).$typst;
+
+      $typst.setCompilerInitOptions({
+        getModule: () =>
+          `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${version}/pkg/typst_ts_web_compiler_bg.wasm`,
+      });
+
+      $typst.setRendererInitOptions({
+        getModule: () =>
+          `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@${version}/pkg/typst_ts_renderer_bg.wasm`,
+      });
+
+      compiler = await $typst.getCompiler();
+      renderer = await $typst.getRenderer();
+      isLoading = false;
+    };
+    document.head.appendChild(script);
+  });
+
+  $: if (!isLoading && compiler && renderer && selectedFile) {
+    triggerCompile();
+  }
+
+  async function update() {
+    if (!browser || !compiler || !renderer || !selectedFile) return;
+
+    if (isCompiling) {
+      pendingCompile = true;
+      return;
+    }
+
+    isCompiling = true;
+
+    try {
+      const filesWithContent = files.map((file) => {
+        const ytextForFile = yjsConnection?.ydoc
+          ? getFileText(yjsConnection.ydoc, file.id)
+          : null;
+
+        return {
+          ...file,
+          content: ytextForFile ? ytextForFile.toString() : file.content,
+        };
+      });
+
+      addFileToCompiler(compiler, filesWithContent);
+      addFileToCompiler(compiler, assets);
+
+      const mainFilePath = selectedFile.path || "main.typ";
+      const normalizedMainPath = mainFilePath.startsWith("/")
+        ? mainFilePath
+        : `/${mainFilePath}`;
+
+      const result = await compileTypst(compiler, normalizedMainPath);
+
+      if (result.diagnostics && result.diagnostics.length > 0) {
+        diagnostics = result.diagnostics.map((d: any) => ({
+          severity: d.severity,
+          message: d.message,
+          range: parseRange(d.range),
+          path: d.path,
+        }));
+      } else {
+        diagnostics = [];
+      }
+
+      if (result.result && !result.hasError) {
+        previewHtml = await renderTypst(renderer, result.result);
+      } else {
+        previewHtml = "";
+      }
+    } catch (error) {
+      console.error("Failed to compile Typst", error);
+    } finally {
+      isCompiling = false;
+      if (pendingCompile) {
+        pendingCompile = false;
+        update();
+      }
+    }
   }
 </script>
 
@@ -398,6 +526,17 @@
         currentUserId={$auth.user?.id || 0}
         currentUserName={$auth.user?.username || 'Unknown'}
         currentUserColor={yjsConnection?.awareness?.getLocalState()?.color || '#3b82f6'}
+        {diagnostics}
+      />
+
+      {#if activePanel}
+        <div class="resize-handle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </div>
+      {/if}
+
+      <PreviewPane
+        {previewHtml}
       />
     </div>
 
@@ -555,6 +694,7 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+    padding-right: 16px;
   }
 
   .resize-handle {

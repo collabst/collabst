@@ -4,7 +4,7 @@
   import { IconButton, Tooltip } from '$lib/components/ui'
   import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
   import Download from '@lucide/svelte/icons/download'
-  import type { File as ProjectFile, Asset, Comment } from '$lib/types'
+   import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
 
@@ -18,6 +18,13 @@
   export let currentUserId: number
   export let currentUserName: string
   export let currentUserColor: string
+   export let diagnostics: Diagnostic[] = []
+
+  let fileName = ''
+
+   $: fileName = selectedFile
+     ? (selectedFile.path?.startsWith('/') ? selectedFile.path.slice(1) : selectedFile.path)
+     : ''
 
   let assetPreviewUrl: string | null = null
   let codeEditor: any = null
@@ -237,6 +244,8 @@
             {ydoc}
             fileId={selectedFile.id}
             onTrackerReady={handleTrackerReady}
+             {diagnostics}
+             fileName={fileName}
           />
 
           {#if showCommentButton && !selectedAsset}
