@@ -219,8 +219,9 @@
 </script>
 
 <div class="editor-pane">
-  {#if selectedFile && ytext && provider && ydoc}
-    <div class="editor-wrapper">
+  <!-- CodeEditor is the foundation - always mounted when we have connection -->
+  {#if ytext && provider && ydoc && selectedFile}
+    <div class="editor-wrapper" class:hidden={selectedAsset}>
       <div class="editor-header">
         <div class="file-info">
           <span class="file-name">{selectedFile.name}</span>
@@ -238,7 +239,7 @@
             onTrackerReady={handleTrackerReady}
           />
 
-          {#if showCommentButton}
+          {#if showCommentButton && !selectedAsset}
             <Tooltip text="Add comment to selection">
               <IconButton
                 icon={MessageSquarePlus}
@@ -250,7 +251,7 @@
             </Tooltip>
           {/if}
         </div>
-        <CommentsPanel
+        <!-- <CommentsPanel
           {comments}
           {currentUserId}
           {newCommentDraft}
@@ -259,10 +260,12 @@
           on:reply={handleCommentReply}
           on:submitNew={e => handleSubmitNewComment(e.detail.content)}
           on:cancelNew={handleCancelNewComment}
-        />
+        /> -->
       </div>
     </div>
-  {:else if selectedAsset && assetPreviewUrl}
+  {/if}
+
+  {#if selectedAsset && assetPreviewUrl}
     <div class="asset-preview">
       <div class="editor-header">
         <div class="file-info">
@@ -292,7 +295,9 @@
         {/if}
       </div>
     </div>
-  {:else}
+  {/if}
+
+  {#if !selectedFile && !selectedAsset}
     <div class="no-selection">
       <p>{!isConnected ? 'Connecting...' : 'Select a file to start editing'}</p>
     </div>
@@ -313,6 +318,10 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .editor-wrapper.hidden {
+    display: none;
   }
 
   .editor-header {

@@ -139,27 +139,13 @@
   function handleSelectFile(file: ProjectFile) {
     selectedFile = file
     selectedAsset = null
-
-    // Update awareness to broadcast which file this user is viewing
-    if (yjsConnection?.provider?.awareness) {
-      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
-        id: file.id,
-        isAsset: false
-      })
-    }
+    // Awareness update handled by reactive statement
   }
 
   function handleSelectAsset(asset: Asset) {
     selectedAsset = asset
-    selectedFile = null
-
-    // Update awareness to broadcast which asset this user is viewing
-    if (yjsConnection?.provider?.awareness) {
-      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
-        id: asset.id,
-        isAsset: true
-      })
-  }
+    // Keep selectedFile to prevent CodeEditor from being destroyed
+    // Awareness update handled by reactive statement
   }
 
   async function handleDeleteFile(fileId: number) {
@@ -302,18 +288,19 @@
     })
   }
 
-  $: selectedItem = selectedFile || selectedAsset
+  // Prioritize asset when both are set (asset is what user is actually viewing)
+  $: selectedItem = selectedAsset || selectedFile
 
-  // Update awareness when selected item changes
-  $: if (selectedFile && yjsConnection?.provider?.awareness) {
-    yjsConnection.provider.awareness.setLocalStateField('currentItem', {
-      id: selectedFile.id,
-      isAsset: false
-    })
-  } else if (selectedAsset && yjsConnection?.provider?.awareness) {
+  // Update awareness when selected item changes - prioritize asset when viewing
+  $: if (selectedAsset && yjsConnection?.provider?.awareness) {
     yjsConnection.provider.awareness.setLocalStateField('currentItem', {
       id: selectedAsset.id,
       isAsset: true
+    })
+  } else if (selectedFile && yjsConnection?.provider?.awareness) {
+    yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+      id: selectedFile.id,
+      isAsset: false
     })
   } else if (yjsConnection?.provider?.awareness) {
     yjsConnection.provider.awareness.setLocalStateField('currentItem', null)
