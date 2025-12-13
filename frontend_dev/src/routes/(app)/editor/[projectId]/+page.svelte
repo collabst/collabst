@@ -319,6 +319,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>{project?.name ? `${project.name} - Collabst` : 'Collabst'}</title>
+</svelte:head>
+
 {#if !project}
   <div class="loading">Loading project...</div>
 {:else}
@@ -377,6 +381,12 @@
         <PlaceholderPanel title="Settings" />
       {/if}
 
+      {#if activePanel}
+        <div class="resize-handle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </div>
+      {/if}
+
       <EditorPane
         {selectedFile}
         {selectedAsset}
@@ -415,8 +425,7 @@
 
   header {
     background: var(--bg-top-bar);
-    border-bottom: 1px solid var(--border-primary);
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem 0.5rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -546,6 +555,20 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+  }
+
+  .resize-handle {
+    width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .resize-handle:hover {
+    color: var(--text-secondary);
   }
 
   .loading {

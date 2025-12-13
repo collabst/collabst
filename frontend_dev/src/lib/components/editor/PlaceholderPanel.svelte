@@ -15,20 +15,21 @@
   .placeholder-panel {
     width: 280px;
     background: var(--bg-file-panel);
-    border-right: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border-radius: 8px;
+    margin: 0 0 var(--space-3) 0;
+    padding-right: 0;
   }
 
   .panel-header {
     padding: var(--space-4);
-    border-bottom: 1px solid var(--border-primary);
   }
 
   h3 {
     margin: 0;
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: var(--font-semibold);
     color: var(--text-primary);
   }

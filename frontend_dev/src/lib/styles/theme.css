@@ -138,7 +138,7 @@
   
   /* Specific Component Backgrounds - Lightest to Darkest */
   --bg-editor: #252526;        /* Editor code - lightest */
-  --bg-file-panel: #1e1e1e;    /* File list - slightly darker */
+  --bg-file-panel: #181818;    /* File list - darker than background */
   --bg-top-bar: #1e1e1e;       /* Top bar - same as file panel */
   --bg-comments-panel: #1a1a1a; /* Comments panel - darkest */
   
@@ -191,7 +191,7 @@
   
   /* Specific Component Backgrounds - Lightest to Darkest */
   --bg-editor: #f5f5f5;        /* Editor code - lightest */
-  --bg-file-panel: #e8e8e8;    /* File list - slightly darker */
+  --bg-file-panel: #dbdbdb;    /* File list - darker than background */
   --bg-top-bar: #e8e8e8;       /* Top bar - same as file panel */
   --bg-comments-panel: #d4d4d4; /* Comments panel - darkest */
   

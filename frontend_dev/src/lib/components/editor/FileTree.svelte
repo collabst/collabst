@@ -168,23 +168,34 @@
   .file-tree {
     width: 280px;
     background: var(--bg-file-panel);
-    border-right: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border-radius: 8px;
+    margin: 0 0 var(--space-3) 0;
+    padding-right: 0;
   }
 
   .tree-header {
     padding: var(--space-4);
+    padding-right: var(--space-4);
     border-bottom: 1px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
+  .tree-header :global(.icon-btn-ghost) {
+    background: var(--bg-top-bar) !important;
+  }
+
+  .tree-header :global(.icon-btn-ghost:hover) {
+    background: var(--surface-hover) !important;
+  }
+
   h3 {
     margin: 0;
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: var(--font-semibold);
     color: var(--text-primary);
   }

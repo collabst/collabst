@@ -29,12 +29,18 @@
     if (timeoutId) clearTimeout(timeoutId)
     showTooltip = false
   }
+
+  function handleClick() {
+    if (timeoutId) clearTimeout(timeoutId)
+    showTooltip = false
+  }
 </script>
 
 <div 
   class="tooltip-wrapper"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
+  onclick={handleClick}
   role="tooltip"
 >
   {@render children?.()}
@@ -54,11 +60,11 @@
   
   .tooltip {
     position: absolute;
-    background: var(--bg-tertiary);
+    background: var(--bg-editor);
     color: var(--text-primary);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     white-space: nowrap;
     z-index: 9999;
     pointer-events: none;
@@ -70,11 +76,9 @@
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: scale(0.95);
     }
     to {
       opacity: 1;
-      transform: scale(1);
     }
   }
   

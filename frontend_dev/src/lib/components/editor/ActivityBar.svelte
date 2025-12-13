@@ -8,6 +8,7 @@
   import CircleHelp from '@lucide/svelte/icons/circle-help'
   import Rocket from '@lucide/svelte/icons/rocket'
   import Settings from '@lucide/svelte/icons/settings'
+  import collabstLogo from '../../../assets/collabst-text-vertical.svg'
 
   export let activePanel: string | null = 'files'
   export let onActivityClick: (activity: string) => void
@@ -61,31 +62,52 @@
   <div class="bottom-activities">
     {#each bottomActivities as activity (activity.id)}
       <Tooltip text={activity.label} position="right" delay={600}>
-        <button
-          class="activity-btn"
-          class:active={activePanel === activity.id}
-          on:click={() => handleClick(activity)}
-          aria-label={activity.label}
-        >
-          <svelte:component this={activity.icon} size={24} />
-        </button>
+        {#if activity.href}
+          <a
+            class="activity-btn"
+            href={activity.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={activity.label}
+          >
+            <svelte:component this={activity.icon} size={24} />
+          </a>
+        {:else}
+          <button
+            class="activity-btn"
+            class:active={activePanel === activity.id}
+            on:click={() => handleClick(activity)}
+            aria-label={activity.label}
+          >
+            <svelte:component this={activity.icon} size={24} />
+          </button>
+        {/if}
       </Tooltip>
     {/each}
+    
+    <div class="logo-container">
+      <img src={collabstLogo} alt="collabst" class="collabst-logo" />
+    </div>
   </div>
 </div>
 
 <style>
   .activity-bar {
-    width: 48px;
+    width: 56px;
     background: var(--bg-top-bar);
-    border-right: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: var(--space-3) 0;
+    padding: 0 0 var(--space-3) 0;
   }
 
-  .top-activities,
+  .top-activities {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
   .bottom-activities {
     display: flex;
     flex-direction: column;
@@ -105,6 +127,7 @@
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.15s;
+    text-decoration: none;
   }
 
   .activity-btn:hover {
@@ -115,5 +138,26 @@
   .activity-btn.active {
     color: var(--text-primary);
     background: var(--surface-hover);
+  }
+
+  .logo-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: var(--space-4);
+    padding-bottom: var(--space-4);
+  }
+
+  .collabst-logo {
+    width: auto;
+    height: 110px;
+    filter: brightness(0) saturate(100%) invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(90%);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  :global([data-theme="light"]) .collabst-logo {
+    filter: brightness(0) saturate(100%) invert(40%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(90%) contrast(85%);
   }
 </style>
