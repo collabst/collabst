@@ -1,32 +1,58 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
   import CommentsPanel from './CommentsPanel.svelte'
-  import { IconButton, Tooltip } from '$lib/components/ui'
+  import { IconButton, Tooltip, ToolButton } from '$lib/components/ui'
   import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
   import Download from '@lucide/svelte/icons/download'
+  import Bold from '@lucide/svelte/icons/bold'
+  import Italic from '@lucide/svelte/icons/italic'
+  import Underline from '@lucide/svelte/icons/underline'
+  import List from '@lucide/svelte/icons/list'
+  import ListOrdered from '@lucide/svelte/icons/list-ordered'
+  import Sigma from '@lucide/svelte/icons/sigma'
+  import Code from '@lucide/svelte/icons/code'
+  import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line'
+  import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
+  import PencilLine from '@lucide/svelte/icons/pencil-line'
+  import Trash2 from '@lucide/svelte/icons/trash-2'
    import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
 
-  export let selectedFile: ProjectFile | null
-  export let selectedAsset: Asset | null
-  export let ytext: Y.Text | null
-  export let provider: WebsocketProvider | null
-  export let isConnected: boolean
-  export let onGetAssetUrl: ((assetId: number) => Promise<string>) | null = null
-  export let ydoc: Y.Doc | null
-  export let currentUserId: number
-  export let currentUserName: string
-  export let currentUserColor: string
-   export let diagnostics: Diagnostic[] = []
+  interface EditorPaneProps {
+    selectedFile: ProjectFile | null
+    selectedAsset: Asset | null
+    ytext: Y.Text | null
+    provider: WebsocketProvider | null
+    isConnected: boolean
+    onGetAssetUrl: ((assetId: number) => Promise<string>) | null
+    ydoc: Y.Doc | null
+    currentUserId: number
+    currentUserName: string
+    currentUserColor: string
+    diagnostics?: Diagnostic[]
+  }
 
-  let fileName = ''
+  let {
+    selectedFile,
+    selectedAsset,
+    ytext,
+    provider,
+    isConnected,
+    onGetAssetUrl = null,
+    ydoc,
+    currentUserId,
+    currentUserName,
+    currentUserColor,
+    diagnostics = []
+  }: EditorPaneProps = $props()
 
-   $: fileName = selectedFile
-     ? (selectedFile.path?.startsWith('/') ? selectedFile.path.slice(1) : selectedFile.path)
-     : ''
+  let fileName = $derived(
+    selectedFile
+      ? (selectedFile.path?.startsWith('/') ? selectedFile.path.slice(1) : selectedFile.path)
+      : ''
+  )
 
-  let assetPreviewUrl: string | null = null
   let codeEditor: any = null
   let comments: Comment[] = []
   let newCommentDraft: { text: string; range: { from: number; to: number }; selectedText: string } | null = null
@@ -36,31 +62,31 @@
   let editorContainer: HTMLElement | null = null
   let listenersSetup = false
 
-  $: if (selectedAsset && onGetAssetUrl) {
-    loadAssetPreview()
-  } else {
-    assetPreviewUrl = null
-  }
-
   // Update comments whenever the version changes or file changes
-  $: if (codeEditor && selectedFile && (commentsVersion >= 0)) {
-    updateCommentsFromTracker()
-  }
+  $effect(() => {
+    if (codeEditor && selectedFile && (commentsVersion >= 0)) {
+      updateCommentsFromTracker()
+    }
+  })
 
   // Reset listeners flag and hide comment button when file changes
-  $: if (selectedFile) {
-    listenersSetup = false
-    showCommentButton = false
-  }
+  $effect(() => {
+    if (selectedFile) {
+      listenersSetup = false
+      showCommentButton = false
+    }
+  })
 
   // Setup selection listeners when editor is ready
-  $: if (codeEditor && !listenersSetup) {
-    const view = codeEditor.getView()
-    if (view) {
-      setupSelectionListener(view)
-      listenersSetup = true
+  $effect(() => {
+    if (codeEditor && !listenersSetup) {
+      const view = codeEditor.getView()
+      if (view) {
+        setupSelectionListener(view)
+        listenersSetup = true
+      }
     }
-  }
+  })
 
   function handleTrackerReady(tracker: any) {
     // Set up callback for when comments change
@@ -104,16 +130,6 @@
       comments = tracker.getAllComments()
     } else {
       comments = []
-    }
-  }
-
-  async function loadAssetPreview() {
-    if (!selectedAsset || !onGetAssetUrl) return
-    try {
-      assetPreviewUrl = await onGetAssetUrl(selectedAsset.id)
-    } catch (error) {
-      console.error('Failed to load asset preview:', error)
-      assetPreviewUrl = null
     }
   }
 
@@ -223,18 +239,170 @@
     tracker.addReply(event.detail.commentId, reply)
     // No need to call updateCommentsList() - the observer will handle it
   }
+
+  // Action button handlers for typst files
+  function handleBold() {
+    console.log('Bold action')
+    // TODO: Insert *bold* syntax or wrap selection
+  }
+
+  function handleItalic() {
+    console.log('Italic action')
+    // TODO: Insert _italic_ syntax or wrap selection
+  }
+
+  function handleUnderline() {
+    console.log('Underline action')
+    // TODO: Insert #underline[] syntax or wrap selection
+  }
+
+  function handleList() {
+    console.log('List action')
+    // TODO: Insert list item syntax
+  }
+
+  function handleNumberedList() {
+    console.log('Numbered list action')
+    // TODO: Insert numbered list item syntax
+  }
+
+  function handleEquation() {
+    console.log('Equation action')
+    // TODO: Insert equation syntax
+  }
+
+  function handleCodeBlock() {
+    console.log('Code block action')
+    // TODO: Insert code block syntax
+  }
+
+  // Action button handlers for non-typst files
+  async function handleDownloadFile() {
+    if (selectedAsset && onGetAssetUrl) {
+      try {
+        const url = await onGetAssetUrl(selectedAsset.id)
+        window.open(url, '_blank')
+      } catch (error) {
+        console.error('Failed to download asset:', error)
+      }
+    } else if (selectedFile) {
+      console.log('Download file:', selectedFile.name)
+      // TODO: Implement file download
+    }
+  }
+
+  function handleUploadFile() {
+    console.log('Upload file')
+    // TODO: Implement file upload/replace
+  }
+
+  function handleRenameFile() {
+    console.log('Rename file')
+    // TODO: Implement file rename
+  }
+
+  function handleDeleteFile() {
+    console.log('Delete file')
+    // TODO: Implement file delete
+  }
+
+  // Check if file type is text-editable
+  let isTextEditable = $derived(selectedFile?.type === 'text' || selectedFile?.type === 'yaml' || selectedFile?.type === 'json')
+  let isTypstFile = $derived(selectedFile?.type === 'typst')
+
+  // Debug logging
+  $effect(() => {
+    console.log('File type changed:', {
+      fileName: selectedFile?.name,
+      fileType: selectedFile?.type,
+      isTypstFile,
+      isTextEditable
+    })
+  })
+
 </script>
 
 <div class="editor-pane">
+  <!-- Action Toolbar - shown for typst files, non-typst files, and assets -->
+  {#if selectedAsset}
+    <div class="action-toolbar">
+      <div class="tool-group">
+        <Tooltip text="Download">
+          <ToolButton icon={ArrowDownToLine} onclick={handleDownloadFile} position="first" />
+        </Tooltip>
+        <Tooltip text="Upload">
+          <ToolButton icon={ArrowUpFromLine} onclick={handleUploadFile} position="middle" />
+        </Tooltip>
+        <Tooltip text="Rename">
+          <ToolButton icon={PencilLine} onclick={handleRenameFile} position="middle" />
+        </Tooltip>
+        <Tooltip text="Delete">
+          <ToolButton icon={Trash2} onclick={handleDeleteFile} position="last" />
+        </Tooltip>
+      </div>
+    </div>
+  {:else if isTypstFile && selectedFile}
+    <div class="action-toolbar">
+      <div class="tool-group">
+        <Tooltip text="Bold">
+          <ToolButton icon={Bold} onclick={handleBold} position="first" strokeWidth={3} />
+        </Tooltip>
+        <Tooltip text="Italic">
+          <ToolButton icon={Italic} onclick={handleItalic} position="middle" />
+        </Tooltip>
+        <Tooltip text="Underline">
+          <ToolButton icon={Underline} onclick={handleUnderline} position="last" />
+        </Tooltip>
+      </div>
+      <div class="tool-group">
+        <Tooltip text="List">
+          <ToolButton icon={List} onclick={handleList} position="first" />
+        </Tooltip>
+        <Tooltip text="Numbered list">
+          <ToolButton icon={ListOrdered} onclick={handleNumberedList} position="middle" />
+        </Tooltip>
+        <Tooltip text="Equation">
+          <ToolButton icon={Sigma} onclick={handleEquation} position="middle" />
+        </Tooltip>
+        <Tooltip text="Code block">
+          <ToolButton icon={Code} onclick={handleCodeBlock} position="last" />
+        </Tooltip>
+      </div>
+      <div class="tool-group">
+        <Tooltip text="Add comment">
+          <ToolButton icon={MessageSquarePlus} onclick={handleAddComment} position="standalone" />
+        </Tooltip>
+      </div>
+    </div>
+  {:else if selectedFile && !isTypstFile}
+    <div class="action-toolbar">
+      <div class="tool-group">
+        <Tooltip text="Download">
+          <ToolButton icon={ArrowDownToLine} onclick={handleDownloadFile} position="first" />
+        </Tooltip>
+        <Tooltip text="Upload">
+          <ToolButton icon={ArrowUpFromLine} onclick={handleUploadFile} position="middle" />
+        </Tooltip>
+        <Tooltip text="Rename">
+          <ToolButton icon={PencilLine} onclick={handleRenameFile} position="middle" />
+        </Tooltip>
+        <Tooltip text="Delete">
+          <ToolButton icon={Trash2} onclick={handleDeleteFile} position="last" />
+        </Tooltip>
+      </div>
+      {#if isTextEditable}
+        <div class="tool-group">
+          <Tooltip text="Add comment">
+            <ToolButton icon={MessageSquarePlus} onclick={handleAddComment} position="standalone" />
+          </Tooltip>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- CodeEditor is the foundation - always mounted when we have connection -->
   {#if ytext && provider && ydoc && selectedFile}
     <div class="editor-wrapper" class:hidden={selectedAsset}>
-      <div class="editor-header">
-        <div class="file-info">
-          <span class="file-name">{selectedFile.name}</span>
-          <span class="file-type">{selectedFile.type}</span>
-        </div>
-      </div>
       <div class="editor-container" bind:this={editorContainer}>
         <div class="editor-content">
           <CodeEditor
@@ -274,32 +442,35 @@
     </div>
   {/if}
 
-  {#if selectedAsset && assetPreviewUrl}
+  {#if selectedAsset}
     <div class="asset-preview">
-      <div class="editor-header">
-        <div class="file-info">
-          <span class="file-name">{selectedAsset.filename}</span>
-          <span class="file-type">{selectedAsset.mime_type}</span>
-        </div>
-        <Tooltip text="Download file">
-          <IconButton
-            icon={Download}
-            variant="primary"
-            onclick={() => window.open(assetPreviewUrl || '', '_blank')}
-          />
-        </Tooltip>
-      </div>
       <div class="preview-content">
-        {#if isImage(selectedAsset.mime_type)}
-          <img src={assetPreviewUrl} alt={selectedAsset.filename} />
-        {:else if isPdf(selectedAsset.mime_type)}
-          <iframe src={assetPreviewUrl} title={selectedAsset.filename}></iframe>
+        {#if onGetAssetUrl}
+          {#await onGetAssetUrl(selectedAsset.id)}
+            <div class="loading-preview">
+              <p>Loading preview...</p>
+            </div>
+          {:then assetUrl}
+            {#if isImage(selectedAsset.mime_type)}
+              <img src={assetUrl} alt={selectedAsset.filename} />
+            {:else if isPdf(selectedAsset.mime_type)}
+              <iframe src={assetUrl} title={selectedAsset.filename}></iframe>
+            {:else}
+              <div class="no-preview">
+                <p>No preview available for this file type</p>
+                <a href={assetUrl} download={selectedAsset.filename} class="download-link">
+                  Download {selectedAsset.filename}
+                </a>
+              </div>
+            {/if}
+          {:catch error}
+            <div class="no-preview">
+              <p>Failed to load preview</p>
+            </div>
+          {/await}
         {:else}
           <div class="no-preview">
-            <p>No preview available for this file type</p>
-            <a href={assetPreviewUrl} download={selectedAsset.filename} class="download-link">
-              Download {selectedAsset.filename}
-            </a>
+            <p>No preview handler available</p>
           </div>
         {/if}
       </div>
@@ -327,6 +498,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .editor-wrapper {
+    border-top-left-radius: 8px;
+  }
+
+  .asset-preview {
+    border-top-left-radius: 8px;
   }
 
   .editor-wrapper.hidden {
@@ -358,6 +537,20 @@
     color: var(--text-tertiary);
     font-size: var(--text-xs);
     text-transform: uppercase;
+  }
+
+  .action-toolbar {
+    background: var(--bg-top-bar);
+    padding: 0 var(--space-4) var(--space-2) 0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-top-left-radius: 8px;
+  }
+
+  .tool-group {
+    display: flex;
+    align-items: center;
   }
 
   .editor-container {
@@ -415,6 +608,13 @@
     text-align: center;
     color: var(--text-tertiary);
     padding: var(--space-8);
+  }
+
+  .loading-preview {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: var(--space-8);
+    font-size: var(--text-base);
   }
 
   .download-link {

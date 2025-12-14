@@ -7,6 +7,7 @@
     open?: boolean
     title?: string
     size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+    hideCloseButton?: boolean
     onClose?: () => void
     children?: Snippet
     footer?: Snippet
@@ -16,6 +17,7 @@
     open = $bindable(false),
     title = '',
     size = 'md',
+    hideCloseButton = false,
     onClose,
     children,
     footer
@@ -51,12 +53,14 @@
         {#if title}
           <h2 id="modal-title" class="modal-title">{title}</h2>
         {/if}
-        <IconButton 
-          icon={X} 
-          onclick={handleClose}
-          title="Close"
-          class="modal-close"
-        />
+        {#if !hideCloseButton}
+          <IconButton 
+            icon={X} 
+            onclick={handleClose}
+            title="Close"
+            class="modal-close"
+          />
+        {/if}
       </div>
       
       <div class="modal-body">
@@ -143,7 +147,6 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--space-4) var(--space-6);
-    border-bottom: 1px solid var(--border-primary);
   }
   
   .modal-title {
@@ -161,7 +164,6 @@
   
   .modal-footer {
     padding: var(--space-4) var(--space-6);
-    border-top: 1px solid var(--border-primary);
     display: flex;
     gap: var(--space-3);
     justify-content: flex-end;

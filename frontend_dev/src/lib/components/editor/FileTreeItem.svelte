@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { File as ProjectFile, Asset } from '$lib/types'
+  import { Tooltip } from '$lib/components/ui'
   import File from '@lucide/svelte/icons/file'
   import FileText from '@lucide/svelte/icons/file-text'
   import Image from '@lucide/svelte/icons/image'
@@ -7,10 +8,14 @@
   import Video from '@lucide/svelte/icons/video'
   import Music from '@lucide/svelte/icons/music'
   import Paperclip from '@lucide/svelte/icons/paperclip'
+  import Eye from '@lucide/svelte/icons/eye'
+  import EyeOff from '@lucide/svelte/icons/eye-closed'
 
   export let item: ProjectFile | Asset
   export let isSelected: boolean = false
+  export let isPreview: boolean = false
   export let onSelect: () => void
+  export let onSetPreview: (() => void) | undefined = undefined
   export let onDelete: (() => void) | null = null
   export let usersViewing: { name: string; color: string }[] = []
 
@@ -50,6 +55,12 @@
   function isAsset(item: ProjectFile | Asset): item is Asset {
     return 'mime_type' in item
   }
+
+  function isTypstFile(item: ProjectFile | Asset): boolean {
+    if (isAsset(item)) return false
+    const name = item.name.toLowerCase()
+    return name.endsWith('.typ')
+  }
 </script>
 
 <div
@@ -77,6 +88,16 @@
             />
           {/each}
         </div>
+      {/if}
+      {#if isTypstFile(item) && onSetPreview}
+        <Tooltip text={isPreview ? "Preview enabled" : "Preview this file"}>
+          <button
+            class="preview-btn"
+            on:click|stopPropagation={onSetPreview}
+          >
+            <svelte:component this={isPreview ? Eye : EyeOff} size={16} />
+          </button>
+        </Tooltip>
       {/if}
     </div>
     {#if getFileSize(item)}
@@ -166,6 +187,25 @@
   .size {
     font-size: 11px;
     color: var(--text-tertiary);
+  }
+
+  .preview-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.15s;
+    border-radius: var(--radius-sm);
+  }
+
+  .preview-btn:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
   }
 
   .delete-btn {

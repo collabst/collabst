@@ -18,6 +18,7 @@
 
   let projects: Project[] = []
   let loading = true
+  let mounted = false
   let showCreateModal = false
   let showInviteModal = false
   let showSettingsPanel = false
@@ -99,6 +100,8 @@
 
   onMount(() => {
     loadProjects()
+    // Set mounted immediately to prevent layout shift
+    mounted = true
   })
 </script>
 
@@ -109,7 +112,7 @@
 {#if loading}
   <div class="loading">Loading projects...</div>
 {:else}
-  <div class="container">
+  <div class="container" class:mounted={mounted}>
     <header>
       <div class="header-left">
       </div>
@@ -319,6 +322,21 @@
     display: flex;
     flex-direction: column;
     background: var(--bg-canvas, var(--bg-primary));
+    visibility: hidden;
+  }
+
+  .container.mounted {
+    visibility: visible;
+    animation: fadeIn 0.1s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .main-container {
@@ -326,6 +344,8 @@
     flex: 1;
     overflow: hidden;
     background: var(--bg-top-bar);
+    /* Prevent layout shift by reserving space for activity bar */
+    min-height: 0;
   }
 
   .activity-bar {
@@ -402,11 +422,13 @@
     flex-direction: column;
     background: var(--bg-canvas, var(--bg-primary));
     border-top-left-radius: 8px;
+    /* Prevent content jump during initial render */
+    min-width: 0;
   }
 
   header {
     background: var(--bg-top-bar);
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -446,6 +468,8 @@
     padding: 2rem;
     padding-top: 1rem;
     flex: 1;
+    /* Prevent initial flash */
+    contain: layout style;
   }
 
   .page-title {

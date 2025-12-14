@@ -7,12 +7,14 @@
   import { createProjectYjs, destroyYjsConnection, getFileText } from '$lib/yjs'
   import { createProjectSync } from '$lib/projectSync'
   import { auth } from '$lib/stores/auth'
-  import { ThemeToggle, ProfileMenu } from '$lib/components/ui'
+  import { ThemeToggle, ProfileMenu, IconButton, Tooltip } from '$lib/components/ui'
+  import Home from '@lucide/svelte/icons/home'
   import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
   import FileTree from '$lib/components/editor/FileTree.svelte'
   import PlaceholderPanel from '$lib/components/editor/PlaceholderPanel.svelte'
   import EditorPane from '$lib/components/editor/EditorPane.svelte'
   import CreateFileModal from '$lib/components/editor/CreateFileModal.svelte'
+  import DeleteConfirmModal from '$lib/components/editor/DeleteConfirmModal.svelte'
   import UploadAssetModal from '$lib/components/editor/UploadAssetModal.svelte'
   import CollaboratorsPanel from '$lib/components/editor/CollaboratorsPanel.svelte'
   import UserPresence from '$lib/components/editor/UserPresence.svelte'
@@ -29,8 +31,11 @@
   let assets: Asset[] = []
   let selectedFile: ProjectFile | null = null
   let selectedAsset: Asset | null = null
+  let previewFileId: number | null = null
   let showCreateFileModal = false
   let showUploadAssetModal = false
+  let showDeleteModal = false
+  let deleteTarget: { type: 'file' | 'asset'; id: number; name: string } | null = null
   let showCollaborators = false
   let activePanel: string | null = 'files'
 
@@ -163,29 +168,45 @@
     // Awareness update handled by reactive statement
   }
 
+  function handleSetPreviewFile(fileId: number) {
+    previewFileId = fileId
+  }
+
   async function handleDeleteFile(fileId: number) {
-    if (!confirm('Delete this file?')) return
-    try {
-      await filesApi.delete(Number(projectId), fileId)
-      files = files.filter(f => f.id !== fileId)
-      if (selectedFile?.id === fileId) {
-        selectedFile = files[0] || null
-      }
-    } catch (error) {
-      console.error('Failed to delete file:', error)
-    }
+    const file = files.find(f => f.id === fileId)
+    if (!file) return
+    deleteTarget = { type: 'file', id: fileId, name: file.name }
+    showDeleteModal = true
   }
 
   async function handleDeleteAsset(assetId: number) {
-    if (!confirm('Delete this asset?')) return
+    const asset = assets.find(a => a.id === assetId)
+    if (!asset) return
+    deleteTarget = { type: 'asset', id: assetId, name: asset.filename }
+    showDeleteModal = true
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    
     try {
-      await assetsApi.delete(Number(projectId), assetId)
-      assets = assets.filter(a => a.id !== assetId)
-      if (selectedAsset?.id === assetId) {
-        selectedAsset = null
+      if (deleteTarget.type === 'file') {
+        await filesApi.delete(Number(projectId), deleteTarget.id)
+        files = files.filter(f => f.id !== deleteTarget.id)
+        if (selectedFile?.id === deleteTarget.id) {
+          selectedFile = files[0] || null
+        }
+      } else {
+        await assetsApi.delete(Number(projectId), deleteTarget.id)
+        assets = assets.filter(a => a.id !== deleteTarget.id)
+        if (selectedAsset?.id === deleteTarget.id) {
+          selectedAsset = null
+        }
       }
     } catch (error) {
-      console.error('Failed to delete asset:', error)
+      console.error('Failed to delete:', error)
+    } finally {
+      deleteTarget = null
     }
   }
 
@@ -285,7 +306,8 @@
   })
 
   onDestroy(() => {
-    if (detachYtextObserver) detachYtextObserver();
+    fileObservers.forEach(unobserve => unobserve())
+    fileObservers.clear()
     if (yjsConnection) destroyYjsConnection(yjsConnection)
     if (projectSync) projectSync.destroy()
     if (notificationTimeout) clearTimeout(notificationTimeout)
@@ -295,27 +317,45 @@
     ? getFileText(yjsConnection.ydoc, selectedFile.id)
     : null
 
-  $: if (browser) {
-    if (detachYtextObserver) {
-      detachYtextObserver()
-      detachYtextObserver = null
-    }
+  let fileObservers = new Map<number, () => void>()
 
-    if (selectedYtext && selectedFile) {
-      const handler = () => triggerCompile()
-      selectedYtext.observe(handler)
-      detachYtextObserver = () => selectedYtext.unobserve(handler)
+  $: if (browser && yjsConnection?.ydoc && files.length > 0) {
+    // Clear old observers
+    fileObservers.forEach(unobserve => unobserve())
+    fileObservers.clear()
+
+    // Set up observers for all files
+    files.forEach(file => {
+      const ytext = getFileText(yjsConnection.ydoc, file.id)
+      
+      // Initialize file content if empty
+      if (ytext && ytext.length === 0 && file.content) {
+        ytext.insert(0, file.content)
+      }
+
+      // Observe changes in all files
+      if (ytext) {
+        const handler = () => triggerCompile()
+        ytext.observe(handler)
+        fileObservers.set(file.id, () => ytext.unobserve(handler))
+      }
+    })
+
+    // Trigger initial compile
+    if (selectedFile && compiler && renderer) {
       triggerCompile()
     }
   }
 
-  $: if (yjsConnection?.ydoc && files.length > 0) {
-    files.forEach(file => {
-      const ytext = getFileText(yjsConnection.ydoc, file.id)
-      if (ytext && ytext.length === 0 && file.content) {
-        ytext.insert(0, file.content)
-      }
-    })
+  // Clean up observers when files change or component unmounts
+  $: if (browser && files.length === 0) {
+    fileObservers.forEach(unobserve => unobserve())
+    fileObservers.clear()
+  }
+
+  // Trigger recompile when assets change (they may be referenced in typst files)
+  $: if (browser && assets && compiler && renderer && selectedFile) {
+    triggerCompile()
   }
 
   // Prioritize asset when both are set (asset is what user is actually viewing)
@@ -346,7 +386,6 @@
   let version: string = "0.7.0-rc1";
   let isCompiling = false;
   let pendingCompile = false;
-  let detachYtextObserver: (() => void) | null = null;
 
   const triggerCompile = debounce(() => update(), 400);
 
@@ -457,15 +496,29 @@
   <div class="container">
     <header>
       <div class="header-left">
-        <button on:click={() => goto('/projects')} class="back-btn">
-          ← Back
-        </button>
+        <Tooltip text="Back to dashboard" position="bottom">
+          <button on:click={() => goto('/projects')} class="home-btn">
+            <Home size={20} />
+          </button>
+        </Tooltip>
         <h1>{project.name}</h1>
       </div>
 
+      {#if selectedAsset}
+        <div class="header-center">
+          <span class="current-file-name">{selectedAsset.filename}</span>
+          <span class="current-file-type">{selectedAsset.mime_type}</span>
+        </div>
+      {:else if selectedFile}
+        <div class="header-center">
+          <span class="current-file-name">{selectedFile.name}</span>
+          <span class="current-file-type">{selectedFile.type}</span>
+        </div>
+      {/if}
+
       <div class="header-rightr">
-        <ThemeToggle />
         <UserPresence provider={yjsConnection?.provider || null} />
+        <ThemeToggle />
         <ProfileMenu />
       </div>
     </header>
@@ -488,8 +541,10 @@
           {files}
           {assets}
           selectedItem={selectedItem}
+          {previewFileId}
           onSelectFile={handleSelectFile}
           onSelectAsset={handleSelectAsset}
+          onSetPreviewFile={handleSetPreviewFile}
           onDeleteFile={handleDeleteFile}
           onDeleteAsset={handleDeleteAsset}
           onCreateFile={() => showCreateFileModal = true}
@@ -511,7 +566,7 @@
 
       {#if activePanel}
         <div class="resize-handle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </div>
       {/if}
 
@@ -531,7 +586,7 @@
 
       {#if activePanel}
         <div class="resize-handle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </div>
       {/if}
 
@@ -544,6 +599,13 @@
       show={showCreateFileModal}
       onClose={() => showCreateFileModal = false}
       onSubmit={handleCreateFile}
+    />
+
+    <DeleteConfirmModal
+      show={showDeleteModal}
+      message={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ''}
+      onClose={() => { showDeleteModal = false; deleteTarget = null }}
+      onConfirm={confirmDelete}
     />
 
     <UploadAssetModal
@@ -564,7 +626,7 @@
 
   header {
     background: var(--bg-top-bar);
-    padding: 0.5rem 1rem 0.5rem 1rem;
+    padding: 0.4rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -575,6 +637,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    margin-left: 45px;
   }
 
   .header-rightr {
@@ -592,18 +655,32 @@
     align-items: center;
   }
 
-  .back-btn {
-    background: transparent;
+  .current-file-name {
     color: var(--text-primary);
-    border: 1px solid var(--border-primary);
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
   }
 
-  .back-btn:hover {
-    background: var(--surface-hover);
+  .current-file-type {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  .home-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+  }
+
+  .home-btn:hover {
+    color: var(--text-primary);
   }
 
   h1 {
@@ -698,17 +775,24 @@
   }
 
   .resize-handle {
-    width: 16px;
+    width: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-tertiary);
     cursor: col-resize;
     user-select: none;
+    overflow: visible;
+    opacity: 0.4;
+  }
+
+  .resize-handle svg {
+    overflow: visible;
   }
 
   .resize-handle:hover {
     color: var(--text-secondary);
+    opacity: 0.8;
   }
 
   .loading {

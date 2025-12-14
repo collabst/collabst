@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IconButton, Tooltip } from "$lib/components/ui";
+  import { ToolButton, Tooltip } from "$lib/components/ui";
   import Plus from "@lucide/svelte/icons/plus";
   import Minus from "@lucide/svelte/icons/minus";
 
@@ -34,25 +34,22 @@
 
 <div class="preview-pane">
   <div class="preview-header">
-    <Tooltip text="Zoom in" position="bottom">
-      <IconButton
-        class="button"
-        icon={Plus}
-        onclick={zoomIn}
-        size="sm"
-        variant="ghost"
-      />
-    </Tooltip>
-
-    <Tooltip text="Zoom out" position="bottom">
-      <IconButton
-        class="button"
-        icon={Minus}
-        onclick={zoomOut}
-        size="sm"
-        variant="ghost"
-      />
-    </Tooltip>
+    <div class="zoom-controls">
+      <Tooltip text="Zoom out" position="bottom">
+        <ToolButton
+          icon={Minus}
+          onclick={zoomOut}
+          position="first"
+        />
+      </Tooltip>
+      <Tooltip text="Zoom in" position="bottom">
+        <ToolButton
+          icon={Plus}
+          onclick={zoomIn}
+          position="last"
+        />
+      </Tooltip>
+    </div>
   </div>
   <div class="preview-area">
     {@html previewHtml}
@@ -73,14 +70,19 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    padding-bottom: var(--space-2);
+  }
+
+  .zoom-controls {
+    display: flex;
   }
 
   .preview-area {
     height: 100%;
     width: 100%;
     box-sizing: border-box;
-    padding: 16px;
-    background-color: var(--bg-preview);
+    padding: 0px;
+    background-color: var(--bg-file-panel);
     overflow: auto;
     display: flex;
     justify-content: center;

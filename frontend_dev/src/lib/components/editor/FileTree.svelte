@@ -2,8 +2,8 @@
   import { onMount, onDestroy } from 'svelte'
   import FileTreeItem from './FileTreeItem.svelte'
   import { IconButton, Tooltip } from '$lib/components/ui'
-  import File from '@lucide/svelte/icons/file'
-  import Folder from '@lucide/svelte/icons/folder'
+  import FilePlus from '@lucide/svelte/icons/file-plus'
+  import FolderPlus from '@lucide/svelte/icons/folder-plus'
   import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
   import type { File as ProjectFile, Asset } from '$lib/types'
   import type { WebsocketProvider } from 'y-websocket'
@@ -11,8 +11,10 @@
   export let files: ProjectFile[]
   export let assets: Asset[]
   export let selectedItem: ProjectFile | Asset | null
+  export let previewFileId: number | null = null
   export let onSelectFile: (file: ProjectFile) => void
   export let onSelectAsset: (asset: Asset) => void
+  export let onSetPreviewFile: (fileId: number) => void
   export let onDeleteFile: ((fileId: number) => void) | null = null
   export let onDeleteAsset: ((assetId: number) => void) | null = null
   export let onCreateFile: (() => void) | null = null
@@ -117,7 +119,7 @@
       {#if onCreateFile}
         <Tooltip text="New file" position="bottom">
           <IconButton 
-            icon={File}
+            icon={FilePlus}
             onclick={onCreateFile}
             size="sm"
             variant="ghost"
@@ -127,7 +129,7 @@
       {#if onCreateFolder}
         <Tooltip text="New folder" position="bottom">
           <IconButton 
-            icon={Folder}
+            icon={FolderPlus}
             onclick={onCreateFolder}
             size="sm"
             variant="ghost"
@@ -156,7 +158,9 @@
           {item}
           {isSelected}
           {usersViewing}
+          isPreview={!item.isAsset && previewFileId === item.id}
           onSelect={() => handleSelect(item)}
+          onSetPreview={!item.isAsset ? () => onSetPreviewFile(item.id) : undefined}
           onDelete={onDeleteFile || onDeleteAsset ? () => handleDelete(item) : null}
         />
       {/each}

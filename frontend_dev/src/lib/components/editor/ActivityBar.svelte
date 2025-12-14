@@ -4,7 +4,7 @@
   import Search from '@lucide/svelte/icons/search'
   import Map from '@lucide/svelte/icons/map'
   import CircleAlert from '@lucide/svelte/icons/circle-alert'
-  import MessageCircleMore from '@lucide/svelte/icons/message-circle-more'
+  import MessageCircleMore from '@lucide/svelte/icons/message-square-more'
   import CircleHelp from '@lucide/svelte/icons/circle-help'
   import Rocket from '@lucide/svelte/icons/rocket'
   import Settings from '@lucide/svelte/icons/settings'
@@ -46,7 +46,7 @@
 <div class="activity-bar">
   <div class="top-activities">
     {#each topActivities as activity (activity.id)}
-      <Tooltip text={activity.label} position="right" delay={600}>
+      <Tooltip text={activity.label} position="right">
         <button
           class="activity-btn"
           class:active={activePanel === activity.id}
@@ -61,7 +61,7 @@
   
   <div class="bottom-activities">
     {#each bottomActivities as activity (activity.id)}
-      <Tooltip text={activity.label} position="right" delay={600}>
+      <Tooltip text={activity.label} position="right">
         {#if activity.href}
           <a
             class="activity-btn"

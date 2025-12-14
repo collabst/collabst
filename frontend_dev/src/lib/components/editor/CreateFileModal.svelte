@@ -16,7 +16,7 @@
   }
 </script>
 
-<Modal bind:open={show} title="Create New File" size="sm" onClose={onClose}>
+<Modal bind:open={show} title="Create New File" size="sm" hideCloseButton onClose={onClose}>
   <form on:submit|preventDefault={handleSubmit}>
     <Input
       bind:value={fileName}

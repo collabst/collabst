@@ -1,5 +1,6 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth'
+  import { Tooltip } from '$lib/components/ui'
   import User from '@lucide/svelte/icons/user'
   import LogOut from '@lucide/svelte/icons/log-out'
   
@@ -32,9 +33,11 @@
 </script>
 
 <div class="profile-menu-container">
-  <button class="profile-btn" onclick={toggleMenu} title="Profile menu">
-    <User size={18} />
-  </button>
+  <Tooltip text="Profile menu" position="bottom">
+    <button class="profile-btn" onclick={toggleMenu}>
+      <User size={18} />
+    </button>
+  </Tooltip>
   
   {#if showMenu}
     <div class="profile-dropdown">
