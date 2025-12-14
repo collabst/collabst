@@ -53,13 +53,13 @@
       : ''
   )
 
-  let codeEditor: any = null
+  let codeEditor: any = $state(null)
   let comments: Comment[] = []
   let newCommentDraft: { text: string; range: { from: number; to: number }; selectedText: string } | null = null
   let commentsVersion = 0 // Simple counter to trigger reactivity
-  let showCommentButton = false
-  let commentButtonPosition = { top: 0, left: 0 }
-  let editorContainer: HTMLElement | null = null
+  let showCommentButton =  $state(false)
+  let commentButtonPosition = $state({ top: 0, left: 0 })
+  let editorContainer: HTMLElement | null = $state(null)
   let listenersSetup = false
 
   // Update comments whenever the version changes or file changes
@@ -416,16 +416,20 @@
              fileName={fileName}
           />
 
-          {#if showCommentButton && !selectedAsset}
+          {#if showCommentButton}
+            <div
+              class="floating-comment-wrapper"
+              style="position: absolute; top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"
+            >
             <Tooltip text="Add comment to selection">
               <IconButton
                 icon={MessageSquarePlus}
                 variant="primary"
                 class="floating-comment-btn"
-                style="position: absolute; top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"
                 onclick={handleAddComment}
               />
             </Tooltip>
+            </div>
           {/if}
         </div>
         <!-- <CommentsPanel
