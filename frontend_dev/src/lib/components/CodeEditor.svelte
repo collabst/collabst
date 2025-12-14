@@ -175,11 +175,6 @@
   }
 
   // Update lint markers when diagnostics change
-  $: if (view) {
-    const lintDiagnostics = convertDiagnosticsToLint(diagnostics || [], view, fileName)
-    setDiagnostics(view, lintDiagnostics)
-  }
-
   onMount(() => {
     initializeEditor()
   })

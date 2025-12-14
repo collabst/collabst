@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { ComponentType } from 'svelte'
+  import type { Component } from 'svelte'
   
   interface ToolButtonProps {
-    icon: ComponentType
+    icon: Component
     onclick?: () => void
     disabled?: boolean
     active?: boolean
@@ -20,6 +20,8 @@
     position = 'standalone',
     strokeWidth = 2
   }: ToolButtonProps = $props()
+
+  const Icon = $derived(icon);
 </script>
 
 <button
@@ -28,7 +30,7 @@
   class="tool-btn tool-btn-{position} {active ? 'tool-btn-active' : ''} {className}"
   onclick={onclick}
 >
-  <svelte:component this={icon} size={16} strokeWidth={strokeWidth} />
+  <Icon size={16} strokeWidth={strokeWidth} />
 </button>
 
 <style>

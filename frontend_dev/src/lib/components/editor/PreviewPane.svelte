@@ -2,11 +2,14 @@
   import { ToolButton, Tooltip } from "$lib/components/ui";
   import Plus from "@lucide/svelte/icons/plus";
   import Minus from "@lucide/svelte/icons/minus";
+  import Download from "@lucide/svelte/icons/download";
 
   export let previewHtml: string = "";
 
   function zoomIn() {
-    const previewArea = document.querySelector(".preview-area > .typst-doc") as HTMLElement;
+    const previewArea = document.querySelector(
+      ".preview-area > .typst-doc"
+    ) as HTMLElement;
     if (previewArea) {
       const currentScale = parseFloat(
         getComputedStyle(previewArea).getPropertyValue("--zoom-scale") || "1"
@@ -19,7 +22,9 @@
   }
 
   function zoomOut() {
-    const previewArea = document.querySelector(".preview-area > .typst-doc") as HTMLElement;
+    const previewArea = document.querySelector(
+      ".preview-area > .typst-doc"
+    ) as HTMLElement;
     if (previewArea) {
       const currentScale = parseFloat(
         getComputedStyle(previewArea).getPropertyValue("--zoom-scale") || "1"
@@ -30,24 +35,25 @@
       previewArea.style.transformOrigin = "top center";
     }
   }
+
+  function downloadPDF() {
+    console.log("Download PDF clicked");
+  }
 </script>
 
 <div class="preview-pane">
   <div class="preview-header">
     <div class="zoom-controls">
       <Tooltip text="Zoom out" position="bottom">
-        <ToolButton
-          icon={Minus}
-          onclick={zoomOut}
-          position="first"
-        />
+        <ToolButton icon={Minus} onclick={zoomOut} position="first" />
       </Tooltip>
       <Tooltip text="Zoom in" position="bottom">
-        <ToolButton
-          icon={Plus}
-          onclick={zoomIn}
-          position="last"
-        />
+        <ToolButton icon={Plus} onclick={zoomIn} position="last" />
+      </Tooltip>
+    </div>
+    <div class="download-controls">
+      <Tooltip text="Download PDF" position="bottom">
+        <ToolButton icon={Download} onclick={downloadPDF} />
       </Tooltip>
     </div>
   </div>
@@ -86,6 +92,11 @@
     overflow: auto;
     display: flex;
     justify-content: center;
+  }
+
+  .download-controls {
+    margin-left: auto;
+    display: flex;
   }
 
   :global(.typst-doc) {
