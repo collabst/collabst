@@ -82,6 +82,7 @@
     const state = EditorState.create({
       doc: ytext.toString(),
       extensions: [
+        EditorView.lineWrapping,
         basicSetup,
         themeCompartment.of(getThemeExtensions()),
         yCollab(ytext, provider.awareness, { undoManager }),
