@@ -30,6 +30,19 @@ async def create_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    # Check if user already has a project with this name
+    existing_project = await db.execute(
+        select(Project).where(
+            Project.owner_id == current_user.id,
+            Project.name == project_in.name
+        )
+    )
+    if existing_project.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You already have a project named '{project_in.name}'"
+        )
+    
     project = Project(**project_in.model_dump(), owner_id=current_user.id)
     db.add(project)
     await db.commit()
@@ -155,6 +168,21 @@ async def update_project(
 ):
     """Update a project. User must be owner or admin."""
     project = await check_is_admin_or_owner(db, project_id, current_user.id)
+
+    # If renaming, check if user already has another project with this name
+    if project_in.name and project_in.name != project.name:
+        existing_project = await db.execute(
+            select(Project).where(
+                Project.owner_id == project.owner_id,
+                Project.name == project_in.name,
+                Project.id != project_id
+            )
+        )
+        if existing_project.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You already have a project named '{project_in.name}'"
+            )
 
     for field, value in project_in.model_dump(exclude_unset=True).items():
         setattr(project, field, value)
