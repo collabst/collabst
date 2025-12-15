@@ -10,12 +10,13 @@
   let { show, onClose, onUpload }: UploadAssetModalProps = $props()
 
   let fileInput: HTMLInputElement
-  let selectedFile: File | null = null
+  let selectedFile: File | null = $state(null)
   let isDragging = $state(false)
 
   function handleFileSelect(e: Event) {
     const target = e.target as HTMLInputElement
     selectedFile = target.files?.[0] || null
+    console.log('Selected file:', selectedFile)
   }
 
   function handleDrop(e: DragEvent) {
