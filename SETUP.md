@@ -5,7 +5,7 @@
 ### 1. Start the Backend
 
 ```bash
-cd ../backend
+cd backend
 docker-compose up -d
 uv run alembic upgrade head
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
