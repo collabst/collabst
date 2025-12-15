@@ -5,6 +5,10 @@ import { assetsApi } from "../services/api";
 // This helps detect when an asset has changed (different storage_path)
 const loadedAssets = new Map<number, { storage_path: string; filename: string }>();
 
+// Cache to track loaded files: Map<fileId, filename>
+// This helps detect when a file has been renamed
+const loadedFiles = new Map<number, string>();
+
 export async function addFileToCompiler(
   compiler: any,
   file: (File | Asset)[] | File | Asset,
@@ -30,7 +34,7 @@ export async function addFileToCompiler(
     // If the asset exists but storage_path changed, remove the old version
     if (cached) {
       console.log("Asset changed, removing old version:", file.filename);
-      compiler.unmapShadow(path);
+      compiler.unmapShadow("/" + cached.filename);
     }
 
     console.log("Adding asset to compiler:", file.filename);
@@ -54,16 +58,29 @@ export async function addFileToCompiler(
     }
   } else {
     // It's a File
-    console.log("Adding file to compiler:", file.name);
     const path = "/" + file.name;
+    const cached = loadedFiles.get(file.id);
+
+    // If the file exists but was renamed, remove the old version
+    if (cached && cached !== file.name) {
+      console.log("File renamed, removing old version:", cached, "->", file.name);
+      compiler.removeSource("/" + cached);
+    }
+
+    console.log("Adding file to compiler:", file.name);
     compiler.addSource(path, file.content);
+
+    // Cache this file's name
+    loadedFiles.set(file.id, file.name);
   }
 }
 
-// Remove assets that are no longer in the project or have been renamed
-export function cleanupDeletedAssets(compiler: any, currentAssets: Asset[]) {
+// Remove assets and files that are no longer in the project or have been renamed
+export function cleanupDeletedAssets(compiler: any, currentAssets: Asset[], currentFiles: File[]) {
   const currentAssetsMap = new Map(currentAssets.map(a => [a.id, a]));
+  const currentFilesMap = new Map(currentFiles.map(f => [f.id, f]));
 
+  // Cleanup assets
   for (const [assetId, assetInfo] of loadedAssets) {
     const currentAsset = currentAssetsMap.get(assetId);
     
@@ -81,11 +98,31 @@ export function cleanupDeletedAssets(compiler: any, currentAssets: Asset[]) {
       loadedAssets.delete(assetId);
     }
   }
+
+  // Cleanup files
+  for (const [fileId, filename] of loadedFiles) {
+    const currentFile = currentFilesMap.get(fileId);
+    
+    if (!currentFile) {
+      // File was deleted
+      console.log("Removing deleted file:", filename);
+      const path = "/" + filename;
+      compiler.unmapShadow(path);
+      loadedFiles.delete(fileId);
+    } else if (currentFile.name !== filename) {
+      // File was renamed - remove old path, it will be re-added with new name
+      console.log("Removing renamed file old path:", filename, "->", currentFile.name);
+      const oldPath = "/" + filename;
+      compiler.unmapShadow(oldPath);
+      loadedFiles.delete(fileId);
+    }
+  }
 }
 
-// Clear the asset cache when needed (e.g., when switching projects)
+// Clear the asset and file caches when needed (e.g., when switching projects)
 export function resetAssetCache() {
   loadedAssets.clear();
+  loadedFiles.clear();
 }
 
 export async function compileTypst(
@@ -110,15 +147,4 @@ export async function renderTypst(
     });
     return renderer.renderSvg({ renderSession: session });
   });
-}
-
-export async function renderPDF(
-  compiler: any,
-  mainFilePath: string
-): Promise<Uint8Array> {
-  const result = await compiler.compile({
-    mainFilePath,
-    format: "pdf",
-  });
-  return result;
 }

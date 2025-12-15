@@ -21,7 +21,7 @@
   import UserPresence from '$lib/components/editor/UserPresence.svelte'
   import type { Project, File as ProjectFile, Asset, Diagnostic } from '$lib/types'
   import type { YjsConnection } from '$lib/yjs'
-  import { addFileToCompiler, compileTypst, renderTypst, renderPDF, cleanupDeletedAssets, resetAssetCache } from "$lib/preview/compiler";
+  import { addFileToCompiler, compileTypst, renderTypst, cleanupDeletedAssets, resetAssetCache } from "$lib/preview/compiler";
   import { parseRange } from '$lib/preview/diagnostics'
   import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
 
@@ -175,7 +175,7 @@
 
   async function handleRenameFile(fileId: number, newName: string) {
     try {
-      const updatedFile = await filesApi.rename(Number(projectId), fileId, newName)
+      const updatedFile = await filesApi.update(Number(projectId), fileId, { name: newName })
       files = files.map(f => f.id === fileId ? updatedFile : f)
       if (selectedFile?.id === fileId) {
         selectedFile = updatedFile
@@ -184,12 +184,13 @@
       console.error('Failed to rename file:', error)
       const message = error?.response?.data?.detail || 'Failed to rename file'
       notifications.show(message, 'error', 5000)
+      throw error // Re-throw to let FileTreeItem know it failed
     }
   }
 
   async function handleRenameAsset(assetId: number, newName: string) {
     try {
-      const updatedAsset = await assetsApi.rename(Number(projectId), assetId, newName)
+      const updatedAsset = await assetsApi.update(Number(projectId), assetId, { filename: newName })
       assets = assets.map(a => a.id === assetId ? updatedAsset : a)
       if (selectedAsset?.id === assetId) {
         selectedAsset = updatedAsset
@@ -198,6 +199,7 @@
       console.error('Failed to rename asset:', error)
       const message = error?.response?.data?.detail || 'Failed to rename asset'
       notifications.show(message, 'error', 5000)
+      throw error // Re-throw to let FileTreeItem know it failed
     }
   }
 
@@ -210,20 +212,22 @@
   }
 
   async function handleProjectRenameSubmit() {
-    if (!project || !editingProjectName.trim() || editingProjectName === project.name) {
+    const trimmedName = editingProjectName.trim()
+    
+    if (!project || !trimmedName || trimmedName === project.name) {
       isEditingProjectName = false
       return
     }
 
     try {
-      const updatedProject = await projectsApi.update(Number(projectId), editingProjectName.trim())
+      const updatedProject = await projectsApi.update(Number(projectId), trimmedName)
       project = updatedProject
       isEditingProjectName = false
     } catch (error: any) {
       console.error('Failed to rename project:', error)
       const message = error?.response?.data?.detail || 'Failed to rename project'
       notifications.show(message, 'error', 5000)
-      isEditingProjectName = false
+      // Keep editing mode open on error
     }
   }
 
@@ -420,9 +424,9 @@
     resetAssetCache()
   })
 
-  // Clean up deleted assets when assets array changes
-  $: if (compiler && assets) {
-    cleanupDeletedAssets(compiler, assets)
+  // Clean up deleted/renamed assets and files when arrays change
+  $: if (compiler && assets && files) {
+    cleanupDeletedAssets(compiler, assets, files)
   }
 
   $: selectedYtext = selectedFile && yjsConnection?.ydoc
@@ -657,7 +661,7 @@
           <input
             bind:this={projectNameInput}
             bind:value={editingProjectName}
-            on:blur={handleProjectRenameSubmit}
+            on:blur={handleProjectRenameCancel}
             on:keydown={handleProjectRenameKeydown}
             class="project-name-input"
             type="text"

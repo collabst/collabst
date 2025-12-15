@@ -17,7 +17,7 @@
   export let onSelect: () => void
   export let onSetPreview: (() => void) | undefined = undefined
   export let onDelete: (() => void) | null = null
-  export let onRename: ((newName: string) => void) | null = null
+  export let onRename: ((newName: string) => Promise<void>) | null = null
   export let usersViewing: { name: string; color: string }[] = []
 
   let isEditing = false
@@ -89,17 +89,32 @@
     }
   }
 
-  function handleRenameSubmit() {
+  async function handleRenameSubmit() {
     if (isSubmitting) return
+    
+    const trimmedName = editingName.trim()
+    const currentName = getFileName(item)
+    
+    // If no changes, just close the editor
+    if (!trimmedName || trimmedName === currentName) {
+      isEditing = false
+      isSubmitting = false
+      return
+    }
+    
     isSubmitting = true
     
-    if (onRename && editingName.trim() && editingName !== getFileName(item)) {
-      onRename(editingName.trim())
-    }
-    isEditing = false
-    setTimeout(() => {
+    try {
+      if (onRename) {
+        await onRename(trimmedName)
+      }
+      isEditing = false
+    } catch (error) {
+      console.error('Failed to rename:', error)
+      // Keep editing mode open on error so user can try again
+    } finally {
       isSubmitting = false
-    }, 100)
+    }
   }
 
   function handleRenameCancel() {
@@ -138,7 +153,7 @@
         <input
           bind:this={inputElement}
           bind:value={editingName}
-          on:blur={handleRenameSubmit}
+          on:blur={handleRenameCancel}
           on:keydown={handleRenameKeydown}
           class="name-input"
           type="text"
