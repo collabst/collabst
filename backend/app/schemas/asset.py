@@ -13,6 +13,10 @@ class AssetCreate(AssetBase):
     size: int
 
 
+class AssetUpdate(BaseModel):
+    filename: str | None = None
+
+
 class Asset(AssetBase):
     id: int
     project_id: int

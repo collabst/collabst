@@ -19,6 +19,7 @@ from app.services.permissions import (
     check_is_admin_or_owner,
     get_user_project_role,
 )
+from app.websocket.project_ws import project_manager
 
 router = APIRouter()
 
@@ -160,6 +161,23 @@ async def update_project(
 
     await db.commit()
     await db.refresh(project)
+    
+    # Broadcast project update to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "project_updated",
+            "project": {
+                "id": project.id,
+                "name": project.name,
+                "description": project.description,
+                "owner_id": project.owner_id,
+                "created_at": project.created_at.isoformat(),
+                "updated_at": project.updated_at.isoformat(),
+            }
+        }
+    )
+    
     return project
 
 

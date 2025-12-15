@@ -17,6 +17,8 @@
   export let onSetPreviewFile: (fileId: number) => void
   export let onDeleteFile: ((fileId: number) => void) | null = null
   export let onDeleteAsset: ((assetId: number) => void) | null = null
+  export let onRenameFile: ((fileId: number, newName: string) => void) | null = null
+  export let onRenameAsset: ((assetId: number, newName: string) => void) | null = null
   export let onCreateFile: (() => void) | null = null
   export let onCreateFolder: (() => void) | null = null
   export let onUploadAsset: (() => void) | null = null
@@ -110,6 +112,14 @@
       onDeleteFile(item.id)
     }
   }
+
+  function handleRename(item: TreeItem, newName: string) {
+    if (item.isAsset && onRenameAsset) {
+      onRenameAsset(item.id, newName)
+    } else if (!item.isAsset && onRenameFile) {
+      onRenameFile(item.id, newName)
+    }
+  }
 </script>
 
 <div class="file-tree">
@@ -162,6 +172,7 @@
           onSelect={() => handleSelect(item)}
           onSetPreview={!item.isAsset ? () => onSetPreviewFile(item.id) : undefined}
           onDelete={onDeleteFile || onDeleteAsset ? () => handleDelete(item) : null}
+          onRename={onRenameFile || onRenameAsset ? (newName) => handleRename(item, newName) : null}
         />
       {/each}
     {/if}

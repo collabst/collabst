@@ -38,6 +38,9 @@
   let deleteTarget: { type: 'file' | 'asset'; id: number; name: string } | null = null
   let showCollaborators = false
   let activePanel: string | null = 'files'
+  let isEditingProjectName = false
+  let editingProjectName = ''
+  let projectNameInput: HTMLInputElement
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
@@ -194,6 +197,75 @@
     showDeleteModal = true
   }
 
+  async function handleRenameFile(fileId: number, newName: string) {
+    try {
+      const updatedFile = await filesApi.rename(Number(projectId), fileId, newName)
+      files = files.map(f => f.id === fileId ? updatedFile : f)
+      if (selectedFile?.id === fileId) {
+        selectedFile = updatedFile
+      }
+    } catch (error: any) {
+      console.error('Failed to rename file:', error)
+      const message = error?.response?.data?.detail || 'Failed to rename file'
+      showNotification(message, 'error', 5000)
+    }
+  }
+
+  async function handleRenameAsset(assetId: number, newName: string) {
+    try {
+      const updatedAsset = await assetsApi.rename(Number(projectId), assetId, newName)
+      assets = assets.map(a => a.id === assetId ? updatedAsset : a)
+      if (selectedAsset?.id === assetId) {
+        selectedAsset = updatedAsset
+      }
+    } catch (error: any) {
+      console.error('Failed to rename asset:', error)
+      const message = error?.response?.data?.detail || 'Failed to rename asset'
+      showNotification(message, 'error', 5000)
+    }
+  }
+
+  function handleProjectNameClick() {
+    isEditingProjectName = true
+    editingProjectName = project?.name || ''
+    setTimeout(() => {
+      projectNameInput?.select()
+    }, 0)
+  }
+
+  async function handleProjectRenameSubmit() {
+    if (!project || !editingProjectName.trim() || editingProjectName === project.name) {
+      isEditingProjectName = false
+      return
+    }
+
+    try {
+      const updatedProject = await projectsApi.update(Number(projectId), editingProjectName.trim())
+      project = updatedProject
+      isEditingProjectName = false
+    } catch (error: any) {
+      console.error('Failed to rename project:', error)
+      const message = error?.response?.data?.detail || 'Failed to rename project'
+      showNotification(message, 'error', 5000)
+      isEditingProjectName = false
+    }
+  }
+
+  function handleProjectRenameCancel() {
+    isEditingProjectName = false
+    editingProjectName = ''
+  }
+
+  function handleProjectRenameKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleProjectRenameSubmit()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      handleProjectRenameCancel()
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return
 
@@ -292,10 +364,23 @@
     }
   }
 
+  function onAssetUpdated(asset: Asset) {
+    assets = assets.map(a => a.id === asset.id ? asset : a)
+    if (selectedAsset?.id === asset.id) {
+      selectedAsset = asset
+    }
+  }
+
   function onAssetDeleted(assetId: number) {
     assets = assets.filter(a => a.id !== assetId)
     if (selectedAsset?.id === assetId) {
       selectedAsset = null
+    }
+  }
+
+  function onProjectUpdated(updatedProject: Project) {
+    if (project && updatedProject.id === project.id) {
+      project = { ...project, ...updatedProject }
     }
   }
 
@@ -323,7 +408,9 @@
       onFileUpdated,
       onFileDeleted,
       onAssetCreated,
+      onAssetUpdated,
       onAssetDeleted,
+      onProjectUpdated,
     })
     
     const handleBeforeUnload = () => {
@@ -591,7 +678,19 @@
             <Home size={20} />
           </button>
         </Tooltip>
-        <h1>{project.name}</h1>
+        {#if isEditingProjectName}
+          <input
+            bind:this={projectNameInput}
+            bind:value={editingProjectName}
+            on:blur={handleProjectRenameSubmit}
+            on:keydown={handleProjectRenameKeydown}
+            class="project-name-input"
+            type="text"
+            on:click|stopPropagation
+          />
+        {:else}
+          <h1 on:click={handleProjectNameClick}>{project.name}</h1>
+        {/if}
       </div>
 
       {#if selectedAsset}
@@ -637,6 +736,8 @@
           onSetPreviewFile={handleSetPreviewFile}
           onDeleteFile={handleDeleteFile}
           onDeleteAsset={handleDeleteAsset}
+          onRenameFile={handleRenameFile}
+          onRenameAsset={handleRenameAsset}
           onCreateFile={() => showCreateFileModal = true}
           onCreateFolder={() => console.log('Create folder - to be implemented')}
           onUploadAsset={() => showUploadAssetModal = true}
@@ -778,6 +879,31 @@
     font-size: 16px;
     font-weight: 600;
     margin: 0;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  h1:hover {
+    background: var(--surface-hover);
+  }
+
+  .project-name-input {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+    outline: none;
+    min-width: 400px;
+  }
+
+  .project-name-input:focus {
+    border-color: var(--primary);
   }
 
   .notification {
