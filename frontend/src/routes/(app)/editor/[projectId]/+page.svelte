@@ -7,6 +7,7 @@
   import { createProjectYjs, destroyYjsConnection, getFileText } from '$lib/yjs'
   import { createProjectSync } from '$lib/projectSync'
   import { auth } from '$lib/stores/auth'
+  import { notifications } from '$lib/stores/notifications'
   import { ThemeToggle, ProfileMenu, IconButton, Tooltip } from '$lib/components/ui'
   import Home from '@lucide/svelte/icons/home'
   import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
@@ -56,39 +57,14 @@
   let isConnected = false
   let isSynced = false
   let isLocalSynced = false
-  
-  // Notification system
-  let notification: { message: string; type: 'info' | 'warning' | 'error' } | null = null
-  let notificationTimeout: number | null = null
   let hasConnectedBefore = false
-
-  function showNotification(message: string, type: 'info' | 'warning' | 'error' = 'info', duration = 3000) {
-    if (!browser) return
-    
-    notification = { message, type }
-    if (notificationTimeout) clearTimeout(notificationTimeout)
-    
-    if (duration > 0) {
-      notificationTimeout = window.setTimeout(() => {
-        hideNotification()
-      }, duration)
-    }
-  }
-
-  function hideNotification() {
-    if (!notification) return
-    notification = { ...notification, message: notification.message + '__closing' }
-    setTimeout(() => {
-      notification = null
-    }, 300) // Match animation duration
-  }
 
   // Watch connection status changes
   $: if (browser) {
     if (isConnected && hasConnectedBefore) {
-      showNotification('Reconnected. Syncing changes...', 'info'  )
+      notifications.show('Reconnected. Syncing changes...', 'info')
     } else if (!isConnected && hasConnectedBefore) {
-      showNotification('Connection lost. Changes will sync when reconnected.', 'warning')
+      notifications.show('Connection lost. Changes will sync when reconnected.', 'warning')
     }
     
     if (isConnected) {
@@ -207,7 +183,7 @@
     } catch (error: any) {
       console.error('Failed to rename file:', error)
       const message = error?.response?.data?.detail || 'Failed to rename file'
-      showNotification(message, 'error', 5000)
+      notifications.show(message, 'error', 5000)
     }
   }
 
@@ -221,7 +197,7 @@
     } catch (error: any) {
       console.error('Failed to rename asset:', error)
       const message = error?.response?.data?.detail || 'Failed to rename asset'
-      showNotification(message, 'error', 5000)
+      notifications.show(message, 'error', 5000)
     }
   }
 
@@ -246,7 +222,7 @@
     } catch (error: any) {
       console.error('Failed to rename project:', error)
       const message = error?.response?.data?.detail || 'Failed to rename project'
-      showNotification(message, 'error', 5000)
+      notifications.show(message, 'error', 5000)
       isEditingProjectName = false
     }
   }
@@ -423,7 +399,7 @@
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
-        showNotification('All changes are saved automatically', 'info', 2000)
+        notifications.show('All changes are saved automatically', 'info', 2000)
       }
     }
     
@@ -441,7 +417,6 @@
     fileObservers.clear()
     if (yjsConnection) destroyYjsConnection(yjsConnection)
     if (projectSync) projectSync.destroy()
-    if (notificationTimeout) clearTimeout(notificationTimeout)
     resetAssetCache()
   })
 
@@ -711,17 +686,6 @@
         <ProfileMenu />
       </div>
     </header>
-
-    {#if notification}
-      <div 
-        class="notification notification-{notification.type}" 
-        class:closing={notification.message.includes('__closing')}
-      >
-        <span>{notification.message.replace('__closing', '')}</span>
-        <button class="notification-close" on:click={hideNotification}>×</button>
-      </div>
-    {/if}
-
     <div class="main">
       <ActivityBar {activePanel} onActivityClick={handleActivityClick} />
       
@@ -899,89 +863,11 @@
     padding: 4px 8px;
     font-family: inherit;
     outline: none;
-    min-width: 400px;
+    max-width: 400px;
   }
 
   .project-name-input:focus {
     border-color: var(--primary);
-  }
-
-  .notification {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    animation: slideIn 0.3s ease;
-  }
-
-  .notification.closing {
-    animation: slideOut 0.3s ease forwards;
-  }
-
-  @keyframes slideIn {
-    from {
-      transform: translateX(calc(100% + 1rem));
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideOut {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(calc(100% + 1rem));
-      opacity: 0;
-    }
-  }
-
-  .notification-info {
-    background: var(--color-info-bg);
-    color: var(--color-info-text);
-    border: 1px solid var(--color-info);
-  }
-
-  .notification-warning {
-    background: var(--color-warning-bg);
-    color: var(--color-warning-text);
-    border: 1px solid var(--color-warning);
-  }
-
-  .notification-error {
-    background: var(--color-error-bg);
-    color: var(--color-error-text);
-    border: 1px solid var(--color-error);
-  }
-
-  .notification-close {
-    background: transparent;
-    border: none;
-    color: inherit;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.7;
-  }
-
-  .notification-close:hover {
-    opacity: 1;
   }
 
   .main {

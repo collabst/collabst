@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { auth } from '$lib/stores/auth'
+  import { notifications } from '$lib/stores/notifications'
   import { projectsApi, invitationsApi } from '$lib/services/api'
   import { ThemeToggle, ProfileMenu, Tooltip } from '$lib/components/ui'
   import InvitationsPanel from '$lib/components/InvitationsPanel.svelte'
@@ -61,8 +62,11 @@
       newProjectName = ''
       newProjectDescription = ''
       loadProjects()
-    } catch (error) {
+      notifications.show('Project created successfully!', 'info', 2000)
+    } catch (error: any) {
       console.error('Failed to create project:', error)
+      const message = error?.response?.data?.detail || 'Failed to create project'
+      notifications.show(message, 'error', 5000)
     }
   }
 
@@ -72,8 +76,11 @@
     try {
       await projectsApi.delete(id)
       loadProjects()
-    } catch (error) {
+      notifications.show('Project deleted successfully', 'info', 2000)
+    } catch (error: any) {
       console.error('Failed to delete project:', error)
+      const message = error?.response?.data?.detail || 'Failed to delete project'
+      notifications.show(message, 'error', 5000)
     }
   }
 
@@ -91,10 +98,11 @@
       showInviteModal = false
       inviteEmail = ''
       inviteRole = 'editor'
-      alert('Invitation sent successfully!')
+      notifications.show('Invitation sent successfully!', 'info', 3000)
     } catch (error: any) {
       console.error('Failed to send invitation:', error)
-      alert(error.response?.data?.detail || 'Failed to send invitation')
+      const message = error?.response?.data?.detail || 'Failed to send invitation'
+      notifications.show(message, 'error', 5000)
     }
   }
 
@@ -764,6 +772,13 @@
   select option {
     background: var(--bg-secondary);
     color: var(--text-primary);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
   }
 
   .modal-actions {

@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation'
   import { browser } from '$app/environment'
   import { isAuthenticated } from '$lib/stores/auth'
+  import { NotificationContainer } from '$lib/components/ui'
   import { onMount } from 'svelte'
 
   onMount(() => {
@@ -17,5 +18,6 @@
   }
 </script>
 
+<NotificationContainer />
 <slot />
 
