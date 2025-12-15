@@ -20,7 +20,7 @@
   import UserPresence from '$lib/components/editor/UserPresence.svelte'
   import type { Project, File as ProjectFile, Asset, Diagnostic } from '$lib/types'
   import type { YjsConnection } from '$lib/yjs'
-  import { addFileToCompiler, compileTypst, renderTypst } from "$lib/preview/compiler";
+  import { addFileToCompiler, compileTypst, renderTypst, renderPDF, cleanupDeletedAssets, resetAssetCache } from "$lib/preview/compiler";
   import { parseRange } from '$lib/preview/diagnostics'
   import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
 
@@ -106,7 +106,12 @@
       const data = await filesApi.list(Number(projectId))
       files = data
       if (data.length > 0 && !selectedFile) {
-        selectedFile = data[0]
+        // Select preview file if set, otherwise select first file
+        if (previewFileId) {
+          selectedFile = data.find(f => f.id === previewFileId) || data[0]
+        } else {
+          selectedFile = data[0]
+        }
       }
     } catch (error) {
       console.error('Failed to load files:', error)
@@ -170,6 +175,9 @@
 
   function handleSetPreviewFile(fileId: number) {
     previewFileId = fileId
+    if (browser) {
+      localStorage.setItem(`preview-file-${projectId}`, String(fileId))
+    }
   }
 
   async function handleDeleteFile(fileId: number) {
@@ -188,7 +196,7 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
-    
+
     try {
       if (deleteTarget.type === 'file') {
         await filesApi.delete(Number(projectId), deleteTarget.id)
@@ -206,6 +214,7 @@
     } catch (error) {
       console.error('Failed to delete:', error)
     } finally {
+      showDeleteModal = false
       deleteTarget = null
     }
   }
@@ -213,6 +222,33 @@
   async function handleGetAssetUrl(assetId: number): Promise<string> {
     const { url } = await assetsApi.getUrl(Number(projectId), assetId)
     return url
+  }
+
+  async function handleDownloadPDF() {
+    if (!browser || !compiler || files.length === 0) {
+      console.error("Compiler or files not ready for PDF export");
+      return;
+    }
+
+    try {
+      // Compile to PDF
+      console.log(compiledResult);
+      typst.pdf({mainFilePath:compiledMainPath}).then(pdfData => {
+        var pdfFile = new Blob([pdfData], { type: 'application/pdf' });
+        
+        // Creates element with <a> tag
+        const link = document.createElement('a');
+        // Sets file content in the object URL
+        link.href = URL.createObjectURL(pdfFile);
+        // Sets file name
+        link.download = project?.name ? `${project.name}.pdf` : 'document.pdf';
+        // Triggers a click event to <a> tag to save file.
+        link.click();
+        URL.revokeObjectURL(link.href);
+      });
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+    }
   }
 
   function onFileCreated(file: ProjectFile) {
@@ -264,6 +300,14 @@
   }
 
   onMount(() => {
+    // Load preview file from localStorage first
+    if (browser) {
+      const savedPreviewId = localStorage.getItem(`preview-file-${projectId}`)
+      if (savedPreviewId) {
+        previewFileId = parseInt(savedPreviewId, 10)
+      }
+    }
+
     loadProject()
     loadFiles()
     loadAssets()
@@ -311,7 +355,13 @@
     if (yjsConnection) destroyYjsConnection(yjsConnection)
     if (projectSync) projectSync.destroy()
     if (notificationTimeout) clearTimeout(notificationTimeout)
+    resetAssetCache()
   })
+
+  // Clean up deleted assets when assets array changes
+  $: if (compiler && assets) {
+    cleanupDeletedAssets(compiler, assets)
+  }
 
   $: selectedYtext = selectedFile && yjsConnection?.ydoc
     ? getFileText(yjsConnection.ydoc, selectedFile.id)
@@ -377,17 +427,20 @@
   }
 
   // Typst compiler and renderer
+  let typst: any = null;
   let compiler: any = null;
   let renderer: any = null;
   let diagnostics: Diagnostic[] = [];
   let previewHtml: string = "";
+  let compiledResult: any = null;
+  let compiledMainPath: string = "";
 
   let isLoading: boolean = true;
   let version: string = "0.7.0-rc1";
   let isCompiling = false;
   let pendingCompile = false;
 
-  const triggerCompile = debounce(() => update(), 400);
+  const triggerCompile = debounce(() => update(), 50);
 
   function debounce<T extends (...args: any[]) => void>(fn: T, delay = 400) {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -398,31 +451,45 @@
   }
 
   onMount(async () => {
+    // Check if already loaded
+    if ((window as any).$typst) {
+      typst = (window as any).$typst;
+      compiler = await typst.getCompiler();
+      renderer = await typst.getRenderer();
+      isLoading = false;
+      return;
+    }
+
+    // Only load script if not already present
+    if (document.querySelector(`script[src*="typst.ts@${version}"]`)) {
+      return;
+    }
+
     const script = document.createElement("script");
     script.type = "module";
     script.src = `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts@${version}/dist/esm/contrib/all-in-one-lite.bundle.js`;
 
     script.onload = async () => {
-      const $typst = (window as any).$typst;
+      typst = (window as any).$typst;
 
-      $typst.setCompilerInitOptions({
+      typst.setCompilerInitOptions({
         getModule: () =>
           `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${version}/pkg/typst_ts_web_compiler_bg.wasm`,
       });
 
-      $typst.setRendererInitOptions({
+      typst.setRendererInitOptions({
         getModule: () =>
           `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@${version}/pkg/typst_ts_renderer_bg.wasm`,
       });
 
-      compiler = await $typst.getCompiler();
-      renderer = await $typst.getRenderer();
+      compiler = await typst.getCompiler();
+      renderer = await typst.getRenderer();
       isLoading = false;
     };
     document.head.appendChild(script);
   });
 
-  $: if (!isLoading && compiler && renderer && selectedFile) {
+  $: if (!isLoading && compiler && renderer && selectedFile && previewFileId !== null) {
     triggerCompile();
   }
 
@@ -448,10 +515,20 @@
         };
       });
 
-      addFileToCompiler(compiler, filesWithContent);
-      addFileToCompiler(compiler, assets);
+      await addFileToCompiler(compiler, filesWithContent, Number(projectId));
+      await addFileToCompiler(compiler, assets, Number(projectId));
 
-      const mainFilePath = selectedFile.path || "main.typ";
+      // Use preview file if set, otherwise default to main.typ or first .typ file
+      const previewFile = previewFileId
+        ? filesWithContent.find(f => f.id === previewFileId)
+        : filesWithContent.find(f => f.name === 'main.typ') || filesWithContent.find(f => f.name.endsWith('.typ'));
+
+      if (!previewFile) {
+        console.warn("No .typ file found for preview");
+        return;
+      }
+
+      const mainFilePath = previewFile.path;
       const normalizedMainPath = mainFilePath.startsWith("/")
         ? mainFilePath
         : `/${mainFilePath}`;
@@ -470,12 +547,25 @@
       }
 
       if (result.result && !result.hasError) {
+        compiledResult = result.result;
+        compiledMainPath = normalizedMainPath;
         previewHtml = await renderTypst(renderer, result.result);
       } else {
-        previewHtml = "";
+        // Keep the last rendered state on error
+        console.error("Compilation failed:", {
+          hasError: result.hasError,
+          diagnostics: diagnostics,
+          mainFile: normalizedMainPath
+        });
       }
     } catch (error) {
-      console.error("Failed to compile Typst", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        mainFile: selectedFile?.path,
+        filesCount: files.length,
+        assetsCount: assets.length
+      });
     } finally {
       isCompiling = false;
       if (pendingCompile) {
@@ -592,6 +682,7 @@
 
       <PreviewPane
         {previewHtml}
+        onDownloadPDF={handleDownloadPDF}
       />
     </div>
 

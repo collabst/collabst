@@ -5,6 +5,7 @@
   import Download from "@lucide/svelte/icons/download";
 
   export let previewHtml: string = "";
+  export let onDownloadPDF: (() => void) | null = null;
 
   function zoomIn() {
     const previewArea = document.querySelector(
@@ -37,7 +38,9 @@
   }
 
   function downloadPDF() {
-    console.log("Download PDF clicked");
+    if (onDownloadPDF) {
+      onDownloadPDF();
+    }
   }
 </script>
 
