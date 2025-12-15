@@ -10,7 +10,7 @@ from app.models.project import Project
 from app.models.file import File
 from app.models.asset import Asset
 from app.schemas.file import FileCreate, FileUpdate, File as FileSchema
-from app.schemas.asset import Asset as AssetSchema
+from app.schemas.asset import Asset as AssetSchema, AssetUpdate
 from app.services.storage import storage_service
 from app.services.permissions import check_project_access
 from app.websocket.project_ws import project_manager
@@ -88,6 +88,25 @@ async def update_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
         )
+
+    # If renaming, check for duplicate names and update path
+    if file_in.name and file_in.name != file.name:
+        # Check if another file with this name exists in the project
+        duplicate_check = await db.execute(
+            select(File).where(
+                File.project_id == project_id,
+                File.name == file_in.name,
+                File.id != file_id
+            )
+        )
+        if duplicate_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"A file named '{file_in.name}' already exists in this project"
+            )
+        
+        # Update path to match new name
+        file_in.path = f"/{file_in.name}"
 
     for field, value in file_in.model_dump(exclude_unset=True).items():
         setattr(file, field, value)
@@ -249,6 +268,70 @@ async def get_asset_url(
         "filename": asset.filename,
         "mime_type": asset.mime_type,
     }
+
+
+@router.put("/{project_id}/assets/{asset_id}", response_model=AssetSchema)
+async def update_asset(
+    project_id: int,
+    asset_id: int,
+    asset_in: AssetUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update an asset (e.g., rename)"""
+    # Check if user has access (owner or collaborator)
+    await check_project_access(db, project_id, current_user.id)
+
+    result = await db.execute(
+        select(Asset).where(Asset.id == asset_id, Asset.project_id == project_id)
+    )
+    asset = result.scalar_one_or_none()
+
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found"
+        )
+
+    # If renaming, check for duplicate filenames
+    if asset_in.filename and asset_in.filename != asset.filename:
+        duplicate_check = await db.execute(
+            select(Asset).where(
+                Asset.project_id == project_id,
+                Asset.filename == asset_in.filename,
+                Asset.id != asset_id
+            )
+        )
+        if duplicate_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"An asset named '{asset_in.filename}' already exists in this project"
+            )
+
+    for field, value in asset_in.model_dump(exclude_unset=True).items():
+        setattr(asset, field, value)
+
+    await db.commit()
+    await db.refresh(asset)
+
+    # Broadcast asset update to all users in the project
+    await project_manager.broadcast_to_project(
+        project_id,
+        {
+            "type": "asset_updated",
+            "asset": {
+                "id": asset.id,
+                "project_id": asset.project_id,
+                "filename": asset.filename,
+                "storage_path": asset.storage_path,
+                "mime_type": asset.mime_type,
+                "size": asset.size,
+                "created_at": asset.created_at.isoformat(),
+                "updated_at": asset.updated_at.isoformat(),
+            }
+        }
+    )
+
+    return asset
 
 
 @router.delete("/{project_id}/assets/{asset_id}")

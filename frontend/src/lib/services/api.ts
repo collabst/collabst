@@ -223,8 +223,13 @@ export const filesApi = {
     return data
   },
 
-  update: async (projectId: number, fileId: number, content: string): Promise<File> => {
-    const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, { content })
+  update: async (projectId: number, fileId: number, updates: { name?: string; content?: string; path?: string }): Promise<File> => {
+    const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, updates)
+    return data
+  },
+
+  rename: async (projectId: number, fileId: number, name: string): Promise<File> => {
+    const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, { name })
     return data
   },
 
@@ -252,6 +257,11 @@ export const assetsApi = {
 
   getUrl: async (projectId: number, assetId: number): Promise<{ url: string; filename: string; mime_type: string }> => {
     const { data } = await api.get(`/projects/${projectId}/assets/${assetId}/url`)
+    return data
+  },
+
+  rename: async (projectId: number, assetId: number, filename: string): Promise<Asset> => {
+    const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, { filename })
     return data
   },
 

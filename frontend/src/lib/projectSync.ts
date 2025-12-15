@@ -1,4 +1,4 @@
-import type { File as ProjectFile, Asset } from '$lib/types'
+import type { File as ProjectFile, Asset, Project } from '$lib/types'
 import { getWsUrl } from '$lib/utils/urls'
 
 const WS_URL = getWsUrl()
@@ -8,7 +8,9 @@ export interface ProjectSyncCallbacks {
   onFileUpdated: (file: ProjectFile) => void
   onFileDeleted: (fileId: number) => void
   onAssetCreated: (asset: Asset) => void
+  onAssetUpdated: (asset: Asset) => void
   onAssetDeleted: (assetId: number) => void
+  onProjectUpdated: (project: Project) => void
 }
 
 export function createProjectSync(projectId: number, callbacks: ProjectSyncCallbacks) {
@@ -52,8 +54,14 @@ export function createProjectSync(projectId: number, callbacks: ProjectSyncCallb
           case 'asset_created':
             callbacks.onAssetCreated(message.asset)
             break
+          case 'asset_updated':
+            callbacks.onAssetUpdated(message.asset)
+            break
           case 'asset_deleted':
             callbacks.onAssetDeleted(message.asset_id)
+            break
+          case 'project_updated':
+            callbacks.onProjectUpdated(message.project)
             break
           case 'pong':
             break

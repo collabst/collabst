@@ -17,7 +17,13 @@
   export let onSelect: () => void
   export let onSetPreview: (() => void) | undefined = undefined
   export let onDelete: (() => void) | null = null
+  export let onRename: ((newName: string) => void) | null = null
   export let usersViewing: { name: string; color: string }[] = []
+
+  let isEditing = false
+  let editingName = ''
+  let inputElement: HTMLInputElement
+  let isSubmitting = false
 
   function getFileIconComponent(item: ProjectFile | Asset) {
     // Check if it's an asset
@@ -61,6 +67,56 @@
     const name = item.name.toLowerCase()
     return name.endsWith('.typ')
   }
+
+  function handleDoubleClick() {
+    if (onRename) {
+      isEditing = true
+      editingName = getFileName(item)
+      setTimeout(() => {
+        if (inputElement) {
+          inputElement.focus()
+          // Select only the filename without extension
+          const lastDotIndex = editingName.lastIndexOf('.')
+          if (lastDotIndex > 0) {
+            // Select from start to before the extension
+            inputElement.setSelectionRange(0, lastDotIndex)
+          } else {
+            // No extension, select all
+            inputElement.select()
+          }
+        }
+      }, 0)
+    }
+  }
+
+  function handleRenameSubmit() {
+    if (isSubmitting) return
+    isSubmitting = true
+    
+    if (onRename && editingName.trim() && editingName !== getFileName(item)) {
+      onRename(editingName.trim())
+    }
+    isEditing = false
+    setTimeout(() => {
+      isSubmitting = false
+    }, 100)
+  }
+
+  function handleRenameCancel() {
+    isEditing = false
+    editingName = ''
+    isSubmitting = false
+  }
+
+  function handleRenameKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleRenameSubmit()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      handleRenameCancel()
+    }
+  }
 </script>
 
 <div
@@ -68,6 +124,7 @@
   class:active={isSelected}
   class:asset={isAsset(item)}
   on:click={onSelect}
+  on:dblclick={handleDoubleClick}
   role="button"
   tabindex="0"
   on:keydown={(e) => e.key === 'Enter' && onSelect()}
@@ -77,7 +134,19 @@
   </span>
   <div class="info">
     <div class="name-row">
-      <span class="name">{getFileName(item)}</span>
+      {#if isEditing}
+        <input
+          bind:this={inputElement}
+          bind:value={editingName}
+          on:blur={handleRenameSubmit}
+          on:keydown={handleRenameKeydown}
+          class="name-input"
+          type="text"
+          on:click|stopPropagation
+        />
+      {:else}
+        <span class="name">{getFileName(item)}</span>
+      {/if}
       {#if usersViewing.length > 0}
         <div class="user-indicators">
           {#each usersViewing as user}
@@ -167,6 +236,22 @@
     text-overflow: ellipsis;
     flex: 1;
     min-width: 0;
+  }
+
+  .name-input {
+    flex: 1;
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .name-input:focus {
+    border-color: var(--primary);
   }
 
   .user-indicators {

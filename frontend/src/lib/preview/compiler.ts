@@ -60,15 +60,24 @@ export async function addFileToCompiler(
   }
 }
 
-// Remove assets that are no longer in the project
+// Remove assets that are no longer in the project or have been renamed
 export function cleanupDeletedAssets(compiler: any, currentAssets: Asset[]) {
-  const currentAssetIds = new Set(currentAssets.map(a => a.id));
+  const currentAssetsMap = new Map(currentAssets.map(a => [a.id, a]));
 
   for (const [assetId, assetInfo] of loadedAssets) {
-    if (!currentAssetIds.has(assetId)) {
+    const currentAsset = currentAssetsMap.get(assetId);
+    
+    if (!currentAsset) {
+      // Asset was deleted
       console.log("Removing deleted asset:", assetInfo.filename);
       const path = "/" + assetInfo.filename;
       compiler.unmapShadow(path);
+      loadedAssets.delete(assetId);
+    } else if (currentAsset.filename !== assetInfo.filename) {
+      // Asset was renamed - remove old path, it will be re-added with new name
+      console.log("Removing renamed asset old path:", assetInfo.filename, "->", currentAsset.filename);
+      const oldPath = "/" + assetInfo.filename;
+      compiler.unmapShadow(oldPath);
       loadedAssets.delete(assetId);
     }
   }
