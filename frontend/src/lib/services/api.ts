@@ -228,11 +228,6 @@ export const filesApi = {
     return data
   },
 
-  rename: async (projectId: number, fileId: number, name: string): Promise<File> => {
-    const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, { name })
-    return data
-  },
-
   delete: async (projectId: number, fileId: number): Promise<void> => {
     await api.delete(`/projects/${projectId}/files/${fileId}`)
   },
@@ -260,8 +255,8 @@ export const assetsApi = {
     return data
   },
 
-  rename: async (projectId: number, assetId: number, filename: string): Promise<Asset> => {
-    const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, { filename })
+  update: async (projectId: number, assetId: number, updates: { filename?: string }): Promise<Asset> => {
+    const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, updates)
     return data
   },
 
