@@ -56,6 +56,10 @@
   --color-info: #3b82f6;
   --color-info-dark: #2563eb;
   
+  --color-hint-light: #dbeafe;
+  --color-hint: #3b82f6;
+  --color-hint-dark: #2563eb;
+  
   /* Notification Colors */
   --color-info-bg: #1e3a8a;
   --color-info-text: #93c5fd;

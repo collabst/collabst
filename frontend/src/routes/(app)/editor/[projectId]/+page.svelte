@@ -27,6 +27,7 @@
   import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
   import { convertDiagnosticsToLint } from '$lib/preview/diagnostics'
   import { setDiagnostics } from '@codemirror/lint'
+  import IssuesPanel from '$lib/components/editor/IssuesPanel.svelte'
 
   let projectId = $derived($page.params.projectId)
 
@@ -950,7 +951,7 @@
         </div>
       {:else if activePanel === 'issues'}
         <div style="width: {leftPanelWidth}px;">
-          <PlaceholderPanel title="Issues and Suggestions" />
+          <IssuesPanel {diagnostics} />
         </div>
       {:else if activePanel === 'comments'}
         <div style="width: {leftPanelWidth}px;">
