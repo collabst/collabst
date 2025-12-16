@@ -102,6 +102,15 @@
     return codeEditor ? codeEditor.canRedo() : false
   }
 
+  // Expose the underlying CodeMirror EditorView to parent components
+  export function getEditorView() {
+    try {
+      return codeEditor?.getView?.() ?? null
+    } catch (e) {
+      return null
+    }
+  }
+
   // Update comments whenever the version changes or file changes
   $effect(() => {
     if (codeEditor && selectedFile && (commentsVersion >= 0)) {

@@ -22,18 +22,18 @@ export function parseRange(rangeStr: string | undefined): DiagnosticRange | unde
 
 export function convertDiagnosticsToLint(
   diagnostics: Diagnostic[],
-  editorView: EditorView | null,
+  editorView: EditorView,
   currentFileName: string
 ): LintDiagnostic[] {
   const fileDiagnostics = diagnostics.filter(
-    (d) => !d.path || d.path === "/" + currentFileName
+    (d) => !d.path || d.path === currentFileName
   );
 
   return fileDiagnostics.map((d) => {
     let from = 0;
     let to = 0;
 
-    if (d.range && editorView) {
+    if (d.range) {
       const doc = editorView.state.doc;
       const startLine = Math.max(1, d.range.start.line);
       const endLine = Math.max(1, d.range.end.line);
@@ -42,8 +42,8 @@ export function convertDiagnosticsToLint(
         const startLineObj = doc.line(startLine);
         const endLineObj = doc.line(endLine);
 
-        from = startLineObj.from + Math.max(0, d.range.start.character + 1);
-        to = endLineObj.from + Math.max(0, d.range.end.character + 1);
+        from = startLineObj.from + Math.max(0, d.range.start.character);
+        to = endLineObj.from + Math.max(0, d.range.end.character);
 
         from = Math.min(from, doc.length);
         to = Math.min(Math.max(from, to), doc.length);

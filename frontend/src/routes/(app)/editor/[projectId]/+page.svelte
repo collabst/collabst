@@ -25,6 +25,8 @@
   import { addFileToCompiler, compileTypst, renderTypst, cleanupDeletedAssets, resetAssetCache } from "$lib/preview/compiler";
   import { parseRange } from '$lib/preview/diagnostics'
   import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
+  import { convertDiagnosticsToLint } from '$lib/preview/diagnostics'
+  import { setDiagnostics } from '@codemirror/lint'
 
   let projectId = $derived($page.params.projectId)
 
@@ -75,6 +77,7 @@
   let isResizingRight = false
   let resizeStartX = 0
   let resizeStartWidth = 0
+  let editorPane: any = null
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
@@ -796,6 +799,8 @@
         diagnostics = [];
       }
 
+      updateLinter();
+
       if (result.result && !result.hasError) {
         compiledResult = result.result;
         compiledMainPath = normalizedMainPath;
@@ -822,6 +827,15 @@
         pendingCompile = false;
         update();
       }
+    }
+  }
+
+  function updateLinter() {
+    const editorView = editorPane?.getEditorView?.()
+    if (editorView) {
+      const lintDiagnostics = convertDiagnosticsToLint(diagnostics, editorView, selectedFile?.path || '')
+      const transaction = setDiagnostics(editorView.state, lintDiagnostics)
+      editorView.dispatch(transaction)
     }
   }
 </script>
@@ -955,7 +969,6 @@
       {/if}
 
       <EditorPane
-        bind:this={editorPaneRef}
         {selectedFile}
         {selectedAsset}
         ytext={selectedYtext}
