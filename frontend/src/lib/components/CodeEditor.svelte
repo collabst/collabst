@@ -3,14 +3,13 @@
   import { EditorView, basicSetup } from 'codemirror'
   import { EditorState, Compartment, Transaction } from '@codemirror/state'
   import { lintGutter, setDiagnostics } from '@codemirror/lint'
-  import { yCollab } from 'y-codemirror.next'
+  import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
   import { greyDark, greyLight } from '$lib/codemirror/greyTheme'
   import { keymap } from '@codemirror/view'
   import * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
   import { commentsExtension, CommentRangeTracker } from '$lib/codemirror/comments'
   import { theme as themeStore } from '$lib/stores/theme'
-  import { convertDiagnosticsToLint } from '$lib/preview/diagnostics'
   import type { Diagnostic } from '$lib/types'
 
   export let ytext: Y.Text
