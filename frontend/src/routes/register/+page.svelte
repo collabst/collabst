@@ -47,8 +47,9 @@
 
     <form on:submit={handleSubmit}>
       <div class="field">
-        <label>Email</label>
+        <label for="register-email">Email</label>
         <input
+          id="register-email"
           type="email"
           bind:value={email}
           required
@@ -57,8 +58,9 @@
       </div>
 
       <div class="field">
-        <label>Username</label>
+        <label for="register-username">Username</label>
         <input
+          id="register-username"
           type="text"
           bind:value={username}
           required
@@ -67,8 +69,9 @@
       </div>
 
       <div class="field">
-        <label>Password</label>
+        <label for="register-password">Password</label>
         <input
+          id="register-password"
           type="password"
           bind:value={password}
           required
@@ -77,8 +80,9 @@
       </div>
 
       <div class="field">
-        <label>Confirm Password</label>
+        <label for="register-confirm-password">Confirm Password</label>
         <input
+          id="register-confirm-password"
           type="password"
           bind:value={confirmPassword}
           required
