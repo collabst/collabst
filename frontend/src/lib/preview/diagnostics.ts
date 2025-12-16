@@ -35,8 +35,8 @@ export function convertDiagnosticsToLint(
 
     if (d.range) {
       const doc = editorView.state.doc;
-      const startLine = Math.max(1, d.range.start.line);
-      const endLine = Math.max(1, d.range.end.line);
+      const startLine = Math.max(1, d.range.start.line + 1);
+      const endLine = Math.max(1, d.range.end.line + 1);
 
       if (startLine <= doc.lines && endLine <= doc.lines) {
         const startLineObj = doc.line(startLine);
