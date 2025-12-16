@@ -1,0 +1,42 @@
+name: Deploy to self-hosted runner
+
+on:
+  push:
+    branches: [ dev ]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux]
+    environment: production
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Copy .env from runner
+        run: |
+          if [ -f /etc/runner-configs/.env ]; then
+            cp /etc/runner-configs/.env .env
+          else
+            echo ".env file not found in /etc/runner-configs/"
+            exit 1
+          fi
+
+      - name: Deploy with Docker Compose
+        run: |
+          if [ -f docker-compose.dev.yml ]; then
+            docker compose -f docker-compose.dev.yml down
+            docker compose -f docker-compose.dev.yml --env-file .env up -d --build
+          else
+            echo "No docker-compose.yml found, skipping backend deployment."
+            exit 1
+          fi
+
+
+
