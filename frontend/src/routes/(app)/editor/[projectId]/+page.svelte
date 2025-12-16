@@ -8,7 +8,7 @@
   import { createProjectSync } from '$lib/projectSync'
   import { auth } from '$lib/stores/auth'
   import { notifications } from '$lib/stores/notifications'
-  import { ThemeToggle, ProfileMenu, IconButton, Tooltip } from '$lib/components/ui'
+  import { ThemeToggle, ProfileMenu, IconButton, Tooltip, MenuBar } from '$lib/components/ui'
   import Home from '@lucide/svelte/icons/home'
   import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
   import FileTree from '$lib/components/editor/FileTree.svelte'
@@ -42,6 +42,18 @@
   let isEditingProjectName = false
   let editingProjectName = ''
   let projectNameInput: HTMLInputElement
+  
+  // Panel widths for resizable panels
+  let leftPanelWidth = 250 // Default width in pixels
+  let editorPanelWidth = 0 // Will be calculated
+  let previewPanelWidth = 0 // Will be calculated
+  const MIN_PANEL_WIDTH = 200 // Minimum width for any panel
+  const ACTIVITY_BAR_WIDTH = 56 // Fixed activity bar width
+  
+  let isResizingLeft = false
+  let isResizingRight = false
+  let resizeStartX = 0
+  let resizeStartWidth = 0
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
@@ -50,6 +62,56 @@
     } else {
       activePanel = activityId
     }
+  }
+  
+  function handleLeftResizeStart(e: MouseEvent) {
+    if (!activePanel) return
+    isResizingLeft = true
+    resizeStartX = e.clientX
+    resizeStartWidth = leftPanelWidth
+    e.preventDefault()
+  }
+  
+  function handleRightResizeStart(e: MouseEvent) {
+    isResizingRight = true
+    resizeStartX = e.clientX
+    resizeStartWidth = previewPanelWidth
+    e.preventDefault()
+  }
+  
+  function handleMouseMove(e: MouseEvent) {
+    if (isResizingLeft) {
+      const delta = e.clientX - resizeStartX
+      const newWidth = resizeStartWidth + delta
+      
+      // Calculate available space: total width - activity bar - left panel - preview panel - resize handles - right padding
+      const totalWidth = window.innerWidth
+      const usedWidth = ACTIVITY_BAR_WIDTH + newWidth + previewPanelWidth + 12 + 12 + 16 // 12px per resize handle + 16px right padding
+      const editorWidth = totalWidth - usedWidth
+      
+      // Only allow resize if editor maintains minimum width
+      if (editorWidth >= MIN_PANEL_WIDTH) {
+        leftPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth)
+      }
+    } else if (isResizingRight) {
+      const delta = resizeStartX - e.clientX // Inverted for right panel
+      const newWidth = resizeStartWidth + delta
+      
+      // Calculate available space: total width - activity bar - left panel - preview panel - resize handles - right padding
+      const totalWidth = window.innerWidth
+      const usedWidth = ACTIVITY_BAR_WIDTH + leftPanelWidth + newWidth + 12 + 12 + 16 // 12px per resize handle + 16px right padding
+      const editorWidth = totalWidth - usedWidth
+      
+      // Only allow resize if editor maintains minimum width
+      if (editorWidth >= MIN_PANEL_WIDTH) {
+        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth)
+      }
+    }
+  }
+  
+  function handleMouseUp() {
+    isResizingLeft = false
+    isResizingRight = false
   }
 
   let yjsConnection: YjsConnection | null = null
@@ -371,6 +433,19 @@
       if (savedPreviewId) {
         previewFileId = parseInt(savedPreviewId, 10)
       }
+      
+      // Initialize panel widths based on current window size
+      const windowWidth = window.innerWidth
+      const availableWidth = windowWidth - ACTIVITY_BAR_WIDTH - 16 // 16px for padding
+      
+      if (activePanel) {
+        // When left panel is open: split remaining space between editor and preview
+        const remainingWidth = availableWidth - leftPanelWidth - 24 // 24px for resize handles
+        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, remainingWidth * 0.4) // 40% for preview
+      } else {
+        // When left panel is closed: split between editor and preview
+        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, availableWidth * 0.4)
+      }
     }
 
     loadProject()
@@ -409,10 +484,14 @@
     
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
     }
   })
 
@@ -670,6 +749,28 @@
         {:else}
           <h1 on:click={handleProjectNameClick}>{project.name}</h1>
         {/if}
+        <MenuBar
+          onNewFile={() => showCreateFileModal = true}
+          onUploadFile={() => showUploadAssetModal = true}
+          onRenameFile={() => console.log('Rename file - to be implemented')}
+          onExportPDF={handleDownloadPDF}
+          onExportPNG={() => console.log('Export PNG - to be implemented')}
+          onExportSVG={() => console.log('Export SVG - to be implemented')}
+          onUndo={() => console.log('Undo - to be implemented')}
+          onRedo={() => console.log('Redo - to be implemented')}
+          onSearchReplace={() => console.log('Search and replace - to be implemented')}
+          onSelectAll={() => console.log('Select all - to be implemented')}
+          onToggleLineComment={() => console.log('Toggle line comment - to be implemented')}
+          onToggleBlockComment={() => console.log('Toggle block comment - to be implemented')}
+          onAddComment={() => console.log('Add comment - to be implemented')}
+          onShowToolbar={() => console.log('Show toolbar - to be implemented')}
+          onScrollOnType={() => console.log('Scroll on type - to be implemented')}
+          onWrapLines={() => console.log('Wrap lines - to be implemented')}
+          onThemeLight={() => console.log('Theme Light - to be implemented')}
+          onThemeDark={() => console.log('Theme Dark - to be implemented')}
+          onThemeSystem={() => console.log('Theme System - to be implemented')}
+          onNegativePreview={() => console.log('Negative preview - to be implemented')}
+        />
       </div>
 
       {#if selectedAsset}
@@ -694,37 +795,49 @@
       <ActivityBar {activePanel} onActivityClick={handleActivityClick} />
       
       {#if activePanel === 'files'}
-        <FileTree
-          {files}
-          {assets}
-          selectedItem={selectedItem}
-          {previewFileId}
-          onSelectFile={handleSelectFile}
-          onSelectAsset={handleSelectAsset}
-          onSetPreviewFile={handleSetPreviewFile}
-          onDeleteFile={handleDeleteFile}
-          onDeleteAsset={handleDeleteAsset}
-          onRenameFile={handleRenameFile}
-          onRenameAsset={handleRenameAsset}
-          onCreateFile={() => showCreateFileModal = true}
-          onCreateFolder={() => console.log('Create folder - to be implemented')}
-          onUploadAsset={() => showUploadAssetModal = true}
-          provider={yjsConnection?.provider || null}
-        />
+        <div style="width: {leftPanelWidth}px;">
+          <FileTree
+            {files}
+            {assets}
+            selectedItem={selectedItem}
+            {previewFileId}
+            onSelectFile={handleSelectFile}
+            onSelectAsset={handleSelectAsset}
+            onSetPreviewFile={handleSetPreviewFile}
+            onDeleteFile={handleDeleteFile}
+            onDeleteAsset={handleDeleteAsset}
+            onRenameFile={handleRenameFile}
+            onRenameAsset={handleRenameAsset}
+            onCreateFile={() => showCreateFileModal = true}
+            onCreateFolder={() => console.log('Create folder - to be implemented')}
+            onUploadAsset={() => showUploadAssetModal = true}
+            provider={yjsConnection?.provider || null}
+          />
+        </div>
       {:else if activePanel === 'search'}
-        <PlaceholderPanel title="Search" />
+        <div style="width: {leftPanelWidth}px;">
+          <PlaceholderPanel title="Search" />
+        </div>
       {:else if activePanel === 'outline'}
-        <PlaceholderPanel title="Outline" />
+        <div style="width: {leftPanelWidth}px;">
+          <PlaceholderPanel title="Outline" />
+        </div>
       {:else if activePanel === 'issues'}
-        <PlaceholderPanel title="Issues and Suggestions" />
+        <div style="width: {leftPanelWidth}px;">
+          <PlaceholderPanel title="Issues and Suggestions" />
+        </div>
       {:else if activePanel === 'comments'}
-        <PlaceholderPanel title="Comments" />
+        <div style="width: {leftPanelWidth}px;">
+          <PlaceholderPanel title="Comments" />
+        </div>
       {:else if activePanel === 'settings'}
-        <PlaceholderPanel title="Settings" />
+        <div style="width: {leftPanelWidth}px;">
+          <PlaceholderPanel title="Settings" />
+        </div>
       {/if}
 
       {#if activePanel}
-        <div class="resize-handle">
+        <div class="resize-handle" on:mousedown={handleLeftResizeStart}>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </div>
       {/if}
@@ -739,20 +852,20 @@
         ydoc={yjsConnection?.ydoc || null}
         currentUserId={$auth.user?.id || 0}
         currentUserName={$auth.user?.username || 'Unknown'}
-        currentUserColor={yjsConnection?.awareness?.getLocalState()?.color || '#3b82f6'}
+        currentUserColor={yjsConnection?.provider?.awareness?.getLocalState()?.color || '#3b82f6'}
         {diagnostics}
       />
 
-      {#if activePanel}
-        <div class="resize-handle">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-        </div>
-      {/if}
+      <div class="resize-handle" on:mousedown={handleRightResizeStart}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      </div>
 
-      <PreviewPane
-        {previewHtml}
-        onDownloadPDF={handleDownloadPDF}
-      />
+      <div style="width: {previewPanelWidth}px; flex: 0 0 auto;">
+        <PreviewPane
+          {previewHtml}
+          onDownloadPDF={handleDownloadPDF}
+        />
+      </div>
     </div>
 
     <CreateFileModal
@@ -786,7 +899,7 @@
 
   header {
     background: var(--bg-top-bar);
-    padding: 0.4rem 1rem;
+    padding: 0.3rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -796,7 +909,7 @@
   .header-left {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.3rem;
     margin-left: 45px;
   }
 
@@ -836,7 +949,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-fast);
   }
 
   .home-btn:hover {
@@ -848,37 +960,77 @@
     font-weight: 600;
     margin: 0;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 4px 8px 4px 0;
     border-radius: 4px;
-    transition: background 0.15s;
+    border: 1px solid transparent;
+    min-width: fit-content;
+    box-sizing: border-box;
   }
 
   h1:hover {
-    background: var(--surface-hover);
+    border-color: var(--border);
   }
 
   .project-name-input {
     font-size: 16px;
     font-weight: 600;
     color: var(--text-primary);
-    background: var(--surface);
+    background: var(--surface-hover);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 4px 8px;
+    padding: 4px 8px 4px 0;
     font-family: inherit;
-    outline: none;
-    max-width: 400px;
+    min-width: 100px;
+    max-width: 133px;
+    box-sizing: border-box;
   }
 
   .project-name-input:focus {
     border-color: var(--primary);
+    background: var(--surface-hover);
   }
 
   .main {
     flex: 1;
     display: flex;
     overflow: hidden;
-    padding-right: 16px;
+    padding-right: 12px;
+  }
+  
+  .main > :global(.activity-bar) {
+    flex-shrink: 0;
+    width: 56px;
+  }
+  
+  .main > :global(.file-tree),
+  .main > :global(.placeholder-panel) {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .main > div:has(> :global(.file-tree)),
+  .main > div:has(> :global(.placeholder-panel)) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+    min-width: 200px;
+  }
+  
+  .main > :global(.editor-pane) {
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .main > :global(.preview-pane) {
+    min-width: 200px;
+    height: 100%;
+    width: 100%;
+  }
+  
+  .main > div:has(> :global(.preview-pane)) {
+    height: 100%;
+    overflow: visible;
   }
 
   .resize-handle {
@@ -891,6 +1043,7 @@
     user-select: none;
     overflow: visible;
     opacity: 0.4;
+    transition: opacity 0.15s, color 0.15s;
   }
 
   .resize-handle svg {
@@ -900,6 +1053,11 @@
   .resize-handle:hover {
     color: var(--text-secondary);
     opacity: 0.8;
+  }
+  
+  .resize-handle:active {
+    color: var(--primary);
+    opacity: 1;
   }
 
   .loading {

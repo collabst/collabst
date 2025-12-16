@@ -19,7 +19,7 @@
   let showTooltip = $state(false)
   let timeoutId: number | null = null
   let wrapperEl: HTMLDivElement | null = null
-  let tooltipEl: HTMLDivElement | null = null
+  let tooltipEl = $state<HTMLDivElement | null>(null)
   let tooltipStyle = $state('')
 
   function updateTooltipPosition() {
@@ -27,6 +27,8 @@
     
     const wrapperRect = wrapperEl.getBoundingClientRect()
     const tooltipRect = tooltipEl.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
     
     let top = 0
     let left = 0
@@ -48,6 +50,22 @@
         top = wrapperRect.top + wrapperRect.height / 2 - tooltipRect.height / 2
         left = wrapperRect.right + 8
         break
+    }
+    
+    // Adjust horizontal position to keep tooltip on screen
+    if (left + tooltipRect.width > viewportWidth - 8) {
+      left = viewportWidth - tooltipRect.width - 8
+    }
+    if (left < 8) {
+      left = 8
+    }
+    
+    // Adjust vertical position to keep tooltip on screen
+    if (top + tooltipRect.height > viewportHeight - 8) {
+      top = viewportHeight - tooltipRect.height - 8
+    }
+    if (top < 8) {
+      top = 8
     }
     
     tooltipStyle = `top: ${top}px; left: ${left}px;`
@@ -77,12 +95,13 @@
 <div 
   bind:this={wrapperEl}
   class="tooltip-wrapper"
+  role="presentation"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
-  onclick={handleClick}
-  role="tooltip"
 >
-  {@render children?.()}
+  <span onclick={handleClick} onkeydown={handleClick} role="button" tabindex="0" style="display: contents;">
+    {@render children?.()}
+  </span>
   
   {#if showTooltip && text}
     <div bind:this={tooltipEl} class="tooltip" style={tooltipStyle}>

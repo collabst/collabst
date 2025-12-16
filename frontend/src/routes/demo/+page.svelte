@@ -10,12 +10,7 @@
   import Eye from '@lucide/svelte/icons/eye'
   import Play from '@lucide/svelte/icons/play'
   import Pause from '@lucide/svelte/icons/pause'
-  import ChevronRight from '@lucide/svelte/icons/chevron-right'
-  import Home from '@lucide/svelte/icons/home'
-  import User from '@lucide/svelte/icons/user'
-  import Search from '@lucide/svelte/icons/search'
   import Check from '@lucide/svelte/icons/check'
-  import X from '@lucide/svelte/icons/x'
   
   let inputValue = $state('')
   let modalOpen = $state(false)
