@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { ComponentType } from 'svelte'
+  import type { Component } from 'svelte'
   import Icon from './Icon.svelte'
   
   type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success'
   type ButtonSize = 'sm' | 'md' | 'lg'
   
   interface IconButtonProps {
-    icon: ComponentType
+    icon: Component
     variant?: ButtonVariant
     size?: ButtonSize
     disabled?: boolean
@@ -53,7 +53,6 @@
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
     flex-shrink: 0;
   }
   

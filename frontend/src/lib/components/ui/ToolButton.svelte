@@ -43,7 +43,6 @@
     border: 1px solid var(--border-primary);
     color: var(--text-secondary);
     cursor: pointer;
-    transition: all var(--transition-fast);
     user-select: none;
     min-width: 30px;
     height: 30px;

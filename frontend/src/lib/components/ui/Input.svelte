@@ -84,7 +84,6 @@
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-md);
     color: var(--text-primary);
-    transition: all var(--transition-fast);
     width: 100%;
   }
   

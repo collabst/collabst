@@ -67,7 +67,7 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 
 #### Editor Settings ⚙️
 - Project Specific Settings:
-  - [ ] Project name (maybe display in top left corner like in gdoc)
+  - [x] Project name (maybe display in top left corner like in gdoc)
   - [ ] Typst **compiler version** (latest | specific in list)
 - Editor settings:
   - [ ] Editor **font size**
@@ -117,7 +117,8 @@ Furthermore, as stated in the [license](LICENSE), we do not provide any support 
 - [ ] Move preview to cursor location button (could editor+preview scroll be locked together as option ?)
 - [ ] Detach preview as separate window button
 - Zoom options:
-  - [ ] + | - and display cureent amount
-  - [ ] Fixed values (25% 50% 75% 100% 200% 300%)
-  - [ ] Fit to width | height | *page?*
+  - [x] + | -
+  - [x] display current zoom amount
+  - [x] Fixed values (25% 50% 75% 100% 200% 300%)
+  - [x] Fit to width | height | *page?*
 - Zoom control with `ctrl+mouse scroll` or touchpad pinch-to-zoom

@@ -13,7 +13,8 @@
 
 <style>
   .placeholder-panel {
-    width: 280px;
+    width: 100%;
+    height: 100%;
     background: var(--bg-file-panel);
     display: flex;
     flex-direction: column;

@@ -69,7 +69,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
   }
   
   .profile-btn:hover {
@@ -129,7 +128,6 @@
     color: var(--text-primary);
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.2s;
     text-align: left;
   }
   

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { ComponentType } from 'svelte'
+  import type { Component } from 'svelte'
   
   interface IconProps {
-    icon: ComponentType
+    icon: Component
     size?: number | string
     color?: string
     strokeWidth?: number

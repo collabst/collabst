@@ -206,7 +206,6 @@
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
     cursor: pointer;
-    transition: background 0.15s;
     color: var(--text-primary);
   }
 
@@ -299,7 +298,6 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: color 0.15s;
     border-radius: var(--radius-sm);
   }
 
@@ -316,7 +314,6 @@
     cursor: pointer;
     padding: 0 0.25rem;
     opacity: 0;
-    transition: opacity 0.15s;
   }
 
   .file-item:hover .delete-btn {

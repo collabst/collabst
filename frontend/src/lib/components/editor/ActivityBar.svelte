@@ -126,7 +126,6 @@
     border-radius: 6px;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.15s;
     text-decoration: none;
   }
 

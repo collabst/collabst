@@ -1,9 +1,7 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
-  import CommentsPanel from './CommentsPanel.svelte'
   import { IconButton, Tooltip, ToolButton } from '$lib/components/ui'
   import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
-  import Download from '@lucide/svelte/icons/download'
   import Bold from '@lucide/svelte/icons/bold'
   import Italic from '@lucide/svelte/icons/italic'
   import Underline from '@lucide/svelte/icons/underline'
@@ -11,11 +9,12 @@
   import ListOrdered from '@lucide/svelte/icons/list-ordered'
   import Sigma from '@lucide/svelte/icons/sigma'
   import Code from '@lucide/svelte/icons/code'
+  import Redo from '@lucide/svelte/icons/redo'
   import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line'
   import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
   import PencilLine from '@lucide/svelte/icons/pencil-line'
   import Trash2 from '@lucide/svelte/icons/trash-2'
-   import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
+  import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
 
@@ -276,6 +275,11 @@
     // TODO: Insert code block syntax
   }
 
+  function handleScrollPreview() {
+    console.log('Scroll preview')
+    // TODO: Implement scroll preview
+  }
+
   // Action button handlers for non-typst files
   async function handleDownloadFile() {
     if (selectedAsset && onGetAssetUrl) {
@@ -344,35 +348,40 @@
   {:else if isTypstFile && selectedFile}
     <div class="action-toolbar">
       <div class="tool-group">
-        <Tooltip text="Bold">
+        <Tooltip text="Bold" position="bottom">
           <ToolButton icon={Bold} onclick={handleBold} position="first" strokeWidth={3} />
         </Tooltip>
-        <Tooltip text="Italic">
+        <Tooltip text="Italic" position="bottom">
           <ToolButton icon={Italic} onclick={handleItalic} position="middle" />
         </Tooltip>
-        <Tooltip text="Underline">
+        <Tooltip text="Underline" position="bottom">
           <ToolButton icon={Underline} onclick={handleUnderline} position="last" />
         </Tooltip>
       </div>
       <div class="tool-group">
-        <Tooltip text="List">
+        <Tooltip text="List" position="bottom">
           <ToolButton icon={List} onclick={handleList} position="first" />
         </Tooltip>
-        <Tooltip text="Numbered list">
+        <Tooltip text="Numbered list" position="bottom">
           <ToolButton icon={ListOrdered} onclick={handleNumberedList} position="middle" />
         </Tooltip>
-        <Tooltip text="Equation">
+        <Tooltip text="Equation" position="bottom">
           <ToolButton icon={Sigma} onclick={handleEquation} position="middle" />
         </Tooltip>
-        <Tooltip text="Code block">
+        <Tooltip text="Code block" position="bottom">
           <ToolButton icon={Code} onclick={handleCodeBlock} position="last" />
         </Tooltip>
       </div>
       <div class="tool-group">
-        <Tooltip text="Add comment">
+        <Tooltip text="Add comment" position="bottom">
           <ToolButton icon={MessageSquarePlus} onclick={handleAddComment} position="standalone" />
         </Tooltip>
       </div>
+      <div class="scroll-preview">
+      <Tooltip text="Scroll preview to cursor" position="bottom">
+        <ToolButton icon={Redo} onclick={handleScrollPreview} />
+      </Tooltip>
+    </div>
     </div>
   {:else if selectedFile && !isTypstFile}
     <div class="action-toolbar">
@@ -380,19 +389,19 @@
         <Tooltip text="Download">
           <ToolButton icon={ArrowDownToLine} onclick={handleDownloadFile} position="first" />
         </Tooltip>
-        <Tooltip text="Upload">
+        <Tooltip text="Upload" position="bottom">
           <ToolButton icon={ArrowUpFromLine} onclick={handleUploadFile} position="middle" />
         </Tooltip>
-        <Tooltip text="Rename">
+        <Tooltip text="Rename" position="bottom">
           <ToolButton icon={PencilLine} onclick={handleRenameFile} position="middle" />
         </Tooltip>
-        <Tooltip text="Delete">
+        <Tooltip text="Delete" position="bottom">
           <ToolButton icon={Trash2} onclick={handleDeleteFile} position="last" />
         </Tooltip>
       </div>
       {#if isTextEditable}
         <div class="tool-group">
-          <Tooltip text="Add comment">
+          <Tooltip text="Add comment" position="bottom">
             <ToolButton icon={MessageSquarePlus} onclick={handleAddComment} position="standalone" />
           </Tooltip>
         </div>
@@ -501,11 +510,12 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: auto;
   }
 
   .editor-wrapper {
     border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
   }
 
   .asset-preview {
@@ -550,11 +560,18 @@
     gap: 8px;
     align-items: center;
     border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
   }
 
   .tool-group {
     display: flex;
     align-items: center;
+  }
+
+  .scroll-preview {
+    margin-left: auto;
+    max-width: var(--space-4);
+    display: flex;
   }
 
   .editor-container {
@@ -626,7 +643,6 @@
     text-decoration: none;
     display: block;
     margin-top: var(--space-4);
-    transition: color var(--transition-fast);
   }
 
   .download-link:hover {

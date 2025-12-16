@@ -139,7 +139,6 @@
     border-radius: 8px;
     background: var(--surface-secondary);
     cursor: pointer;
-    transition: all var(--transition-fast);
     color: var(--text-secondary);
     gap: 1.5rem;
   }

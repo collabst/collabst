@@ -47,7 +47,6 @@
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
     white-space: nowrap;
     user-select: none;
   }
