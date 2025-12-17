@@ -15,8 +15,6 @@
   export let onSelectFile: (file: ProjectFile) => void
   export let onSelectAsset: (asset: Asset) => void
   export let onSetPreviewFile: (fileId: number) => void
-  export let onDeleteFile: ((fileId: number) => void) | null = null
-  export let onDeleteAsset: ((assetId: number) => void) | null = null
   export let onRenameFile: ((fileId: number, newName: string) => void) | null = null
   export let onRenameAsset: ((assetId: number, newName: string) => void) | null = null
   export let onCreateFile: (() => void) | null = null
@@ -38,17 +36,37 @@
     updateAwareness()
   }
 
+  let fileTreeItems: any[] = []
+  
+  function handleTriggerRename() {
+    // Find the selected item and trigger its rename
+    const selectedElement = document.querySelector('.file-item.active')
+    if (selectedElement) {
+      // Trigger double-click event on the selected element
+      const dblClickEvent = new MouseEvent('dblclick', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      })
+      selectedElement.dispatchEvent(dblClickEvent)
+    }
+  }
+  
   onMount(() => {
     if (provider?.awareness) {
       provider.awareness.on('change', updateAwareness)
       updateAwareness()
     }
+    
+    // Listen for rename trigger events
+    window.addEventListener('trigger-file-rename', handleTriggerRename)
   })
 
   onDestroy(() => {
     if (provider?.awareness) {
       provider.awareness.off('change', updateAwareness)
     }
+    window.removeEventListener('trigger-file-rename', handleTriggerRename)
   })
 
   type TreeItem = (ProjectFile | Asset) & { isAsset?: boolean }
@@ -105,19 +123,11 @@
     }
   }
 
-  function handleDelete(item: TreeItem) {
-    if (item.isAsset && onDeleteAsset) {
-      onDeleteAsset(item.id)
-    } else if (!item.isAsset && onDeleteFile) {
-      onDeleteFile(item.id)
-    }
-  }
-
-  function handleRename(item: TreeItem, newName: string) {
+  async function handleRename(item: TreeItem, newName: string) {
     if (item.isAsset && onRenameAsset) {
-      onRenameAsset(item.id, newName)
+      await onRenameAsset(item.id, newName)
     } else if (!item.isAsset && onRenameFile) {
-      onRenameFile(item.id, newName)
+      await onRenameFile(item.id, newName)
     }
   }
 </script>
@@ -171,7 +181,6 @@
           isPreview={!item.isAsset && previewFileId === item.id}
           onSelect={() => handleSelect(item)}
           onSetPreview={!item.isAsset ? () => onSetPreviewFile(item.id) : undefined}
-          onDelete={onDeleteFile || onDeleteAsset ? () => handleDelete(item) : null}
           onRename={onRenameFile || onRenameAsset ? (newName) => handleRename(item, newName) : null}
         />
       {/each}

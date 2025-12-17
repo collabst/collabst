@@ -1,6 +1,7 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
-  import { IconButton, Tooltip, ToolButton } from '$lib/components/ui'
+  import { IconButton, Tooltip, ToolButton, DropdownToolButton } from '$lib/components/ui'
+  import type { DropdownMenuItem } from '$lib/components/ui/DropdownMenuButton.svelte'
   import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
   import Bold from '@lucide/svelte/icons/bold'
   import Italic from '@lucide/svelte/icons/italic'
@@ -14,9 +15,11 @@
   import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
   import PencilLine from '@lucide/svelte/icons/pencil-line'
   import Trash2 from '@lucide/svelte/icons/trash-2'
+  import MoreHorizontal from '@lucide/svelte/icons/ellipsis'
   import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
+  import type { Component } from 'svelte'
 
   interface EditorPaneProps {
     selectedFile: ProjectFile | null
@@ -30,6 +33,8 @@
     currentUserName: string
     currentUserColor: string
     diagnostics?: Diagnostic[]
+    wrapLines?: boolean
+    showToolbar?: boolean
   }
 
   let {
@@ -43,7 +48,9 @@
     currentUserId,
     currentUserName,
     currentUserColor,
-    diagnostics = []
+    diagnostics = [],
+    wrapLines = true,
+    showToolbar = true
   }: EditorPaneProps = $props()
 
   let fileName = $derived(
@@ -60,6 +67,40 @@
   let commentButtonPosition = $state({ top: 0, left: 0 })
   let editorContainer: HTMLElement | null = $state(null)
   let listenersSetup = false
+  
+  // Dynamic toolbar overflow handling
+  let toolbarElement = $state<HTMLElement | null>(null)
+  // Overflow buttons always have onclick defined (filtered in checkToolbarOverflow)
+  let overflowButtons = $state<Array<{ label: string; icon?: Component; onclick: () => void }>>([])
+  let visibleButtonsCount = $state(0)
+  let showRightButton = $state(false)
+
+  // Export editor action methods
+  export function undo() {
+    if (codeEditor) {
+      codeEditor.undo()
+    }
+  }
+
+  export function redo() {
+    if (codeEditor) {
+      codeEditor.redo()
+    }
+  }
+
+  export function selectAll() {
+    if (codeEditor) {
+      codeEditor.selectAll()
+    }
+  }
+
+  export function canUndo(): boolean {
+    return codeEditor ? codeEditor.canUndo() : false
+  }
+
+  export function canRedo(): boolean {
+    return codeEditor ? codeEditor.canRedo() : false
+  }
 
   // Update comments whenever the version changes or file changes
   $effect(() => {
@@ -241,38 +282,45 @@
 
   // Action button handlers for typst files
   function handleBold() {
-    console.log('Bold action')
-    // TODO: Insert *bold* syntax or wrap selection
+    if (codeEditor) {
+      codeEditor.toggleWrap('*', '*')
+    }
   }
 
   function handleItalic() {
-    console.log('Italic action')
-    // TODO: Insert _italic_ syntax or wrap selection
+    if (codeEditor) {
+      codeEditor.toggleWrap('_', '_')
+    }
   }
 
   function handleUnderline() {
-    console.log('Underline action')
-    // TODO: Insert #underline[] syntax or wrap selection
+    if (codeEditor) {
+      codeEditor.toggleWrap('#underline[', ']')
+    }
   }
 
   function handleList() {
-    console.log('List action')
-    // TODO: Insert list item syntax
+    if (codeEditor) {
+      codeEditor.toggleLinePrefix('- ', '+ ')
+    }
   }
 
   function handleNumberedList() {
-    console.log('Numbered list action')
-    // TODO: Insert numbered list item syntax
+    if (codeEditor) {
+      codeEditor.toggleLinePrefix('+ ', '- ')
+    }
   }
 
   function handleEquation() {
-    console.log('Equation action')
-    // TODO: Insert equation syntax
+    if (codeEditor) {
+      codeEditor.toggleWrap('$', '$')
+    }
   }
 
   function handleCodeBlock() {
-    console.log('Code block action')
-    // TODO: Insert code block syntax
+    if (codeEditor) {
+      codeEditor.toggleWrap('`', '`')
+    }
   }
 
   function handleScrollPreview() {
@@ -313,6 +361,308 @@
   // Check if file type is text-editable
   let isTextEditable = $derived(selectedFile?.type === 'text' || selectedFile?.type === 'yaml' || selectedFile?.type === 'json')
   let isTypstFile = $derived(selectedFile?.type === 'typst')
+  
+  // Define all toolbar buttons with their metadata
+  type ToolbarButton = {
+    id: string
+    label: string
+    icon: Component
+    onclick: () => void
+    position?: 'first' | 'middle' | 'last' | 'standalone'
+    strokeWidth?: number
+    shortcut?: string
+  }
+  
+  const typstToolbarButtons: ToolbarButton[][] = [
+    [
+      { id: 'bold', label: 'Bold', icon: Bold, onclick: handleBold, position: 'first', strokeWidth: 3, shortcut: 'Ctrl+B' },
+      { id: 'italic', label: 'Italic', icon: Italic, onclick: handleItalic, position: 'middle', shortcut: 'Ctrl+I' },
+      { id: 'underline', label: 'Underline', icon: Underline, onclick: handleUnderline, position: 'last', shortcut: 'Ctrl+U' }
+    ],
+    [
+      { id: 'list', label: 'List', icon: List, onclick: handleList, position: 'first' },
+      { id: 'numberedList', label: 'Numbered list', icon: ListOrdered, onclick: handleNumberedList, position: 'middle' },
+      { id: 'equation', label: 'Equation', icon: Sigma, onclick: handleEquation, position: 'middle' },
+      { id: 'codeBlock', label: 'Code block', icon: Code, onclick: handleCodeBlock, position: 'last' }
+    ],
+    [
+      { id: 'addComment', label: 'Add comment', icon: MessageSquarePlus, onclick: handleAddComment, position: 'standalone' }
+    ]
+  ]
+  
+  // Right-side button (scroll preview) - separate from left buttons
+  const typstRightButton: ToolbarButton | null = {
+    id: 'scrollPreview',
+    label: 'Scroll preview to cursor',
+    icon: Redo,
+    onclick: handleScrollPreview,
+    position: 'standalone'
+  }
+  
+  const assetToolbarButtons: ToolbarButton[][] = [
+    [
+      { id: 'download', label: 'Download', icon: ArrowDownToLine, onclick: handleDownloadFile, position: 'first' },
+      { id: 'upload', label: 'Upload', icon: ArrowUpFromLine, onclick: handleUploadFile, position: 'middle' },
+      { id: 'rename', label: 'Rename', icon: PencilLine, onclick: handleRenameFile, position: 'middle' },
+      { id: 'delete', label: 'Delete', icon: Trash2, onclick: handleDeleteFile, position: 'last' }
+    ]
+  ]
+  
+  const nonTypstToolbarButtons: ToolbarButton[][] = [
+    [
+      { id: 'download', label: 'Download', icon: ArrowDownToLine, onclick: handleDownloadFile, position: 'first' },
+      { id: 'upload', label: 'Upload', icon: ArrowUpFromLine, onclick: handleUploadFile, position: 'middle' },
+      { id: 'rename', label: 'Rename', icon: PencilLine, onclick: handleRenameFile, position: 'middle' },
+      { id: 'delete', label: 'Delete', icon: Trash2, onclick: handleDeleteFile, position: 'last' }
+    ]
+  ]
+  
+  const nonTypstWithCommentButtons: ToolbarButton[][] = [
+    [
+      { id: 'download', label: 'Download', icon: ArrowDownToLine, onclick: handleDownloadFile, position: 'first' },
+      { id: 'upload', label: 'Upload', icon: ArrowUpFromLine, onclick: handleUploadFile, position: 'middle' },
+      { id: 'rename', label: 'Rename', icon: PencilLine, onclick: handleRenameFile, position: 'middle' },
+      { id: 'delete', label: 'Delete', icon: Trash2, onclick: handleDeleteFile, position: 'last' }
+    ],
+    [
+      { id: 'addComment', label: 'Add comment', icon: MessageSquarePlus, onclick: handleAddComment, position: 'standalone' }
+    ]
+  ]
+  
+  // Get current toolbar buttons based on file type
+  let currentToolbarButtons = $derived<ToolbarButton[][]>(
+    selectedAsset ? assetToolbarButtons :
+    isTypstFile ? typstToolbarButtons :
+    isTextEditable ? nonTypstWithCommentButtons : nonTypstToolbarButtons
+  )
+  
+  // Get right button based on file type
+  let currentRightButton = $derived<ToolbarButton | null>(
+    isTypstFile ? typstRightButton : null
+  )
+  
+  // Flattened list of all buttons with group info
+  interface FlatButton extends ToolbarButton {
+    groupIndex: number
+    buttonIndex: number
+    originalPosition: 'first' | 'middle' | 'last' | 'standalone'
+  }
+  
+  let flatButtons = $derived<FlatButton[]>(
+    currentToolbarButtons.flatMap((group, groupIndex) =>
+      group.map((button, buttonIndex) => ({
+        ...button,
+        groupIndex,
+        buttonIndex,
+        originalPosition: button.position || 'standalone'
+      }))
+    )
+  )
+  
+  // Track which buttons are visible (by index in flatButtons)
+  let visibleButtonIndices = $state<number[]>([])
+  
+  // Computed visible buttons for the toolbar with adjusted positions
+  let visibleLeftButtons = $derived.by(() => {
+    const leftButtons = flatButtons.filter((btn, index) => 
+      visibleButtonIndices.includes(index)
+    )
+    
+    // Adjust positions based on visibility
+    return leftButtons.map((btn, index, arr) => {
+      const prevBtn = index > 0 ? arr[index - 1] : null
+      const nextBtn = index < arr.length - 1 ? arr[index + 1] : null
+      
+      const isStartOfGroup = !prevBtn || prevBtn.groupIndex !== btn.groupIndex
+      const isEndOfGroup = !nextBtn || nextBtn.groupIndex !== btn.groupIndex
+      
+      let position: 'first' | 'middle' | 'last' | 'standalone'
+      if (btn.originalPosition === 'standalone') {
+        position = 'standalone'
+      } else if (isStartOfGroup && isEndOfGroup) {
+        position = 'standalone'
+      } else if (isStartOfGroup) {
+        position = 'first'
+      } else if (isEndOfGroup) {
+        position = 'last'
+      } else {
+        position = 'middle'
+      }
+      
+      return { ...btn, position }
+    })
+  })
+  
+  // Detect toolbar overflow and move buttons to More dropdown
+  let resizeTimeoutId: number | null = null
+  let measuredButtonWidth: number | null = null
+  let measuredMoreButtonWidth: number | null = null
+  let measuredGapWidth: number | null = null
+  
+  function checkToolbarOverflow() {
+    if (!toolbarElement || !showToolbar) return
+    
+    // Measure actual button widths on first run
+    if (measuredButtonWidth === null || measuredMoreButtonWidth === null || measuredGapWidth === null) {
+      const toolButton = toolbarElement.querySelector('.tool-group button')
+      const moreButton = toolbarElement.querySelector('.more-button button')
+      const toolGroups = toolbarElement.querySelectorAll('.toolbar-left > .tool-group')
+      
+      if (toolButton) {
+        const rect = toolButton.getBoundingClientRect()
+        measuredButtonWidth = rect.width
+      }
+      
+      if (moreButton) {
+        const rect = moreButton.getBoundingClientRect()
+        measuredMoreButtonWidth = rect.width
+      }
+      
+      // Measure gap by checking distance between two tool groups
+      if (toolGroups.length >= 2) {
+        const firstGroup = toolGroups[0].getBoundingClientRect()
+        const secondGroup = toolGroups[1].getBoundingClientRect()
+        measuredGapWidth = secondGroup.left - firstGroup.right
+      }
+      
+      // If we couldn't measure, use fallback values and try again later
+      if (!measuredButtonWidth || !measuredMoreButtonWidth || !measuredGapWidth) {
+        measuredButtonWidth = 38
+        measuredMoreButtonWidth = 40
+        measuredGapWidth = 8
+      }
+    }
+    
+    const toolbarWidth = toolbarElement.clientWidth
+    const moreButtonWidth = measuredMoreButtonWidth || 40
+    const buttonWidth = measuredButtonWidth || 38
+    const gapWidth = measuredGapWidth || 8
+    const rightButtonWidth = currentRightButton ? buttonWidth : 0
+    
+    // Calculate how many buttons we can fit
+    const totalButtons = flatButtons.length
+    
+    // Calculate available space (with reduced safety margin for more generosity)
+    const availableWidthForLeft = toolbarWidth - rightButtonWidth - (currentRightButton ? gapWidth : 0) - 10 // Only 10px margin
+    
+    // Estimate total width needed for all left buttons
+    let estimatedWidth = 0
+    let lastGroupIndex = -1
+    
+    for (let i = 0; i < totalButtons; i++) {
+      const btn = flatButtons[i]
+      if (btn.groupIndex !== lastGroupIndex && i > 0) {
+        estimatedWidth += gapWidth // Add gap between groups
+      }
+      estimatedWidth += buttonWidth
+      lastGroupIndex = btn.groupIndex
+    }
+    
+    // If everything fits comfortably, show all left buttons
+    if (estimatedWidth <= availableWidthForLeft) {
+      visibleButtonIndices = Array.from({ length: totalButtons }, (_, i) => i)
+      overflowButtons = []
+      visibleButtonsCount = totalButtons
+      showRightButton = currentRightButton !== null
+      return
+    }
+    
+    // Check if we can fit all left buttons by hiding the right button (scroll preview)
+    const availableWithoutRightButton = toolbarWidth - moreButtonWidth - gapWidth - 10
+    if (estimatedWidth + moreButtonWidth <= availableWithoutRightButton && currentRightButton) {
+      // Hide right button, show all left buttons, More button contains right button
+      visibleButtonIndices = Array.from({ length: totalButtons }, (_, i) => i)
+      overflowButtons = [{
+        label: currentRightButton.label,
+        icon: currentRightButton.icon,
+        onclick: currentRightButton.onclick
+      }]
+      visibleButtonsCount = totalButtons
+      showRightButton = false
+      return
+    }
+    
+    // Otherwise, calculate how many left buttons we can fit with the More button
+    // Right button is already hidden at this point
+    let visibleCount = 0
+    let currentWidth = moreButtonWidth + gapWidth // Start with More button space
+    lastGroupIndex = -1
+    
+    for (let i = 0; i < totalButtons; i++) {
+      const btn = flatButtons[i]
+      const groupGap = (btn.groupIndex !== lastGroupIndex && i > 0) ? gapWidth : 0
+      const buttonSpace = buttonWidth + groupGap
+      
+      if (currentWidth + buttonSpace <= availableWithoutRightButton) {
+        currentWidth += buttonSpace
+        visibleCount = i + 1
+        lastGroupIndex = btn.groupIndex
+      } else {
+        break
+      }
+    }
+    
+    // Build list of visible button indices
+    const newVisibleIndices: number[] = []
+    for (let i = 0; i < visibleCount; i++) {
+      newVisibleIndices.push(i)
+    }
+    
+    visibleButtonIndices = newVisibleIndices
+    
+    // Build overflow menu items (hidden left buttons + right button if exists)
+    const newOverflow: Array<{ label: string; icon?: Component; onclick: () => void }> = []
+    
+    // Add hidden left buttons
+    for (let i = visibleCount; i < totalButtons; i++) {
+      const btn = flatButtons[i]
+      newOverflow.push({
+        label: btn.label,
+        icon: btn.icon,
+        onclick: btn.onclick
+      })
+    }
+    
+    // Add right button to overflow if it exists
+    if (currentRightButton) {
+      newOverflow.push({
+        label: currentRightButton.label,
+        icon: currentRightButton.icon,
+        onclick: currentRightButton.onclick
+      })
+    }
+    
+    overflowButtons = newOverflow
+    visibleButtonsCount = newVisibleIndices.length
+    showRightButton = false
+  }
+  
+  // Set up ResizeObserver for toolbar with debouncing
+  $effect(() => {
+    if (toolbarElement && showToolbar) {
+      const resizeObserver = new ResizeObserver(() => {
+        // Debounce the overflow check to prevent flickering
+        if (resizeTimeoutId !== null) {
+          clearTimeout(resizeTimeoutId)
+        }
+        
+        resizeTimeoutId = window.setTimeout(() => {
+          checkToolbarOverflow()
+          resizeTimeoutId = null
+        }, 50) // 50ms debounce
+      })
+      
+      resizeObserver.observe(toolbarElement)
+      checkToolbarOverflow() // Initial check
+      
+      return () => {
+        resizeObserver.disconnect()
+        if (resizeTimeoutId !== null) {
+          clearTimeout(resizeTimeoutId)
+        }
+      }
+    }
+  })
 
   // Debug logging
   $effect(() => {
@@ -327,85 +677,61 @@
 </script>
 
 <div class="editor-pane">
-  <!-- Action Toolbar - shown for typst files, non-typst files, and assets -->
-  {#if selectedAsset}
-    <div class="action-toolbar">
-      <div class="tool-group">
-        <Tooltip text="Download">
-          <ToolButton icon={ArrowDownToLine} onclick={handleDownloadFile} position="first" />
-        </Tooltip>
-        <Tooltip text="Upload">
-          <ToolButton icon={ArrowUpFromLine} onclick={handleUploadFile} position="middle" />
-        </Tooltip>
-        <Tooltip text="Rename">
-          <ToolButton icon={PencilLine} onclick={handleRenameFile} position="middle" />
-        </Tooltip>
-        <Tooltip text="Delete">
-          <ToolButton icon={Trash2} onclick={handleDeleteFile} position="last" />
-        </Tooltip>
+  <!-- Action Toolbar - Dynamic with overflow detection -->
+  {#if (selectedAsset || selectedFile) && showToolbar}
+    <div class="action-toolbar" class:has-more={overflowButtons.length > 0} bind:this={toolbarElement}>
+      <div class="toolbar-left">
+        {#each Object.entries(
+          visibleLeftButtons.reduce((groups, button) => {
+            const key = button.groupIndex
+            if (!groups[key]) groups[key] = []
+            groups[key].push(button)
+            return groups
+          }, {} as Record<number, typeof visibleLeftButtons>)
+        ) as [groupIndex, groupButtons]}
+          <div class="tool-group">
+            {#each groupButtons as button}
+              <Tooltip text={button.label} position="bottom" shortcut={button.shortcut}>
+                <ToolButton 
+                  icon={button.icon} 
+                  onclick={button.onclick} 
+                  position={button.position}
+                  strokeWidth={button.strokeWidth}
+                />
+              </Tooltip>
+            {/each}
+          </div>
+        {/each}
       </div>
-    </div>
-  {:else if isTypstFile && selectedFile}
-    <div class="action-toolbar">
-      <div class="tool-group">
-        <Tooltip text="Bold" position="bottom">
-          <ToolButton icon={Bold} onclick={handleBold} position="first" strokeWidth={3} />
-        </Tooltip>
-        <Tooltip text="Italic" position="bottom">
-          <ToolButton icon={Italic} onclick={handleItalic} position="middle" />
-        </Tooltip>
-        <Tooltip text="Underline" position="bottom">
-          <ToolButton icon={Underline} onclick={handleUnderline} position="last" />
-        </Tooltip>
+      
+      <div class="toolbar-right">
+        {#if showRightButton && currentRightButton}
+          <div class="tool-group">
+            <Tooltip text={currentRightButton.label} position="bottom">
+              <ToolButton 
+                icon={currentRightButton.icon} 
+                onclick={currentRightButton.onclick} 
+                position={currentRightButton.position}
+                strokeWidth={currentRightButton.strokeWidth}
+              />
+            </Tooltip>
+          </div>
+        {/if}
+        
+        {#if overflowButtons.length > 0}
+          <div class="more-button">
+            <Tooltip text="More options" position="bottom">
+              <DropdownToolButton 
+                icon={MoreHorizontal} 
+                items={overflowButtons} 
+                position="standalone"
+                buttonWidth="32px"
+                allowIconOverflow={false}
+              />
+            </Tooltip>
+          </div>
+        {/if}
       </div>
-      <div class="tool-group">
-        <Tooltip text="List" position="bottom">
-          <ToolButton icon={List} onclick={handleList} position="first" />
-        </Tooltip>
-        <Tooltip text="Numbered list" position="bottom">
-          <ToolButton icon={ListOrdered} onclick={handleNumberedList} position="middle" />
-        </Tooltip>
-        <Tooltip text="Equation" position="bottom">
-          <ToolButton icon={Sigma} onclick={handleEquation} position="middle" />
-        </Tooltip>
-        <Tooltip text="Code block" position="bottom">
-          <ToolButton icon={Code} onclick={handleCodeBlock} position="last" />
-        </Tooltip>
-      </div>
-      <div class="tool-group">
-        <Tooltip text="Add comment" position="bottom">
-          <ToolButton icon={MessageSquarePlus} onclick={handleAddComment} position="standalone" />
-        </Tooltip>
-      </div>
-      <div class="scroll-preview">
-      <Tooltip text="Scroll preview to cursor" position="bottom">
-        <ToolButton icon={Redo} onclick={handleScrollPreview} />
-      </Tooltip>
-    </div>
-    </div>
-  {:else if selectedFile && !isTypstFile}
-    <div class="action-toolbar">
-      <div class="tool-group">
-        <Tooltip text="Download">
-          <ToolButton icon={ArrowDownToLine} onclick={handleDownloadFile} position="first" />
-        </Tooltip>
-        <Tooltip text="Upload" position="bottom">
-          <ToolButton icon={ArrowUpFromLine} onclick={handleUploadFile} position="middle" />
-        </Tooltip>
-        <Tooltip text="Rename" position="bottom">
-          <ToolButton icon={PencilLine} onclick={handleRenameFile} position="middle" />
-        </Tooltip>
-        <Tooltip text="Delete" position="bottom">
-          <ToolButton icon={Trash2} onclick={handleDeleteFile} position="last" />
-        </Tooltip>
-      </div>
-      {#if isTextEditable}
-        <div class="tool-group">
-          <Tooltip text="Add comment" position="bottom">
-            <ToolButton icon={MessageSquarePlus} onclick={handleAddComment} position="standalone" />
-          </Tooltip>
-        </div>
-      {/if}
     </div>
   {/if}
 
@@ -423,6 +749,7 @@
             onTrackerReady={handleTrackerReady}
              {diagnostics}
              fileName={fileName}
+             {wrapLines}
           />
 
           {#if showCommentButton}
@@ -526,52 +853,42 @@
     display: none;
   }
 
-  .editor-header {
-    background: var(--surface-primary);
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border-primary);
+  .action-toolbar {
+    background: var(--bg-top-bar);
+    padding: 0 0 var(--space-2) 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    overflow: visible;
   }
-
-  .file-info {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
+  
+  .action-toolbar.has-more {
+    padding-right: 0;
   }
-
-  .file-name {
-    color: var(--text-primary);
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-  }
-
-  .file-type {
-    color: var(--text-tertiary);
-    font-size: var(--text-xs);
-    text-transform: uppercase;
-  }
-
-  .action-toolbar {
-    background: var(--bg-top-bar);
-    padding: 0 var(--space-4) var(--space-2) 0;
+  
+  .toolbar-left {
     display: flex;
     gap: 8px;
     align-items: center;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+  }
+  
+  .toolbar-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
   }
 
   .tool-group {
     display: flex;
     align-items: center;
   }
-
-  .scroll-preview {
-    margin-left: auto;
-    max-width: var(--space-4);
+  
+  .more-button {
     display: flex;
+    align-items: center;
   }
 
   .editor-container {

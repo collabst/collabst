@@ -8,21 +8,51 @@
   import Download from "@lucide/svelte/icons/download";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import type { Component } from 'svelte';
+  import { theme as themeStore } from '$lib/stores/theme';
 
   interface PreviewPaneProps {
     previewHtml?: string;
     onDownloadPDF?: (() => void) | null;
+    negativePreview?: boolean;
+    panelWidth?: number;
+    showToolbar?: boolean;
   }
 
   let {
     previewHtml = "",
-    onDownloadPDF = null
+    onDownloadPDF = null,
+    negativePreview = false,
+    panelWidth = 0,
+    showToolbar = true
   }: PreviewPaneProps = $props();
 
   type ZoomMode = 'fit-width' | 'fit-height' | 'fit-page' | 'custom';
   
   let currentZoomScale = $state(1);
   let currentZoomMode = $state<ZoomMode>('custom');
+  let currentTheme = $state<'light' | 'dark'>($themeStore);
+  
+  // Subscribe to theme changes
+  $effect(() => {
+    currentTheme = $themeStore;
+  });
+  
+  // Compute whether to apply negative filter (only in dark theme)
+  let shouldApplyNegativeFilter = $derived(negativePreview && currentTheme === 'dark');
+  
+  // Watch for panel width changes and recalculate zoom if in fit mode
+  $effect(() => {
+    if (panelWidth > 0 && (currentZoomMode === 'fit-width' || currentZoomMode === 'fit-page')) {
+      // Slight delay to allow DOM to update
+      setTimeout(() => {
+        if (currentZoomMode === 'fit-width') {
+          fitToWidth();
+        } else if (currentZoomMode === 'fit-page') {
+          fitToPage();
+        }
+      }, 10);
+    }
+  })
   
   // Dynamic icon/text for zoom button
   const zoomButtonDisplay = $derived<Component | string>(
@@ -140,6 +170,7 @@
 </script>
 
 <div class="preview-pane">
+  {#if showToolbar}
   <div class="preview-header">
     <div class="zoom-controls">
       <Tooltip text="Zoom out" position="bottom">
@@ -152,6 +183,7 @@
           position="middle"
           buttonWidth="45px"
           buttonBackground="var(--bg-top-bar)"
+          allowIconOverflow={false}
         />
       </Tooltip>
       <Tooltip text="Zoom in" position="bottom">
@@ -173,7 +205,8 @@
       </Tooltip>
     </div>
   </div>
-  <div class="preview-area">
+  {/if}
+  <div class="preview-area" class:negative-filter={shouldApplyNegativeFilter}>
     {@html previewHtml}
   </div>
 </div>
@@ -220,5 +253,9 @@
 
   :global(.typst-doc) {
     background-color: var(--bg-typst-doc);
+  }
+
+  :global(.negative-filter .typst-doc) {
+    filter: invert(1);
   }
 </style>

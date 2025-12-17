@@ -3,9 +3,9 @@ import { browser } from '$app/environment'
 
 type Theme = 'light' | 'dark'
 
-// Get initial theme from localStorage or default to dark
+// Get initial theme from localStorage or default to light
 function getInitialTheme(): Theme {
-  if (!browser) return 'dark'
+  if (!browser) return 'light'
   
   const stored = localStorage.getItem('theme')
   if (stored === 'light' || stored === 'dark') {
@@ -13,11 +13,11 @@ function getInitialTheme(): Theme {
   }
   
   // Check system preference
-  if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-    return 'light'
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark'
   }
   
-  return 'dark'
+  return 'light'
 }
 
 function createThemeStore() {

@@ -8,6 +8,7 @@
   import { createProjectSync } from '$lib/projectSync'
   import { auth } from '$lib/stores/auth'
   import { notifications } from '$lib/stores/notifications'
+  import { theme } from '$lib/stores/theme'
   import { ThemeToggle, ProfileMenu, IconButton, Tooltip, MenuBar } from '$lib/components/ui'
   import Home from '@lucide/svelte/icons/home'
   import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
@@ -25,28 +26,48 @@
   import { parseRange } from '$lib/preview/diagnostics'
   import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
 
-  $: projectId = $page.params.projectId
+  let projectId = $derived($page.params.projectId)
 
-  let project: Project | null = null
-  let files: ProjectFile[] = []
-  let assets: Asset[] = []
-  let selectedFile: ProjectFile | null = null
-  let selectedAsset: Asset | null = null
-  let previewFileId: number | null = null
-  let showCreateFileModal = false
-  let showUploadAssetModal = false
-  let showDeleteModal = false
-  let deleteTarget: { type: 'file' | 'asset'; id: number; name: string } | null = null
+  let project = $state<Project | null>(null)
+  let files = $state<ProjectFile[]>([])
+  let assets = $state<Asset[]>([])
+  let selectedFile = $state<ProjectFile | null>(null)
+  let selectedAsset = $state<Asset | null>(null)
+  let previewFileId = $state<number | null>(null)
+  let showCreateFileModal = $state(false)
+  let showUploadAssetModal = $state(false)
+  let showDeleteModal = $state(false)
+  let deleteTarget = $state<{ type: 'file' | 'asset'; id: number; name: string } | null>(null)
   let showCollaborators = false
-  let activePanel: string | null = 'files'
-  let isEditingProjectName = false
-  let editingProjectName = ''
-  let projectNameInput: HTMLInputElement
+  let activePanel = $state<string | null>('files')
+  let fileTreeHasFocus = $state(false)
+  let isEditingProjectName = $state(false)
+  let editingProjectName = $state('')
+  let projectNameInput = $state<HTMLInputElement | undefined>()
+  
+  // Load toggle states from localStorage with defaults
+  let wrapLines = $state(
+    browser && localStorage.getItem('editor.wrapLines') !== null
+      ? localStorage.getItem('editor.wrapLines') === 'true'
+      : true
+  )
+  let negativePreview = $state(
+    browser && localStorage.getItem('editor.negativePreview') !== null
+      ? localStorage.getItem('editor.negativePreview') === 'true'
+      : false
+  )
+  let showToolbar = $state(
+    browser && localStorage.getItem('editor.showToolbar') !== null
+      ? localStorage.getItem('editor.showToolbar') === 'true'
+      : true
+  )
+  
+  let editorPaneRef = $state<any>(null) // Reference to EditorPane component
   
   // Panel widths for resizable panels
-  let leftPanelWidth = 250 // Default width in pixels
+  let leftPanelWidth = $state(250) // Default width in pixels
   let editorPanelWidth = 0 // Will be calculated
-  let previewPanelWidth = 0 // Will be calculated
+  let previewPanelWidth = $state(0) // Will be calculated
   const MIN_PANEL_WIDTH = 200 // Minimum width for any panel
   const ACTIVITY_BAR_WIDTH = 56 // Fixed activity bar width
   
@@ -114,25 +135,67 @@
     isResizingRight = false
   }
 
-  let yjsConnection: YjsConnection | null = null
+  // Editor action handlers
+  function handleUndo() {
+    if (editorPaneRef && !selectedAsset) {
+      editorPaneRef.undo()
+    }
+  }
+
+  function handleRedo() {
+    if (editorPaneRef && !selectedAsset) {
+      editorPaneRef.redo()
+    }
+  }
+
+  function handleSelectAll() {
+    if (editorPaneRef && !selectedAsset) {
+      editorPaneRef.selectAll()
+    }
+  }
+
+  let isViewingAsset = $derived(!!selectedAsset)
+
+  let yjsConnection = $state<YjsConnection | null>(null)
   let projectSync: any = null
-  let isConnected = false
+  let isConnected = $state(false)
   let isSynced = false
   let isLocalSynced = false
   let hasConnectedBefore = false
 
   // Watch connection status changes
-  $: if (browser) {
-    if (isConnected && hasConnectedBefore) {
-      notifications.show('Reconnected. Syncing changes...', 'info')
-    } else if (!isConnected && hasConnectedBefore) {
-      notifications.show('Connection lost. Changes will sync when reconnected.', 'warning')
+  $effect(() => {
+    if (browser) {
+      if (isConnected && hasConnectedBefore) {
+        notifications.show('Reconnected. Syncing changes...', 'info')
+      } else if (!isConnected && hasConnectedBefore) {
+        notifications.show('Connection lost. Changes will sync when reconnected.', 'warning')
+      }
+      
+      if (isConnected) {
+        hasConnectedBefore = true
+      }
     }
-    
-    if (isConnected) {
-      hasConnectedBefore = true
+  })
+
+  // Save toggle states to localStorage
+  $effect(() => {
+    if (browser) {
+      localStorage.setItem('editor.wrapLines', String(wrapLines))
     }
-  }
+  })
+
+  $effect(() => {
+    if (browser) {
+      localStorage.setItem('editor.negativePreview', String(negativePreview))
+    }
+  })
+
+  $effect(() => {
+    if (browser) {
+      localStorage.setItem('editor.showToolbar', String(showToolbar))
+    }
+  })
 
   async function loadProject() {
     try {
@@ -265,6 +328,23 @@
     }
   }
 
+  function handleRenameSelectedItem() {
+    // Trigger rename in FileTree for currently selected item
+    if (selectedAsset || selectedFile) {
+      // Dispatch custom event to trigger rename in FileTree
+      window.dispatchEvent(new CustomEvent('trigger-file-rename'))
+    }
+  }
+
+  function handleDeleteSelectedItem() {
+    // Delete currently selected file or asset
+    if (selectedAsset) {
+      handleDeleteAsset(selectedAsset.id)
+    } else if (selectedFile) {
+      handleDeleteFile(selectedFile.id)
+    }
+  }
+
   function handleProjectNameClick() {
     isEditingProjectName = true
     editingProjectName = project?.name || ''
@@ -310,18 +390,21 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    
+    const targetId = deleteTarget.id
+    const targetType = deleteTarget.type
 
     try {
-      if (deleteTarget.type === 'file') {
-        await filesApi.delete(Number(projectId), deleteTarget.id)
-        files = files.filter(f => f.id !== deleteTarget.id)
-        if (selectedFile?.id === deleteTarget.id) {
+      if (targetType === 'file') {
+        await filesApi.delete(Number(projectId), targetId)
+        files = files.filter(f => f.id !== targetId)
+        if (selectedFile?.id === targetId) {
           selectedFile = files[0] || null
         }
       } else {
-        await assetsApi.delete(Number(projectId), deleteTarget.id)
-        assets = assets.filter(a => a.id !== deleteTarget.id)
-        if (selectedAsset?.id === deleteTarget.id) {
+        await assetsApi.delete(Number(projectId), targetId)
+        assets = assets.filter(a => a.id !== targetId)
+        if (selectedAsset?.id === targetId) {
           selectedAsset = null
         }
       }
@@ -347,8 +430,9 @@
     try {
       // Compile to PDF
       console.log(compiledResult);
-      typst.pdf({mainFilePath:compiledMainPath}).then(pdfData => {
-        var pdfFile = new Blob([pdfData], { type: 'application/pdf' });
+      typst.pdf({mainFilePath:compiledMainPath}).then((pdfData: Uint8Array) => {
+        // Convert Uint8Array to Blob - need to create a new Uint8Array with proper ArrayBuffer
+        const pdfFile = new Blob([new Uint8Array(pdfData)], { type: 'application/pdf' });
         
         // Creates element with <a> tag
         const link = document.createElement('a');
@@ -474,11 +558,18 @@
       }
     }
     
-    // Handle Cmd+S / Ctrl+S
+    // Handle Cmd+S / Ctrl+S, F2 for rename, and Delete for delete
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
         notifications.show('All changes are saved automatically', 'info', 2000)
+      } else if (e.key === 'F2') {
+        e.preventDefault()
+        handleRenameSelectedItem()
+      } else if (e.key === 'Delete' && (selectedFile || selectedAsset) && fileTreeHasFocus) {
+        // Only delete file/asset when file tree panel has focus
+        e.preventDefault()
+        handleDeleteSelectedItem()
       }
     }
     
@@ -504,79 +595,91 @@
   })
 
   // Clean up deleted/renamed assets and files when arrays change
-  $: if (compiler && assets && files) {
-    cleanupDeletedAssets(compiler, assets, files)
-  }
+  $effect(() => {
+    if (compiler && assets && files) {
+      cleanupDeletedAssets(compiler, assets, files)
+    }
+  })
 
-  $: selectedYtext = selectedFile && yjsConnection?.ydoc
+  let selectedYtext = $derived(selectedFile && yjsConnection?.ydoc
     ? getFileText(yjsConnection.ydoc, selectedFile.id)
-    : null
+    : null)
 
   let fileObservers = new Map<number, () => void>()
 
-  $: if (browser && yjsConnection?.ydoc && files.length > 0) {
-    // Clear old observers
-    fileObservers.forEach(unobserve => unobserve())
-    fileObservers.clear()
-
-    // Set up observers for all files
-    files.forEach(file => {
-      const ytext = getFileText(yjsConnection.ydoc, file.id)
+  $effect(() => {
+    if (browser && yjsConnection?.ydoc && files.length > 0) {
+      const ydoc = yjsConnection.ydoc
       
-      // Initialize file content if empty
-      if (ytext && ytext.length === 0 && file.content) {
-        ytext.insert(0, file.content)
-      }
+      // Clear old observers
+      fileObservers.forEach(unobserve => unobserve())
+      fileObservers.clear()
 
-      // Observe changes in all files
-      if (ytext) {
-        const handler = () => triggerCompile()
-        ytext.observe(handler)
-        fileObservers.set(file.id, () => ytext.unobserve(handler))
-      }
-    })
+      // Set up observers for all files
+      files.forEach(file => {
+        const ytext = getFileText(ydoc, file.id)
+        
+        // Initialize file content if empty
+        if (ytext && ytext.length === 0 && file.content) {
+          ytext.insert(0, file.content)
+        }
 
-    // Trigger initial compile
-    if (selectedFile && compiler && renderer) {
-      triggerCompile()
+        // Observe changes in all files
+        if (ytext) {
+          const handler = () => triggerCompile()
+          ytext.observe(handler)
+          fileObservers.set(file.id, () => ytext.unobserve(handler))
+        }
+      })
+
+      // Trigger initial compile
+      if (selectedFile && compiler && renderer) {
+        triggerCompile()
+      }
     }
-  }
+  })
 
   // Clean up observers when files change or component unmounts
-  $: if (browser && files.length === 0) {
-    fileObservers.forEach(unobserve => unobserve())
-    fileObservers.clear()
-  }
+  $effect(() => {
+    if (browser && files.length === 0) {
+      fileObservers.forEach(unobserve => unobserve())
+      fileObservers.clear()
+    }
+  })
 
   // Trigger recompile when assets change (they may be referenced in typst files)
-  $: if (browser && assets && compiler && renderer && selectedFile) {
-    triggerCompile()
-  }
+  $effect(() => {
+    if (browser && assets && compiler && renderer && selectedFile) {
+      triggerCompile()
+    }
+  })
 
   // Prioritize asset when both are set (asset is what user is actually viewing)
-  $: selectedItem = selectedAsset || selectedFile
+  let selectedItem = $derived(selectedAsset || selectedFile)
 
   // Update awareness when selected item changes - prioritize asset when viewing
-  $: if (selectedAsset && yjsConnection?.provider?.awareness) {
-    yjsConnection.provider.awareness.setLocalStateField('currentItem', {
-      id: selectedAsset.id,
-      isAsset: true
-    })
-  } else if (selectedFile && yjsConnection?.provider?.awareness) {
-    yjsConnection.provider.awareness.setLocalStateField('currentItem', {
-      id: selectedFile.id,
-      isAsset: false
-    })
-  } else if (yjsConnection?.provider?.awareness) {
-    yjsConnection.provider.awareness.setLocalStateField('currentItem', null)
-  }
+  $effect(() => {
+    if (selectedAsset && yjsConnection?.provider?.awareness) {
+      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+        id: selectedAsset.id,
+        isAsset: true
+      })
+    } else if (selectedFile && yjsConnection?.provider?.awareness) {
+      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+        id: selectedFile.id,
+        isAsset: false
+      })
+    } else if (yjsConnection?.provider?.awareness) {
+      yjsConnection.provider.awareness.setLocalStateField('currentItem', null)
+    }
+  })
 
   // Typst compiler and renderer
   let typst: any = null;
   let compiler: any = null;
   let renderer: any = null;
-  let diagnostics: Diagnostic[] = [];
-  let previewHtml: string = "";
+  let diagnostics = $state<Diagnostic[]>([]);
+  let previewHtml = $state<string>("");
   let compiledResult: any = null;
   let compiledMainPath: string = "";
 
@@ -634,9 +737,11 @@
     document.head.appendChild(script);
   });
 
-  $: if (!isLoading && compiler && renderer && selectedFile && previewFileId !== null) {
-    triggerCompile();
-  }
+  $effect(() => {
+    if (!isLoading && compiler && renderer && selectedFile && previewFileId !== null) {
+      triggerCompile();
+    }
+  })
 
   async function update() {
     if (!browser || !compiler || !renderer || !selectedFile) return;
@@ -732,7 +837,7 @@
     <header>
       <div class="header-left">
         <Tooltip text="Back to dashboard" position="bottom">
-          <button on:click={() => goto('/projects')} class="home-btn">
+          <button onclick={() => goto('/projects')} class="home-btn">
             <Home size={20} />
           </button>
         </Tooltip>
@@ -740,36 +845,39 @@
           <input
             bind:this={projectNameInput}
             bind:value={editingProjectName}
-            on:blur={handleProjectRenameCancel}
-            on:keydown={handleProjectRenameKeydown}
+            onblur={handleProjectRenameCancel}
+            onkeydown={handleProjectRenameKeydown}
             class="project-name-input"
             type="text"
-            on:click|stopPropagation
+            onclick={(e) => e.stopPropagation()}
           />
         {:else}
-          <h1 on:click={handleProjectNameClick}>{project.name}</h1>
+          <h1 onclick={handleProjectNameClick} title={project.name}>{project.name}</h1>
         {/if}
         <MenuBar
           onNewFile={() => showCreateFileModal = true}
           onUploadFile={() => showUploadAssetModal = true}
-          onRenameFile={() => console.log('Rename file - to be implemented')}
+          onRenameFile={handleRenameSelectedItem}
+          onDeleteFile={handleDeleteSelectedItem}
           onExportPDF={handleDownloadPDF}
           onExportPNG={() => console.log('Export PNG - to be implemented')}
           onExportSVG={() => console.log('Export SVG - to be implemented')}
-          onUndo={() => console.log('Undo - to be implemented')}
-          onRedo={() => console.log('Redo - to be implemented')}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
           onSearchReplace={() => console.log('Search and replace - to be implemented')}
-          onSelectAll={() => console.log('Select all - to be implemented')}
+          onSelectAll={handleSelectAll}
           onToggleLineComment={() => console.log('Toggle line comment - to be implemented')}
           onToggleBlockComment={() => console.log('Toggle block comment - to be implemented')}
           onAddComment={() => console.log('Add comment - to be implemented')}
-          onShowToolbar={() => console.log('Show toolbar - to be implemented')}
+          onShowToolbar={() => showToolbar = !showToolbar}
           onScrollOnType={() => console.log('Scroll on type - to be implemented')}
-          onWrapLines={() => console.log('Wrap lines - to be implemented')}
-          onThemeLight={() => console.log('Theme Light - to be implemented')}
-          onThemeDark={() => console.log('Theme Dark - to be implemented')}
-          onThemeSystem={() => console.log('Theme System - to be implemented')}
-          onNegativePreview={() => console.log('Negative preview - to be implemented')}
+          onWrapLines={() => wrapLines = !wrapLines}
+          onThemeLight={() => theme.set('light')}
+          onThemeDark={() => theme.set('dark')}
+          onNegativePreview={() => negativePreview = !negativePreview}
+          {wrapLines}
+          {negativePreview}
+          {showToolbar}
         />
       </div>
 
@@ -795,7 +903,13 @@
       <ActivityBar {activePanel} onActivityClick={handleActivityClick} />
       
       {#if activePanel === 'files'}
-        <div style="width: {leftPanelWidth}px;">
+        <div 
+          style="width: {leftPanelWidth}px;" 
+          tabindex="-1"
+          onfocus={() => fileTreeHasFocus = true}
+          onblur={() => fileTreeHasFocus = false}
+          onclick={() => fileTreeHasFocus = true}
+        >
           <FileTree
             {files}
             {assets}
@@ -804,8 +918,6 @@
             onSelectFile={handleSelectFile}
             onSelectAsset={handleSelectAsset}
             onSetPreviewFile={handleSetPreviewFile}
-            onDeleteFile={handleDeleteFile}
-            onDeleteAsset={handleDeleteAsset}
             onRenameFile={handleRenameFile}
             onRenameAsset={handleRenameAsset}
             onCreateFile={() => showCreateFileModal = true}
@@ -837,12 +949,13 @@
       {/if}
 
       {#if activePanel}
-        <div class="resize-handle" on:mousedown={handleLeftResizeStart}>
+        <div class="resize-handle" onmousedown={handleLeftResizeStart}>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </div>
       {/if}
 
       <EditorPane
+        bind:this={editorPaneRef}
         {selectedFile}
         {selectedAsset}
         ytext={selectedYtext}
@@ -854,9 +967,11 @@
         currentUserName={$auth.user?.username || 'Unknown'}
         currentUserColor={yjsConnection?.provider?.awareness?.getLocalState()?.color || '#3b82f6'}
         {diagnostics}
+        {wrapLines}
+        {showToolbar}
       />
 
-      <div class="resize-handle" on:mousedown={handleRightResizeStart}>
+      <div class="resize-handle" onmousedown={handleRightResizeStart}>
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
       </div>
 
@@ -864,6 +979,9 @@
         <PreviewPane
           {previewHtml}
           onDownloadPDF={handleDownloadPDF}
+          {negativePreview}
+          panelWidth={previewPanelWidth}
+          {showToolbar}
         />
       </div>
     </div>
@@ -960,11 +1078,17 @@
     font-weight: 600;
     margin: 0;
     cursor: pointer;
-    padding: 4px 8px 4px 0;
+    padding: 4px 8px;
     border-radius: 4px;
     border: 1px solid transparent;
-    min-width: fit-content;
+    max-width: 180px;
     box-sizing: border-box;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 22px;
+    vertical-align: middle;
   }
 
   h1:hover {
@@ -978,16 +1102,20 @@
     background: var(--surface-hover);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 4px 8px 4px 0;
+    padding: 4px 8px;
     font-family: inherit;
     min-width: 100px;
-    max-width: 133px;
+    max-width: 180px;
     box-sizing: border-box;
+    line-height: 22px;
   }
 
   .project-name-input:focus {
-    border-color: var(--primary);
+    border-color: var(--color-primary-500);
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 0px;
     background: var(--surface-hover);
+    max-width: 180px;
   }
 
   .main {

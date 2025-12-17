@@ -4,6 +4,7 @@
   
   interface TooltipProps {
     text: string
+    shortcut?: string
     position?: 'top' | 'bottom' | 'left' | 'right'
     delay?: number
     children?: Snippet
@@ -11,6 +12,7 @@
   
   let {
     text,
+    shortcut,
     position = 'top',
     delay = 400,
     children
@@ -105,7 +107,10 @@
   
   {#if showTooltip && text}
     <div bind:this={tooltipEl} class="tooltip" style={tooltipStyle}>
-      {text}
+      <span class="tooltip-text">{text}</span>
+      {#if shortcut}
+        <span class="tooltip-shortcut">{shortcut}</span>
+      {/if}
     </div>
   {/if}
 </div>
@@ -129,6 +134,19 @@
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border-primary);
     animation: fadeIn var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  
+  .tooltip-text {
+    flex: 1;
+  }
+  
+  .tooltip-shortcut {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: auto;
   }
   
   @keyframes fadeIn {

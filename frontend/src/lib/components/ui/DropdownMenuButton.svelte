@@ -10,6 +10,7 @@
     shortcut?: string  // Keyboard shortcut display
     checked?: boolean  // For toggle items
     isToggle?: boolean  // Whether this is a toggle item (doesn't close menu)
+    disabled?: boolean  // Whether this item is disabled
   }
 </script>
 
@@ -152,6 +153,8 @@
             type="button"
             class="dropdown-item"
             class:has-submenu={!!item.submenu}
+            class:disabled={item.disabled}
+            disabled={item.disabled}
             onclick={() => handleItemClick(item)}
           >
             {#if item.icon}
@@ -306,6 +309,15 @@
   
   .dropdown-item:hover {
     background: var(--surface-hover);
+  }
+
+  .dropdown-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .dropdown-item.disabled:hover {
+    background: transparent;
   }
   
   .dropdown-item.has-submenu {

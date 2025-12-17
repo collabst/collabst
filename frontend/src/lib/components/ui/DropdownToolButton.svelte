@@ -18,6 +18,7 @@
     strokeWidth?: number
     buttonWidth?: string  // Custom button width
     buttonBackground?: string  // Custom button background color
+    allowIconOverflow?: boolean  // Allow icon to overflow button boundaries
   }
   
   let {
@@ -29,7 +30,8 @@
     position = 'standalone',
     strokeWidth = 2,
     buttonWidth = '30px',
-    buttonBackground = undefined
+    buttonBackground = undefined,
+    allowIconOverflow = true
   }: DropdownToolButtonProps = $props()
 
   let isOpen = $state(false)
@@ -74,7 +76,7 @@
     bind:this={buttonRef}
     type="button"
     {disabled}
-    class="tool-btn tool-btn-{position} {active ? 'tool-btn-active' : ''} {className}"
+    class="tool-btn tool-btn-{position} {active ? 'tool-btn-active' : ''} {allowIconOverflow ? '' : 'no-icon-overflow'} {className}"
     onclick={toggleDropdown}
     style="{buttonBackground ? `background: ${buttonBackground};` : ''} {buttonWidth ? `width: ${buttonWidth};` : ''}"
   >
@@ -135,6 +137,14 @@
   
   .tool-btn :global(svg) {
     transform: scale(1.8);
+  }
+
+  .tool-btn.no-icon-overflow {
+    overflow: hidden;
+  }
+
+  .tool-btn.no-icon-overflow :global(svg) {
+    transform: scale(1);
   }
   
   .tool-btn:hover:not(:disabled) {
