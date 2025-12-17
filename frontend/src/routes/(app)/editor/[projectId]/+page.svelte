@@ -831,6 +831,33 @@
     }
   }
 
+  function gotoDiagnostic(diagnostic: Diagnostic) {
+    if (!diagnostic.range) return
+
+    // Find the file by path
+    const diagnosticFile = files.find(f => {
+      const filePath = f.path.startsWith('/') ? f.path.slice(1) : f.path
+      const diagnosticPath = diagnostic.path ? (diagnostic.path.startsWith('/') ? diagnostic.path.slice(1) : diagnostic.path) : ''
+      return filePath === diagnosticPath || f.name === diagnostic.path
+    })
+
+    if (diagnosticFile) {
+      // Select the file
+      selectedFile = diagnosticFile
+      selectedAsset = null
+
+      // Navigate to the diagnostic in the editor
+      setTimeout(() => {
+        editorPane?.navigateToDiagnostic?.(
+          diagnostic.range!.start.line + 1,
+          diagnostic.range!.start.character,
+          diagnostic.range!.end.line + 1,
+          diagnostic.range!.end.character
+        )
+      }, 100)
+    }
+  }
+
   function updateLinter() {
     const editorView = editorPane?.getEditorView?.()
     if (editorView) {
@@ -951,7 +978,7 @@
         </div>
       {:else if activePanel === 'issues'}
         <div style="width: {leftPanelWidth}px;">
-          <IssuesPanel {diagnostics} />
+          <IssuesPanel {diagnostics} gotoDiagnostic={gotoDiagnostic} />
         </div>
       {:else if activePanel === 'comments'}
         <div style="width: {leftPanelWidth}px;">

@@ -2,6 +2,7 @@
   import type { Diagnostic } from "$lib/types";
 
   export let diagnostics: Diagnostic[] = [];
+  export let gotoDiagnostic: (diagnostic: Diagnostic) => void;
 </script>
 
 <div class="issues-panel">
@@ -13,7 +14,7 @@
       <p>No issues or suggestions found.</p>
     {:else}
       {#each diagnostics as diagnostic}
-        <div class="issue-item issue-severity-{diagnostic.severity}">
+        <div class="issue-item issue-severity-{diagnostic.severity}" on:click={gotoDiagnostic(diagnostic)}>
           <strong>{diagnostic.severity}: {diagnostic.message}</strong>
           {#if diagnostic.range}
             <p>in {diagnostic.path}</p>

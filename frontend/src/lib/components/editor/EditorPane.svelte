@@ -111,6 +111,36 @@
     }
   }
 
+  // Navigate to a specific line and column in the editor
+  export function navigateToDiagnostic(line: number, character: number, endLine?: number, endCharacter?: number) {
+    try {
+      const view = codeEditor?.getView?.()
+      if (!view) return
+
+      const doc = view.state.doc
+      // Convert 1-based to 0-based line numbering
+      const startLineNum = Math.max(1, line)
+      const endLineNum = endLine ? Math.max(1, endLine) : startLineNum
+
+      if (startLineNum <= doc.lines && endLineNum <= doc.lines) {
+        const startLineObj = doc.line(startLineNum)
+        const endLineObj = doc.line(endLineNum)
+
+        const from = startLineObj.from + Math.max(0, character)
+        const to = endLineObj.from + Math.max(0, endCharacter ?? character)
+
+        // Dispatch transaction to set selection and scroll into view
+        view.dispatch({
+          selection: { anchor: from, head: to },
+          scrollIntoView: true
+        })
+        view.focus()
+      }
+    } catch (e) {
+      console.error('Failed to navigate to diagnostic:', e)
+    }
+  }
+
   // Update comments whenever the version changes or file changes
   $effect(() => {
     if (codeEditor && selectedFile && (commentsVersion >= 0)) {
