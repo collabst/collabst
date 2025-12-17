@@ -34,7 +34,10 @@
       <p>No issues or suggestions found.</p>
     {:else}
       {#each sortedDiagnostics as diagnostic}
-        <div class="issue-item issue-severity-{diagnostic.severity}" on:click={() => gotoDiagnostic(diagnostic)}>
+        <div
+          class="issue-item issue-severity-{diagnostic.severity}"
+          on:click={() => gotoDiagnostic(diagnostic)}
+        >
           <strong>{diagnostic.severity}: {diagnostic.message}</strong>
           {#if diagnostic.range}
             <p>in {diagnostic.path}</p>
@@ -55,7 +58,8 @@
 
 <style>
   .issues-panel {
-    width: 280px;
+    width: 100%;
+    height: 100%;
     background: var(--bg-file-panel);
     display: flex;
     flex-direction: column;
@@ -91,7 +95,11 @@
     padding: var(--space-3);
     margin-bottom: var(--space-3);
     border-radius: 6px;
-    background: color-mix(in srgb, var(--color-bg), transparent var(--transparent));
+    background: color-mix(
+      in srgb,
+      var(--color-bg),
+      transparent var(--transparent)
+    );
     border-left: 4px solid var(--color);
   }
 
