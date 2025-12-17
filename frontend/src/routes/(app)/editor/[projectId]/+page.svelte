@@ -691,6 +691,9 @@
   let fileObservers = new Map<number, () => void>()
 
   $effect(() => {
+    void compiler;
+    void renderer;
+    void selectedFile;
     if (browser && yjsConnection?.ydoc && files.length > 0) {
       const ydoc = yjsConnection.ydoc
       
@@ -714,7 +717,8 @@
           fileObservers.set(file.id, () => ytext.unobserve(handler))
         }
       })
-
+      console.log(`[YJS] Set up observers for ${fileObservers.size}`)
+      console.log(selectedFile, compiler, renderer);
       // Trigger initial compile
       if (selectedFile && compiler && renderer) {
         triggerCompile()
@@ -727,13 +731,6 @@
     if (browser && files.length === 0) {
       fileObservers.forEach(unobserve => unobserve())
       fileObservers.clear()
-    }
-  })
-
-  // Trigger recompile when assets change (they may be referenced in typst files)
-  $effect(() => {
-    if (browser && assets && compiler && renderer && selectedFile) {
-      triggerCompile()
     }
   })
 
@@ -759,8 +756,8 @@
 
   // Typst compiler and renderer
   let typst: any = null;
-  let compiler: any = null;
-  let renderer: any = null;
+  let compiler: any = $state<null>(null);
+  let renderer: any = $state<null>(null);
   let diagnostics = $state<Diagnostic[]>([]);
   let previewHtml = $state<string>("");
   let compiledResult: any = null;
@@ -819,9 +816,15 @@
     };
     document.head.appendChild(script);
   });
-
   $effect(() => {
-    if (!isLoading && compiler && renderer && selectedFile && previewFileId !== null) {
+      void isLoading;
+      void compiler;
+      void renderer;
+      void selectedFile;
+      void previewFileId;
+      void assets;
+      void browser;
+    if (!isLoading && assets && browser && compiler && renderer && selectedFile && previewFileId !== null) {
       triggerCompile();
     }
   })
