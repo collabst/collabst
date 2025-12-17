@@ -82,6 +82,7 @@
     flex-direction: column;
     align-items: center;
     padding: var(--space-4);
+    overflow-y: auto;
   }
 
   .issue-item {
