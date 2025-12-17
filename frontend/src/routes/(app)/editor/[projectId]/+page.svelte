@@ -80,7 +80,7 @@
   let isResizingRight = false
   let resizeStartX = 0
   let resizeStartWidth = 0
-  let editorPane: any = null
+  let editorPane: any = $state(null)
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
@@ -397,7 +397,7 @@
     } else if (selectedFile) {
       handleDeleteFile(selectedFile.id)
     }
-    }
+  }
   async function handleMoveFile(fileId: number, targetFolderId: number | null) {
     try {
       const updatedFile = await filesApi.move(Number(projectId), fileId, targetFolderId)
@@ -424,6 +424,8 @@
       console.error('Failed to move asset:', error)
       const message = error?.response?.data?.detail || 'Failed to move asset'
       notifications.show(message, 'error', 5000)
+    }
+  }
  
 
   function handleProjectNameClick() {
