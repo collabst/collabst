@@ -1,264 +1,226 @@
-# Frontend Setup & Testing Guide
+# Collabst Setup Guide
 
-## Complete Application Flow
+This guide will help you set up and run Collabst locally using Docker Compose.
 
-### 1. Start the Backend
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+- **Docker** (version 20.10 or higher)
+- **Docker Compose** (version 2.0 or higher)
+
+You can verify your installation by running:
+```bash
+docker --version
+docker-compose --version
+```
+
+## Quick Start
+
+### 1. Clone the Repository
 
 ```bash
-cd backend
-docker-compose up -d
-uv run alembic upgrade head
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+git clone <repository-url>
+cd Collabst
 ```
-Make sure you created a .env based on .env.example
-Backend will be at: http://localhost:8000
 
-### 2. Start the Frontend
+### 2. Set Up Environment Variables
+
+Create a `.env` file by copying the example file:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cp .env.example .env
 ```
-Make sure your .env has the correct port for the backend (e.g 8000)
 
-Frontend will be at: http://localhost:5173
+Add your user ID and group ID to prevent Docker from creating files as root:
+```bash
+echo "UID=$(id -u)" >> .env
+echo "GID=$(id -g)" >> .env
+```
 
-## Testing the Complete Flow
+**If you are on MacOS, you can skip this step.**
 
-### Step 1: Register an Account
+### 3. Configure Environment Variables (Optional)
 
-1. Open http://localhost:5173
-2. Click "Register"
-3. Enter:
-   - Email: `test@example.com`
-   - Username: `testuser`
-   - Password: `password123`
-4. Click "Register"
-5. You'll be auto-logged in and redirected to Projects
+Open the `.env` file and customize the settings if needed. The default values should work for local development:
 
-### Step 2: Create a Project
+```dotenv
+# Port Configuration
+POSTGRES_PORT=5432
+REDIS_PORT=6379
+MINIO_PORT=9000
+MINIO_CONSOLE_PORT=9001
+BACKEND_PORT=8000
+FRONTEND_PORT=5137
 
-1. Click "+ New Project"
-2. Enter:
-   - Name: `My First Typst Project`
-   - Description: `Learning Typst collaboration`
-3. Click "Create Project"
-4. You'll see the project card appear
+# Security (⚠️ Change these in production!)
+POSTGRES_PASSWORD=postgres
+MINIO_ROOT_PASSWORD=minioadmin
+SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
+```
 
-### Step 3: Open the Editor
+> **⚠️ Important for Production:** 
+> - Generate a secure `SECRET_KEY` using: `openssl rand -hex 32`
+> - Use strong passwords for `POSTGRES_PASSWORD` and `MINIO_ROOT_PASSWORD`
 
-1. Click "Open" on your project
-2. You'll enter the editor interface
+### 4. Launch the Application
 
-### Step 4: Create a File
+Start all services using Docker Compose:
 
-1. Click the "+" button in the left sidebar
-2. Enter filename: `main.typ`
-3. Click "Create"
-4. The file will open in the editor
+```bash
+docker-compose -f docker-compose.dev.yml --env-file .env up
+```
 
-### Step 5: Start Editing
+To run in detached mode (background):
+```bash
+docker-compose -f docker-compose.dev.yml --env-file .env up -d
+```
 
-1. Type some Typst code:
-   ```typst
-   #heading[Hello Typst]
+### 5. Access the Application
 
-   This is my first collaborative document.
+Once all services are running, you can access:
 
-   #list[
-     - Real-time sync
-     - Multiple users
-     - No conflicts
-   ]
-   ```
+- **Frontend (Web UI):** http://localhost:5137
+- **Backend API:** http://localhost:8000
+- **API Documentation:** http://localhost:8000/docs
+- **MinIO Console:** http://localhost:9001 (login with `minioadmin` / `minioadmin`)
 
-2. Watch the connection status (should be green "Connected")
-3. Click "Save" to persist to database
+## Managing the Application
 
-### Step 6: Test Real-Time Collaboration
+### View Logs
 
-#### Option A: Two Browser Windows
+```bash
+# View logs from all services
+docker-compose -f docker-compose.dev.yml logs
 
-1. **Window 1**: Keep your current session open
-2. **Window 2**: Open incognito/private mode
-3. Go to http://localhost:5173
-4. Login with the same account
-5. Open the same project
-6. Open the same file
+# View logs from a specific service
+docker-compose -f docker-compose.dev.yml logs backend
+docker-compose -f docker-compose.dev.yml logs frontend
 
-Now type in Window 1 and watch it appear in Window 2 instantly!
+# Follow logs in real-time
+docker-compose -f docker-compose.dev.yml logs -f
+```
 
-#### Option B: Two Different Users
+### Stop the Application
 
-1. **Browser 1**: Already logged in
-2. **Browser 2** (incognito): Register a different account
-3. **Browser 1**: Add the new user as collaborator (see Step 7)
-4. **Browser 2**: Open the shared project
-5. Both users can edit simultaneously!
+```bash
+# Stop all services
+docker-compose -f docker-compose.dev.yml stop
 
-### Step 7: Add Collaborators (if implemented)
+# Stop and remove containers
+docker-compose -f docker-compose.dev.yml down
+```
 
-1. In the editor, click "👥 Collaborators"
-2. See online users in real-time
-3. Each user has a unique color
+### Restart Services
 
-## What to Look For
+```bash
+# Restart all services
+docker-compose -f docker-compose.dev.yml restart
 
-### ✅ Connection Status
+# Restart a specific service
+docker-compose -f docker-compose.dev.yml restart backend
+```
 
-Top center of editor:
-- 🟢 Connected = WebSocket active
-- ✓ Synced = Document synced
-- 🔴 Disconnected = Check backend/network
+### Clean Up (Remove All Data)
 
-### ✅ Real-Time Sync
+⚠️ **Warning:** This will delete all data including the database!
 
-- Type in one window → appears in other
-- No lag (should be instant)
-- Cursor positions (if implemented)
-- No conflicts when editing same line
-
-### ✅ Persistence
-
-- Click "Save" → data goes to PostgreSQL
-- Reload page → content persists
-- YJS handles real-time, DB handles long-term
+```bash
+docker-compose -f docker-compose.dev.yml down -v
+```
 
 ## Troubleshooting
 
-### Backend Not Responding
+### Port Already in Use
+
+If you encounter port conflicts, edit the `.env` file and change the port numbers:
+
+```dotenv
+BACKEND_PORT=8001  # Change from 8000 to 8001
+FRONTEND_PORT=5138  # Change from 5137 to 5138
+```
+
+Then restart the services.
+
+### Services Not Starting
+
+Check the health of individual services:
 
 ```bash
-# Check backend is running
-curl http://reva-dl:8002/
-
-# Should return: {"message":"Typst Collaboration Platform API","version":"0.1.0"}
+docker-compose -f docker-compose.dev.yml ps
 ```
 
-### WebSocket Not Connecting
+If a service is unhealthy, check its logs:
 
-1. Check `.env` file has correct `VITE_WS_URL`
-2. Look at browser console for errors
-3. Check Network tab for WebSocket connection
-4. Verify backend WebSocket endpoint is accessible
-
-### CORS Errors
-
-Backend `.env` should include:
-```
-CORS_ORIGINS=["http://localhost:5173"]
+```bash
+docker-compose -f docker-compose.dev.yml logs <service-name>
 ```
 
-### Authentication Issues
+### Database Issues
 
-1. Check localStorage has `token` after login
-2. Try logout and login again
-3. Clear browser storage and re-register
+If you encounter database connection issues, try:
 
-## Development Tips
+1. Ensure PostgreSQL is healthy:
+   ```bash
+   docker-compose -f docker-compose.dev.yml logs postgres
+   ```
 
-### Hot Reload
+2. Reset the database:
+   ```bash
+   docker-compose -f docker-compose.dev.yml down -v
+   docker-compose -f docker-compose.dev.yml up
+   ```
 
-Both frontend and backend support hot reload:
-- Frontend: Vite HMR (instant updates)
-- Backend: `--reload` flag (restarts on changes)
+### Rebuilding Services
 
-### DevTools
+If you've made changes to Dockerfiles or dependencies:
 
-**Browser DevTools**:
-- Console: See YJS updates and errors
-- Network: Monitor WebSocket messages
-- Application > LocalStorage: See auth token
-
-**React DevTools**:
-Install extension to inspect React components and state
-
-### API Testing
-
-Use the interactive docs at http://reva-dl:8002/docs
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   Browser Window 1                   │
-│  ┌────────────┐         ┌────────────────────────┐ │
-│  │  React UI  │◄───────►│  YJS Document (CRDT)   │ │
-│  └────────────┘         └───────────┬────────────┘ │
-│                                     │               │
-│                                     │ WebSocket     │
-└─────────────────────────────────────┼───────────────┘
-                                      │
-                                      ▼
-                        ┌─────────────────────────┐
-                        │   FastAPI Backend       │
-                        │   - REST API            │
-                        │   - WebSocket Server    │
-                        │   - YJS Broadcast       │
-                        └────┬──────────┬─────────┘
-                             │          │
-                    ┌────────▼──┐  ┌───▼──────┐
-                    │PostgreSQL │  │  Redis   │
-                    │  (Files)  │  │ (State)  │
-                    └───────────┘  └──────────┘
-                                      │
-                                      ▲
-                                      │ WebSocket
-┌─────────────────────────────────────┼───────────────┐
-│                                     │               │
-│                                     │               │
-│  ┌────────────┐         ┌───────────┴────────────┐ │
-│  │  React UI  │◄───────►│  YJS Document (CRDT)   │ │
-│  └────────────┘         └────────────────────────┘ │
-│                   Browser Window 2                   │
-└─────────────────────────────────────────────────────┘
+```bash
+docker-compose -f docker-compose.dev.yml up --build
 ```
 
-## Files Created
+Force rebuild without cache:
+```bash
+docker-compose -f docker-compose.dev.yml build --no-cache
+docker-compose -f docker-compose.dev.yml up
+```
 
-```
-frontend_dev/
-├── src/
-│   ├── components/
-│   │   └── CodeEditor.tsx          # CodeMirror + YJS
-│   ├── context/
-│   │   └── AuthContext.tsx         # Authentication
-│   ├── hooks/
-│   │   └── useYjs.ts               # YJS WebSocket
-│   ├── pages/
-│   │   ├── Login.tsx               # Login page
-│   │   ├── Register.tsx            # Register page
-│   │   ├── Projects.tsx            # Project list
-│   │   └── Editor.tsx              # Collaborative editor
-│   ├── services/
-│   │   └── api.ts                  # API client
-│   ├── types/
-│   │   └── index.ts                # TypeScript types
-│   ├── App.tsx                     # Main app
-│   └── main.tsx                    # Entry point
-├── .env                            # Configuration
-└── README.md                       # Documentation
-```
+## Architecture
+
+The application consists of the following services:
+
+- **PostgreSQL** (port 5432): Main database
+- **Redis** (port 6379): Caching and WebSocket coordination
+- **MinIO** (ports 9000, 9001): S3-compatible object storage for files
+- **Backend** (port 8000): FastAPI application
+- **Frontend** (port 5137): SvelteKit web application
+
+All services are orchestrated using Docker Compose and share data through Docker volumes.
+
+## Development
+
+For development, the services are configured with:
+
+- **Hot reload**: Code changes are reflected automatically
+- **Volume mounts**: Local code is mounted into containers
+- **Health checks**: Ensures services are ready before starting dependent services
 
 ## Next Steps
 
-1. ✅ Test authentication
-2. ✅ Create projects
-3. ✅ Create files
-4. ✅ Test real-time collaboration
-5. 🚀 Add more features (see README)
+After setting up Collabst:
 
-## Success Criteria
+1. Create an account at http://localhost:5137/register
+2. Log in and start creating collaborative Typst projects
+3. Explore the API documentation at http://localhost:8000/docs
 
-You've successfully set up the frontend if:
+## Support
 
-✅ You can register and login
-✅ You can create projects
-✅ You can create files
-✅ You can edit files in the CodeMirror editor
-✅ Changes sync in real-time across browser windows
-✅ Connection status shows "Connected"
-✅ Files persist after refresh
+For issues and questions, please refer to:
+- [README.md](README.md) for project overview
+- [Backend Architecture](backend/ARCHITECTURE.md) for technical details
+- [GitHub Issues](<repository-issues-url>) for bug reports
 
-Enjoy building with Typst! 🚀
+---
+
+**Enjoy collaborating with Collabst! 🎉**
+
