@@ -64,26 +64,40 @@
   }
 
   .issue-item {
+    --transparent: 70%;
     width: 100%;
     padding: var(--space-3);
     margin-bottom: var(--space-3);
     border-radius: 6px;
-    background: var(--bg-issue-item);
+    background: color-mix(in srgb, var(--color-bg), transparent var(--transparent));
+    border-left: 4px solid var(--color);
   }
 
   .issue-severity-error {
-    border-left: 4px solid var(--color-error);
+    --color: var(--color-error);
+    --color-bg: var(--color-error-bg);
   }
 
   .issue-severity-warning {
-    border-left: 4px solid var(--color-warning);
+    --color: var(--color-warning);
+    --color-bg: var(--color-warning-bg);
   }
 
   .issue-severity-info {
-    border-left: 4px solid var(--color-info);
+    --color: var(--color-info);
+    --color-bg: var(--color-info-bg);
   }
 
   .issue-severity-hint {
-    border-left: 4px solid var(--color-hint);
+    --color: var(--color-hint);
+    --color-bg: var(--color-hint-bg);
+  }
+
+  .issue-item:hover {
+    --transparent: 40%;
+  }
+
+  .issue-item:active {
+    --transparent: 10%;
   }
 </style>

@@ -61,6 +61,8 @@
   --color-hint-dark: #2563eb;
   
   /* Notification Colors */
+  --color-hint-bg: #1e3a8a;
+  --color-hint-text: #93c5fd;
   --color-info-bg: #1e3a8a;
   --color-info-text: #93c5fd;
   --color-warning-bg: #78350f;
@@ -171,6 +173,8 @@
   --border-error: var(--color-error);
   
   /* Notification colors for dark mode */
+  --color-hint-bg: #1e3a8a;
+  --color-hint-text: #93c5fd;
   --color-info-bg: #1e3a8a;
   --color-info-text: #93c5fd;
   --color-warning-bg: #78350f;
@@ -226,6 +230,8 @@
   --border-error: var(--color-error);
   
   /* Notification colors for light mode */
+  --color-hint-bg: #dbeafe;
+  --color-hint-text: #1e3a8a;
   --color-info-bg: #dbeafe;
   --color-info-text: #1e3a8a;
   --color-warning-bg: #fef3c7;
