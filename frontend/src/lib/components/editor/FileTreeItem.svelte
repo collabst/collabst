@@ -256,17 +256,6 @@
     }
   }}
 >
-  {#if 'is_folder' in item && item.is_folder && onToggleFolder}
-    <button
-      class="chevron"
-      on:click|stopPropagation={onToggleFolder}
-      title={item.isExpanded ? "Collapse folder" : "Expand folder"}
-    >
-      <svelte:component this={item.isExpanded ? ChevronDown : ChevronRight} size={16} />
-    </button>
-  {:else}
-    <span class="chevron-spacer" />
-  {/if}
   <span class="icon">
     <svelte:component this={getFileIconComponent(item)} size={16} />
   </span>
@@ -307,9 +296,9 @@
         </Tooltip>
       {/if}
     </div>
-    {#if getFileSize(item)}
+    <!-- {#if getFileSize(item)}
       <span class="size">{getFileSize(item)}</span>
-    {/if}
+    {/if} -->
   </div>
 </div>
 

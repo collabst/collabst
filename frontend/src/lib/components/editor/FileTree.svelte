@@ -20,6 +20,8 @@
   export let onRenameAsset: ((assetId: number, newName: string) => void) | null = null
   export let onMoveFile: ((fileId: number, targetFolderId: number | null) => void) | null = null
   export let onMoveAsset: ((assetId: number, targetFolderId: number | null) => void) | null = null
+  export let onDeleteFile: ((fileId: number) => void) | null = null
+  export let onDeleteAsset: ((assetId: number) => void) | null = null
   export let onCreateFile: (() => void) | null = null
   export let onCreateFolder: (() => void) | null = null
   export let onUploadAsset: (() => void) | null = null
@@ -223,7 +225,6 @@
     // if (e.target === e.currentTarget && onClearSelection) {
     //  onClearSelection()
     //}
-    pass
   }
 
   function handleRootDrop(e: DragEvent) {
