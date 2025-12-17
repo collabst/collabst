@@ -997,6 +997,7 @@
       {/if}
 
       <EditorPane
+        bind:this={editorPane}
         {selectedFile}
         {selectedAsset}
         ytext={selectedYtext}
