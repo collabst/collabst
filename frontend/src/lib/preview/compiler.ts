@@ -85,7 +85,7 @@ export async function addFileToCompiler(
     if (cached && cached !== file.path) {
       console.log("File moved/renamed, removing old path:", cached, "->", file.path);
       const oldPath = cached.startsWith('/') ? cached : `/${cached}`;
-      compiler.removeSource(oldPath);
+      compiler.unmapShadow(oldPath);
     }
 
     console.log("Adding file to compiler:", file.path);
