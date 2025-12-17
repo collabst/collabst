@@ -942,7 +942,7 @@
       </div>
     </header>
     <div class="main">
-      <ActivityBar {activePanel} onActivityClick={handleActivityClick} />
+      <ActivityBar {activePanel} onActivityClick={handleActivityClick} {diagnostics} />
       
       {#if activePanel === 'files'}
         <div 
