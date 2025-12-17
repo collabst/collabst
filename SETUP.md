@@ -2,6 +2,26 @@
 
 This guide will help you set up and run Collabst locally using Docker Compose.
 
+## Easy Setup with Makefile
+
+For the quickest setup, use the included Makefile commands:
+
+```bash
+# Setup environment
+make setup
+
+# Start the application
+make start
+
+# Or start in detached mode (background)
+make start ARGS='-d'
+
+# View all available commands
+make help
+```
+
+For more detailed instructions or manual setup, continue reading below.
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed on your system:
@@ -21,10 +41,17 @@ docker-compose --version
 
 ```bash
 git clone <repository-url>
-cd Collabst
+cd collabst
 ```
 
 ### 2. Set Up Environment Variables
+
+**Using Makefile (Recommended):**
+```bash
+make setup
+```
+
+**Or manually:**
 
 Create a `.env` file by copying the example file:
 
@@ -38,7 +65,7 @@ echo "UID=$(id -u)" >> .env
 echo "GID=$(id -g)" >> .env
 ```
 
-**If you are on MacOS, you can skip this step.**
+**If you are on MacOS, you can skip the UID/GID step.**
 
 ### 3. Configure Environment Variables (Optional)
 
@@ -65,15 +92,25 @@ SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
 
 ### 4. Launch the Application
 
-Start all services using Docker Compose:
-
+**Using Makefile (Recommended):**
 ```bash
-docker-compose -f docker-compose.dev.yml --env-file .env up
+# Start in interactive mode (see logs)
+make start
+
+# Or start in detached mode (background)
+make start ARGS='-d'
+
+# Start with rebuild
+make start ARGS='--build'
 ```
 
-To run in detached mode (background):
+**Or using Docker Compose directly:**
 ```bash
-docker-compose -f docker-compose.dev.yml --env-file .env up -d
+# Interactive mode
+docker-compose -f docker-compose.dev.yml up
+
+# Detached mode
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 ### 5. Access the Application
@@ -89,13 +126,23 @@ Once all services are running, you can access:
 
 ### View Logs
 
+**Using Makefile:**
+```bash
+# Follow logs from all services
+make logs
+
+# Follow logs from a specific service
+make logs SERVICE=backend
+make logs SERVICE=frontend
+```
+
+**Using Docker Compose:**
 ```bash
 # View logs from all services
 docker-compose -f docker-compose.dev.yml logs
 
 # View logs from a specific service
 docker-compose -f docker-compose.dev.yml logs backend
-docker-compose -f docker-compose.dev.yml logs frontend
 
 # Follow logs in real-time
 docker-compose -f docker-compose.dev.yml logs -f
@@ -103,6 +150,16 @@ docker-compose -f docker-compose.dev.yml logs -f
 
 ### Stop the Application
 
+**Using Makefile:**
+```bash
+# Stop and remove containers
+make stop
+
+# Stop and remove volumes too
+make stop ARGS='-v'
+```
+
+**Using Docker Compose:**
 ```bash
 # Stop all services
 docker-compose -f docker-compose.dev.yml stop
@@ -113,6 +170,16 @@ docker-compose -f docker-compose.dev.yml down
 
 ### Restart Services
 
+**Using Makefile:**
+```bash
+# Restart all services
+make restart
+
+# Restart a specific service
+make restart SERVICE=backend
+```
+
+**Using Docker Compose:**
 ```bash
 # Restart all services
 docker-compose -f docker-compose.dev.yml restart
@@ -125,6 +192,12 @@ docker-compose -f docker-compose.dev.yml restart backend
 
 ⚠️ **Warning:** This will delete all data including the database!
 
+**Using Makefile:**
+```bash
+make clean  # Includes a 5-second warning before proceeding
+```
+
+**Using Docker Compose:**
 ```bash
 docker-compose -f docker-compose.dev.yml down -v
 ```
@@ -146,6 +219,12 @@ Then restart the services.
 
 Check the health of individual services:
 
+**Using Makefile:**
+```bash
+make status
+```
+
+**Using Docker Compose:**
 ```bash
 docker-compose -f docker-compose.dev.yml ps
 ```
@@ -175,12 +254,24 @@ If you encounter database connection issues, try:
 
 If you've made changes to Dockerfiles or dependencies:
 
+**Using Makefile:**
 ```bash
-docker-compose -f docker-compose.dev.yml up --build
+# Rebuild and start
+make build
+
+# Rebuild in detached mode
+make build ARGS='-d'
+
+# Force rebuild without cache
+make rebuild
 ```
 
-Force rebuild without cache:
+**Using Docker Compose:**
 ```bash
+# Rebuild and start
+docker-compose -f docker-compose.dev.yml up --build
+
+# Force rebuild without cache
 docker-compose -f docker-compose.dev.yml build --no-cache
 docker-compose -f docker-compose.dev.yml up
 ```
