@@ -35,11 +35,14 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+        - "${MINIO_PORT}:9000"
+        - "${MINIO_CONSOLE_PORT}:9001"
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:${MINIO_PORT}/minio/health/live" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -49,6 +52,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     container_name: collabst-backend
+    user: "${UID:-}:${GID:-}"
     volumes:
       - ./backend:/app
       - /app/.venv
@@ -63,7 +67,8 @@ services:
       MINIO_PUBLIC_SECURE: "false"
       MINIO_BUCKET_NAME: collabst
       SECRET_KEY: ${SECRET_KEY}
-      CORS_ORIGINS: '["http://localhost:5173"]'
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
     ports:
       - "${BACKEND_PORT}:8000"
     depends_on:
@@ -79,6 +84,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: collabst-frontend
+    user: "${UID:-}:${GID:-}"
     ports:
       - "${FRONTEND_PORT}:5173"
     volumes:
