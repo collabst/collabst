@@ -16,6 +16,7 @@
   import PlaceholderPanel from '$lib/components/editor/PlaceholderPanel.svelte'
   import EditorPane from '$lib/components/editor/EditorPane.svelte'
   import CreateFileModal from '$lib/components/editor/CreateFileModal.svelte'
+  import CreateFolderModal from '$lib/components/editor/CreateFolderModal.svelte'
   import DeleteConfirmModal from '$lib/components/editor/DeleteConfirmModal.svelte'
   import UploadAssetModal from '$lib/components/editor/UploadAssetModal.svelte'
   import CollaboratorsPanel from '$lib/components/editor/CollaboratorsPanel.svelte'
@@ -38,6 +39,7 @@
   let selectedAsset = $state<Asset | null>(null)
   let previewFileId = $state<number | null>(null)
   let showCreateFileModal = $state(false)
+  let showCreateFolderModal = $state(false)
   let showUploadAssetModal = $state(false)
   let showDeleteModal = $state(false)
   let deleteTarget = $state<{ type: 'file' | 'asset'; id: number; name: string } | null>(null)
@@ -237,12 +239,18 @@
 
   async function handleCreateFile(fileName: string) {
     try {
+      // Determine parent folder: use selected folder, or selected file's parent, or null (root)
+      const parentId = selectedFile?.is_folder
+        ? selectedFile.id
+        : selectedFile?.parent_id ?? null
+
       const newFile = await filesApi.create(
         Number(projectId),
         fileName,
-        `/${fileName}`,
+        '/',  // Path will be computed by backend
         'typst',
-        ''
+        '',
+        parentId
       )
       if (!files.find(f => f.id === newFile.id)) {
         files = [...files, newFile]
@@ -250,28 +258,65 @@
       selectedFile = newFile
       selectedAsset = null
       showCreateFileModal = false
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create file:', error)
-      alert('Failed to create file')
+      const message = error?.response?.data?.detail || 'Failed to create file'
+      notifications.show(message, 'error', 5000)
+    }
+  }
+
+  async function handleCreateFolder(folderName: string) {
+    try {
+      // Determine parent folder: use selected folder, or selected file's parent, or null (root)
+      const parentId = selectedFile?.is_folder
+        ? selectedFile.id
+        : selectedFile?.parent_id ?? null
+
+      const newFolder = await filesApi.createFolder(
+        Number(projectId),
+        folderName,
+        parentId
+      )
+      if (!files.find(f => f.id === newFolder.id)) {
+        files = [...files, newFolder]
+      }
+      selectedFile = newFolder
+      selectedAsset = null
+      showCreateFolderModal = false
+      notifications.show('Folder created successfully', 'success')
+    } catch (error: any) {
+      console.error('Failed to create folder:', error)
+      const message = error?.response?.data?.detail || 'Failed to create folder'
+      notifications.show(message, 'error', 5000)
     }
   }
 
   async function handleUploadAsset(file: File) {
     try {
-      const asset = await assetsApi.upload(Number(projectId), file)
+      // Determine parent folder: use selected folder, or selected file's parent, or null (root)
+      const parentId = selectedFile?.is_folder
+        ? selectedFile.id
+        : selectedFile?.parent_id ?? null
+
+      const asset = await assetsApi.upload(Number(projectId), file, parentId)
       if (!assets.find(a => a.id === asset.id)) {
         assets = [...assets, asset]
       }
       showUploadAssetModal = false
-    } catch (error) {
+      notifications.show('Asset uploaded successfully', 'success')
+    } catch (error: any) {
       console.error('Failed to upload asset:', error)
-      alert('Failed to upload asset')
+      const message = error?.response?.data?.detail || 'Failed to upload asset'
+      notifications.show(message, 'error', 5000)
     }
   }
 
   function handleSelectFile(file: ProjectFile) {
     selectedFile = file
-    selectedAsset = null
+    // If it's a folder, just select it but don't load in editor
+    if (!file.is_folder) {
+      selectedAsset = null
+    }
     // Awareness update handled by reactive statement
   }
 
@@ -279,6 +324,11 @@
     selectedAsset = asset
     // Keep selectedFile to prevent CodeEditor from being destroyed
     // Awareness update handled by reactive statement
+  }
+
+  function handleClearSelection() {
+    selectedFile = null
+    selectedAsset = null
   }
 
   function handleSetPreviewFile(fileId: number) {
@@ -347,7 +397,34 @@
     } else if (selectedFile) {
       handleDeleteFile(selectedFile.id)
     }
+    }
+  async function handleMoveFile(fileId: number, targetFolderId: number | null) {
+    try {
+      const updatedFile = await filesApi.move(Number(projectId), fileId, targetFolderId)
+      files = files.map(f => f.id === fileId ? updatedFile : f)
+      if (selectedFile?.id === fileId) {
+        selectedFile = updatedFile
+      }
+    } catch (error: any) {
+      console.error('Failed to move file:', error)
+      const message = error?.response?.data?.detail || 'Failed to move file'
+      notifications.show(message, 'error', 5000)
+    }
   }
+
+  async function handleMoveAsset(assetId: number, targetFolderId: number | null) {
+    try {
+      const updatedAsset = await assetsApi.move(Number(projectId), assetId, targetFolderId)
+      assets = assets.map(a => a.id === assetId ? updatedAsset : a)
+      if (selectedAsset?.id === assetId) {
+        selectedAsset = updatedAsset
+      }
+      notifications.show('Asset moved successfully', 'success')
+    } catch (error: any) {
+      console.error('Failed to move asset:', error)
+      const message = error?.response?.data?.detail || 'Failed to move asset'
+      notifications.show(message, 'error', 5000)
+ 
 
   function handleProjectNameClick() {
     isEditingProjectName = true
@@ -962,8 +1039,11 @@
             onSetPreviewFile={handleSetPreviewFile}
             onRenameFile={handleRenameFile}
             onRenameAsset={handleRenameAsset}
+            onMoveFile={handleMoveFile}
+            onMoveAsset={handleMoveAsset}
+            onClearSelection={handleClearSelection}
             onCreateFile={() => showCreateFileModal = true}
-            onCreateFolder={() => console.log('Create folder - to be implemented')}
+            onCreateFolder={() => showCreateFolderModal = true}
             onUploadAsset={() => showUploadAssetModal = true}
             provider={yjsConnection?.provider || null}
           />
@@ -1032,6 +1112,12 @@
       show={showCreateFileModal}
       onClose={() => showCreateFileModal = false}
       onSubmit={handleCreateFile}
+    />
+
+    <CreateFolderModal
+      show={showCreateFolderModal}
+      onClose={() => showCreateFolderModal = false}
+      onSubmit={handleCreateFolder}
     />
 
     <DeleteConfirmModal

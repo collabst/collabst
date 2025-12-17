@@ -43,17 +43,27 @@ export interface File {
   path: string
   type: 'typst' | 'text' | 'yaml' | 'json' | 'other'
   content: string
+  parent_id: number | null
+  is_folder: boolean
   created_at: string
   updated_at: string
+}
+
+export interface FileTreeNode extends File {
+  children: FileTreeNode[]
+  level: number
+  isExpanded: boolean
 }
 
 export interface Asset {
   id: number
   project_id: number
   filename: string
+  path: string
   storage_path: string
   mime_type: string
   size: number
+  parent_id: number | null
   created_at: string
   updated_at: string
 }

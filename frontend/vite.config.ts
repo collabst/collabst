@@ -5,5 +5,11 @@ export default defineConfig({
   plugins: [sveltekit()],
   optimizeDeps: {
     exclude: ['@lucide/svelte']
+  },
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 100
+    }
   }
 })

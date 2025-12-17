@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { File as ProjectFile, Asset } from '$lib/types'
+  import type { File as ProjectFile, Asset, FileTreeNode } from '$lib/types'
   import { Tooltip } from '$lib/components/ui'
   import File from '@lucide/svelte/icons/file'
   import FileText from '@lucide/svelte/icons/file-text'
@@ -10,21 +10,104 @@
   import Paperclip from '@lucide/svelte/icons/paperclip'
   import Eye from '@lucide/svelte/icons/eye'
   import EyeOff from '@lucide/svelte/icons/eye-closed'
+  import Folder from '@lucide/svelte/icons/folder'
+  import FolderOpen from '@lucide/svelte/icons/folder-open'
+  import ChevronRight from '@lucide/svelte/icons/chevron-right'
+  import ChevronDown from '@lucide/svelte/icons/chevron-down'
 
-  export let item: ProjectFile | Asset
+  export let item: (ProjectFile & FileTreeNode) | Asset
   export let isSelected: boolean = false
   export let isPreview: boolean = false
   export let onSelect: () => void
   export let onSetPreview: (() => void) | undefined = undefined
   export let onRename: ((newName: string) => Promise<void>) | null = null
+  export let onToggleFolder: (() => void) | undefined = undefined
+  export let onMoveFile: ((fileId: number, targetFolderId: number | null) => void) | undefined = undefined
+  export let onMoveAsset: ((assetId: number, targetFolderId: number | null) => void) | undefined = undefined
   export let usersViewing: { name: string; color: string }[] = []
 
   let isEditing = false
   let editingName = ''
   let inputElement: HTMLInputElement
   let isSubmitting = false
+  let isDragOver = false
 
-  function getFileIconComponent(item: ProjectFile | Asset) {
+  function handleDragStart(e: DragEvent) {
+    if (!e.dataTransfer) return
+
+    // Store the item being dragged
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      id: item.id,
+      isAsset: isAsset(item),
+      isFolder: 'is_folder' in item && item.is_folder
+    }))
+
+    // Add dragging class
+    if (e.target instanceof HTMLElement) {
+      e.target.classList.add('dragging')
+    }
+  }
+
+  function handleDragEnd(e: DragEvent) {
+    if (e.target instanceof HTMLElement) {
+      e.target.classList.remove('dragging')
+    }
+    isDragOver = false
+  }
+
+  function handleDragOver(e: DragEvent) {
+    // Allow drop on any item (folders, files, or assets)
+    e.preventDefault()
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
+    }
+    isDragOver = true
+  }
+
+  function handleDragLeave() {
+    isDragOver = false
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault()
+    e.stopPropagation() // Stop event from bubbling to parent
+    isDragOver = false
+
+    if (!e.dataTransfer) return
+
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'))
+
+      // Don't allow dropping onto self
+      if (data.id === item.id && data.isAsset === isAsset(item)) return
+
+      // Determine target parent:
+      // - If dropping on a folder: use the folder's id
+      // - If dropping on a file/asset: use the same parent (item.parent_id)
+      let targetParentId: number | null
+      if ('is_folder' in item && item.is_folder) {
+        targetParentId = item.id
+      } else {
+        targetParentId = 'parent_id' in item ? item.parent_id : null
+      }
+
+      // Move the file/folder/asset to the target parent
+      if (data.isAsset) {
+        if (onMoveAsset) {
+          onMoveAsset(data.id, targetParentId)
+        }
+      } else {
+        if (onMoveFile) {
+          onMoveFile(data.id, targetParentId)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse drag data:', error)
+    }
+  }
+
+  function getFileIconComponent(item: (ProjectFile & FileTreeNode) | Asset) {
     // Check if it's an asset
     if ('mime_type' in item) {
       if (item.mime_type.startsWith('image/')) return Image
@@ -34,11 +117,16 @@
       return Paperclip
     }
 
+    // Check if it's a folder
+    if ('is_folder' in item && item.is_folder) {
+      return ('isExpanded' in item && item.isExpanded) ? FolderOpen : Folder
+    }
+
     // It's a file - check extension
     const name = item.name.toLowerCase()
     if (name.endsWith('.bib')) return BookOpen
     if (name.endsWith('.pdf')) return FileText
-    if (name.endsWith('.svg') || name.endsWith('.png') || name.endsWith('.jpg') || 
+    if (name.endsWith('.svg') || name.endsWith('.png') || name.endsWith('.jpg') ||
         name.endsWith('.jpeg') || name.endsWith('.gif') || name.endsWith('.webp')) return Image
     return File
   }
@@ -137,12 +225,48 @@
   class="file-item"
   class:active={isSelected}
   class:asset={isAsset(item)}
-  on:click={onSelect}
+  class:folder={'is_folder' in item && item.is_folder}
+  class:drag-over={isDragOver}
+  style="padding-left: {'level' in item ? `${item.level * 1.5 + 0.5}rem` : '0.5rem'}"
+  draggable={!isEditing}
+  on:dragstart={handleDragStart}
+  on:dragend={handleDragEnd}
+  on:dragover={handleDragOver}
+  on:dragleave={handleDragLeave}
+  on:drop={handleDrop}
+  on:click={() => {
+    // If it's a folder and has toggle handler, just toggle
+    if ('is_folder' in item && item.is_folder && onToggleFolder) {
+      onToggleFolder()
+    } else {
+      // Otherwise select the file/asset
+      onSelect()
+    }
+  }}
   on:dblclick={handleDoubleClick}
   role="button"
   tabindex="0"
-  on:keydown={(e) => e.key === 'Enter' && onSelect()}
+  on:keydown={(e) => {
+    if (e.key === 'Enter') {
+      if ('is_folder' in item && item.is_folder && onToggleFolder) {
+        onToggleFolder()
+      } else {
+        onSelect()
+      }
+    }
+  }}
 >
+  {#if 'is_folder' in item && item.is_folder && onToggleFolder}
+    <button
+      class="chevron"
+      on:click|stopPropagation={onToggleFolder}
+      title={item.isExpanded ? "Collapse folder" : "Expand folder"}
+    >
+      <svelte:component this={item.isExpanded ? ChevronDown : ChevronRight} size={16} />
+    </button>
+  {:else}
+    <span class="chevron-spacer" />
+  {/if}
   <span class="icon">
     <svelte:component this={getFileIconComponent(item)} size={16} />
   </span>
@@ -193,7 +317,7 @@
   .file-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     cursor: pointer;
     color: var(--text-primary);
@@ -209,6 +333,55 @@
 
   .file-item.asset {
     opacity: 0.9;
+  }
+
+  .file-item.folder {
+    font-weight: var(--font-medium);
+  }
+
+  .file-item[draggable="true"] {
+    cursor: grab;
+  }
+
+  .file-item[draggable="true"]:active {
+    cursor: grabbing;
+  }
+
+  .file-item:global(.dragging) {
+    opacity: 0.5;
+  }
+
+  .file-item.drag-over {
+    background: var(--primary-opacity-10);
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .chevron {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-sm);
+  }
+
+  .chevron:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  .chevron-spacer {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 
   .icon {

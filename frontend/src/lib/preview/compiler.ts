@@ -1,12 +1,9 @@
 import type { File, Asset } from "../types";
 import { assetsApi } from "../services/api";
 
-// Cache to track loaded assets: Map<assetId, {storage_path, filename}>
-// This helps detect when an asset has changed (different storage_path)
-const loadedAssets = new Map<
-  number,
-  { storage_path: string; filename: string }
->();
+// Cache to track loaded assets: Map<assetId, {storage_path, path}>
+// This helps detect when an asset has changed (different storage_path) or moved
+const loadedAssets = new Map<number, { storage_path: string; path: string }>();
 
 // Cache to track loaded files: Map<fileId, filename>
 // This helps detect when a file has been renamed
@@ -25,22 +22,28 @@ export async function addFileToCompiler(
   }
   if ("storage_path" in file) {
     // It's an Asset
-    const path = "/" + file.filename;
+    // Use the full path from backend (supports nested folders)
+    const path = file.path.startsWith('/') ? file.path : `/${file.path}`;
     const cached = loadedAssets.get(file.id);
 
-    // Check if this asset is already loaded and hasn't changed
-    if (cached && cached.storage_path === file.storage_path) {
-      console.log("Asset already loaded and unchanged:", file.filename);
+    // Check if this asset is already loaded and hasn't changed or moved
+    if (cached && cached.storage_path === file.storage_path && cached.path === file.path) {
+      console.log("Asset already loaded and unchanged:", file.path);
       return;
     }
 
-    // If the asset exists but storage_path changed, remove the old version
+    // If the asset exists but was moved or changed, remove the old version
     if (cached) {
-      console.log("Asset changed, removing old version:", file.filename);
-      compiler.unmapShadow("/" + cached.filename);
+      if (cached.path !== file.path) {
+        console.log("Asset moved, removing old path:", cached.path, "->", file.path);
+      } else {
+        console.log("Asset changed, removing old version:", file.path);
+      }
+      const oldPath = cached.path.startsWith('/') ? cached.path : `/${cached.path}`;
+      compiler.unmapShadow(oldPath);
     }
 
-    console.log("Adding asset to compiler:", file.filename);
+    console.log("Adding asset to compiler:", file.path);
 
     try {
       // Fetch the asset URL from the backend
@@ -60,35 +63,36 @@ export async function addFileToCompiler(
       );
       compiler.mapShadow(path, uint8Array);
 
-      // Cache this asset's info
-      loadedAssets.set(file.id, {
-        storage_path: file.storage_path,
-        filename: file.filename,
-      });
+      // Cache this asset's info (including path for move detection)
+      loadedAssets.set(file.id, { storage_path: file.storage_path, path: file.path });
     } catch (error) {
-      console.error("Failed to load asset:", file.filename, error);
+      console.error("Failed to load asset:", file.path, error);
     }
   } else {
     // It's a File
-    const path = "/" + file.name;
-    const cached = loadedFiles.get(file.id);
 
-    // If the file exists but was renamed, remove the old version
-    if (cached && cached !== file.name) {
-      console.log(
-        "File renamed, removing old version:",
-        cached,
-        "->",
-        file.name,
-      );
-      compiler.removeSource("/" + cached);
+    // Skip folders - they don't get added to compiler
+    if (file.is_folder) {
+      console.log("Skipping folder:", file.name);
+      return;
     }
 
-    console.log("Adding file to compiler:", file.name);
+    // Use the full path from backend (supports nested folders)
+    const path = file.path.startsWith('/') ? file.path : `/${file.path}`;
+    const cached = loadedFiles.get(file.id);
+
+    // If the file exists but was renamed/moved, remove the old version
+    if (cached && cached !== file.path) {
+      console.log("File moved/renamed, removing old path:", cached, "->", file.path);
+      const oldPath = cached.startsWith('/') ? cached : `/${cached}`;
+      compiler.removeSource(oldPath);
+    }
+
+    console.log("Adding file to compiler:", file.path);
     compiler.addSource(path, file.content);
 
-    // Cache this file's name
-    loadedFiles.set(file.id, file.name);
+    // Cache this file's path (not just name, for folder support)
+    loadedFiles.set(file.id, file.path);
   }
 }
 
@@ -107,43 +111,33 @@ export function cleanupDeletedAssets(
 
     if (!currentAsset) {
       // Asset was deleted
-      console.log("Removing deleted asset:", assetInfo.filename);
-      const path = "/" + assetInfo.filename;
+      console.log("Removing deleted asset:", assetInfo.path);
+      const path = assetInfo.path.startsWith('/') ? assetInfo.path : `/${assetInfo.path}`;
       compiler.unmapShadow(path);
       loadedAssets.delete(assetId);
-    } else if (currentAsset.filename !== assetInfo.filename) {
-      // Asset was renamed - remove old path, it will be re-added with new name
-      console.log(
-        "Removing renamed asset old path:",
-        assetInfo.filename,
-        "->",
-        currentAsset.filename,
-      );
-      const oldPath = "/" + assetInfo.filename;
+    } else if (currentAsset.path !== assetInfo.path) {
+      // Asset was renamed/moved - remove old path, it will be re-added with new path
+      console.log("Removing asset old path:", assetInfo.path, "->", currentAsset.path);
+      const oldPath = assetInfo.path.startsWith('/') ? assetInfo.path : `/${assetInfo.path}`;
       compiler.unmapShadow(oldPath);
       loadedAssets.delete(assetId);
     }
   }
 
   // Cleanup files
-  for (const [fileId, filename] of loadedFiles) {
+  for (const [fileId, cachedPath] of loadedFiles) {
     const currentFile = currentFilesMap.get(fileId);
 
     if (!currentFile) {
       // File was deleted
-      console.log("Removing deleted file:", filename);
-      const path = "/" + filename;
+      console.log("Removing deleted file:", cachedPath);
+      const path = cachedPath.startsWith('/') ? cachedPath : `/${cachedPath}`;
       compiler.unmapShadow(path);
       loadedFiles.delete(fileId);
-    } else if (currentFile.name !== filename) {
-      // File was renamed - remove old path, it will be re-added with new name
-      console.log(
-        "Removing renamed file old path:",
-        filename,
-        "->",
-        currentFile.name,
-      );
-      const oldPath = "/" + filename;
+    } else if (currentFile.path !== cachedPath) {
+      // File was renamed/moved - remove old path, it will be re-added with new path
+      console.log("Removing file old path:", cachedPath, "->", currentFile.path);
+      const oldPath = cachedPath.startsWith('/') ? cachedPath : `/${cachedPath}`;
       compiler.unmapShadow(oldPath);
       loadedFiles.delete(fileId);
     }
