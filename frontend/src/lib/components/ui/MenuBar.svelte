@@ -3,6 +3,7 @@
   import FilePlus from '@lucide/svelte/icons/file-plus'
   import Upload from '@lucide/svelte/icons/upload'
   import FileEdit from '@lucide/svelte/icons/file-edit'
+  import Trash from '@lucide/svelte/icons/trash-2'
   import Download from '@lucide/svelte/icons/download'
   import Undo from '@lucide/svelte/icons/undo'
   import Redo from '@lucide/svelte/icons/redo'
@@ -15,11 +16,13 @@
   import Palette from '@lucide/svelte/icons/palette'
   import Contrast from '@lucide/svelte/icons/contrast'
   import HelpCircle from '@lucide/svelte/icons/help-circle'
+  import { theme as themeStore } from '$lib/stores/theme'
   
   interface MenuBarProps {
     onNewFile?: () => void
     onUploadFile?: () => void
     onRenameFile?: () => void
+    onDeleteFile?: () => void
     onExportPDF?: () => void
     onExportPNG?: () => void
     onExportSVG?: () => void
@@ -35,14 +38,17 @@
     onWrapLines?: () => void
     onThemeLight?: () => void
     onThemeDark?: () => void
-    onThemeSystem?: () => void
     onNegativePreview?: () => void
+    wrapLines?: boolean
+    negativePreview?: boolean
+    showToolbar?: boolean
   }
   
   let {
     onNewFile = () => console.log('New file'),
     onUploadFile = () => console.log('Upload file'),
     onRenameFile = () => console.log('Rename file'),
+    onDeleteFile = () => console.log('Delete file'),
     onExportPDF = () => console.log('Export PDF'),
     onExportPNG = () => console.log('Export PNG'),
     onExportSVG = () => console.log('Export SVG'),
@@ -58,16 +64,36 @@
     onWrapLines = () => console.log('Wrap lines'),
     onThemeLight = () => console.log('Theme Light'),
     onThemeDark = () => console.log('Theme Dark'),
-    onThemeSystem = () => console.log('Theme System'),
-    onNegativePreview = () => console.log('Negative preview')
+    onNegativePreview = () => console.log('Negative preview'),
+    wrapLines: wrapLinesFromParent = true,
+    negativePreview: negativePreviewFromParent = false,
+    showToolbar: showToolbarFromParent = true
   }: MenuBarProps = $props()
   
   // Toggle states
   let showToolbar = $state(true)
   let scrollOnType = $state(false)
-  let wrapLines = $state(false)
-  let currentTheme = $state<'light' | 'dark' | 'system'>('system')
+  let wrapLines = $state(true)
+  let currentTheme = $state<'light' | 'dark'>($themeStore)
   let negativePreview = $state(false)
+  
+  // Sync currentTheme with theme store
+  $effect(() => {
+    currentTheme = $themeStore
+  })
+
+  // Sync toggle states with parent props
+  $effect(() => {
+    wrapLines = wrapLinesFromParent
+  })
+
+  $effect(() => {
+    negativePreview = negativePreviewFromParent
+  })
+
+  $effect(() => {
+    showToolbar = showToolbarFromParent
+  })
   
   // Track which menu is open
   let openMenuIndex = $state<number | null>(null)
@@ -112,7 +138,8 @@
   const fileMenuItems = $derived<DropdownMenuItem[]>([
     { label: 'New file', icon: FilePlus, onclick: () => onNewFile(), shortcut: 'Ctrl+N' },
     { label: 'Upload file', icon: Upload, onclick: () => onUploadFile() },
-    { label: 'Rename file', icon: FileEdit, onclick: () => onRenameFile(), separator: true },
+    { label: 'Rename file', icon: FileEdit, onclick: () => onRenameFile(), shortcut: 'F2' },
+    { label: 'Delete file', icon: Trash, onclick: () => onDeleteFile(), shortcut: 'Delete', separator: true },
     { label: 'Export PDF', icon: Download, onclick: () => onExportPDF(), shortcut: 'Ctrl+⇧+S' },
     { 
       label: 'Export as', 
@@ -166,20 +193,14 @@
       submenu: [
         { 
           label: 'Light', 
-          onclick: () => { currentTheme = 'light'; onThemeLight(); },
+          onclick: () => { onThemeLight(); },
           checked: currentTheme === 'light',
           isToggle: true
         },
         { 
           label: 'Dark', 
-          onclick: () => { currentTheme = 'dark'; onThemeDark(); },
+          onclick: () => { onThemeDark(); },
           checked: currentTheme === 'dark',
-          isToggle: true
-        },
-        { 
-          label: 'System', 
-          onclick: () => { currentTheme = 'system'; onThemeSystem(); },
-          checked: currentTheme === 'system',
           isToggle: true
         }
       ]

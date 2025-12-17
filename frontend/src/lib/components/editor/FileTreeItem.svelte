@@ -16,7 +16,6 @@
   export let isPreview: boolean = false
   export let onSelect: () => void
   export let onSetPreview: (() => void) | undefined = undefined
-  export let onDelete: (() => void) | null = null
   export let onRename: ((newName: string) => Promise<void>) | null = null
   export let usersViewing: { name: string; color: string }[] = []
 
@@ -188,15 +187,6 @@
       <span class="size">{getFileSize(item)}</span>
     {/if}
   </div>
-  {#if onDelete}
-    <button
-      class="delete-btn"
-      on:click|stopPropagation={onDelete}
-      title="Delete"
-    >
-      ×
-    </button>
-  {/if}
 </div>
 
 <style>
@@ -250,10 +240,14 @@
     text-overflow: ellipsis;
     flex: 1;
     min-width: 0;
+    padding: 2px 6px;
+    margin: 0;
   }
 
   .name-input {
     flex: 1;
+    min-width: 0;
+    max-width: 100%;
     background: var(--surface);
     color: var(--text-primary);
     border: 1px solid var(--border);
@@ -262,10 +256,13 @@
     font-size: 13px;
     font-family: inherit;
     outline: none;
+    margin: 0;
   }
 
   .name-input:focus {
-    border-color: var(--primary);
+    border-color: var(--color-primary-500);
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 0px;
   }
 
   .user-indicators {

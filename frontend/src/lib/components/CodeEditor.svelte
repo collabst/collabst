@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher } from 'svelte'
   import { EditorView, basicSetup } from 'codemirror'
-  import { EditorState, Compartment } from '@codemirror/state'
+  import { EditorState, Compartment, Transaction } from '@codemirror/state'
   import { lintGutter, setDiagnostics } from '@codemirror/lint'
-  import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next'
+  import { yCollab } from 'y-codemirror.next'
   import { greyDark, greyLight } from '$lib/codemirror/greyTheme'
   import { keymap } from '@codemirror/view'
   import * as Y from 'yjs'
@@ -20,6 +20,7 @@
   export let onTrackerReady: ((tracker: CommentRangeTracker) => void) | null = null
   export let diagnostics: Diagnostic[] = []
   export let fileName = ''
+  export let wrapLines = true
 
 
   let editorElement: HTMLDivElement
@@ -29,6 +30,7 @@
   let commentTracker: CommentRangeTracker | null = null
   let currentTheme: 'light' | 'dark' = $themeStore
   const themeCompartment = new Compartment()
+  const lineWrappingCompartment = new Compartment()
 
   // Subscribe to theme changes
   $: currentTheme = $themeStore
@@ -36,9 +38,19 @@
     updateEditorTheme()
   }
 
+  // Update line wrapping when prop changes
+  $: if (view && wrapLines !== undefined) {
+    updateLineWrapping()
+  }
+
   // Get theme extensions based on current theme
   function getThemeExtensions() {
     return currentTheme === 'light' ? [greyLight] : [greyDark]
+  }
+
+  // Get line wrapping extensions based on wrapLines prop
+  function getLineWrappingExtensions() {
+    return wrapLines ? [EditorView.lineWrapping] : []
   }
 
   // Update editor theme when theme changes
@@ -47,6 +59,15 @@
     
     view.dispatch({
       effects: themeCompartment.reconfigure(getThemeExtensions())
+    })
+  }
+
+  // Update line wrapping when prop changes
+  function updateLineWrapping() {
+    if (!view) return
+    
+    view.dispatch({
+      effects: lineWrappingCompartment.reconfigure(getLineWrappingExtensions())
     })
   }
   // Store cursor positions as Yjs relative positions per file
@@ -71,6 +92,240 @@
     }
   }
 
+  // Export editor action methods
+  export function undo() {
+    if (view && undoManager && undoManager.canUndo()) {
+      undoManager.undo()
+      view.focus()
+    }
+  }
+
+  export function redo() {
+    if (view && undoManager && undoManager.canRedo()) {
+      undoManager.redo()
+      view.focus()
+    }
+  }
+
+  export function selectAll() {
+    if (view) {
+      view.dispatch({
+        selection: { anchor: 0, head: view.state.doc.length },
+        userEvent: "select"
+      })
+      view.focus()
+    }
+  }
+
+  export function canUndo(): boolean {
+    return undoManager ? undoManager.canUndo() : false
+  }
+
+  export function canRedo(): boolean {
+    return undoManager ? undoManager.canRedo() : false
+  }
+
+  // Insert text at current cursor position or replace selection
+  export function insertText(text: string) {
+    if (!view) return
+    
+    const { from, to } = view.state.selection.main
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length }
+    })
+    view.focus()
+  }
+
+  // Smart wrap: Toggle prefix/suffix around selection or cursor
+  // If already wrapped, removes the wrapping. If not wrapped, adds it.
+  export function toggleWrap(prefix: string, suffix: string) {
+    if (!view) return
+    
+    const { from, to } = view.state.selection.main
+    const selectedText = view.state.doc.sliceString(from, to)
+    
+    // Check if we have text before and after selection
+    const beforeStart = Math.max(0, from - prefix.length)
+    const afterEnd = Math.min(view.state.doc.length, to + suffix.length)
+    const textBefore = view.state.doc.sliceString(beforeStart, from)
+    const textAfter = view.state.doc.sliceString(to, afterEnd)
+    
+    // Check if already wrapped
+    const isWrapped = textBefore.endsWith(prefix) && textAfter.startsWith(suffix)
+    
+    if (isWrapped) {
+      // Remove wrapping
+      if (selectedText) {
+        // Selection exists - remove prefix before and suffix after
+        // Changes array positions are relative to original document, CodeMirror handles adjustments
+        view.dispatch({
+          changes: [
+            { from: from - prefix.length, to: from, insert: '' },
+            { from: to, to: to + suffix.length, insert: '' }
+          ],
+          selection: { anchor: from - prefix.length, head: to - prefix.length }
+        })
+      } else {
+        // No selection, just cursor - remove prefix before and suffix after
+        view.dispatch({
+          changes: [
+            { from: from - prefix.length, to: from, insert: '' },
+            { from: from, to: from + suffix.length, insert: '' }
+          ],
+          selection: { anchor: from - prefix.length }
+        })
+      }
+    } else {
+      // Add wrapping
+      if (selectedText) {
+        // Wrap selection
+        view.dispatch({
+          changes: { from, to, insert: `${prefix}${selectedText}${suffix}` },
+          selection: { anchor: from + prefix.length, head: from + prefix.length + selectedText.length }
+        })
+      } else {
+        // Insert prefix and suffix at cursor
+        view.dispatch({
+          changes: { from, insert: `${prefix}${suffix}` },
+          selection: { anchor: from + prefix.length }
+        })
+      }
+    }
+    view.focus()
+  }
+
+  // Toggle line prefixes for lists (handles indentation and list type switching)
+  export function toggleLinePrefix(marker: string, alternateMarker?: string) {
+    if (!view) return
+    
+    const { from, to } = view.state.selection.main
+    const doc = view.state.doc
+    
+    // Get all lines in selection
+    const fromLine = doc.lineAt(from)
+    const toLine = doc.lineAt(to)
+    
+    const changes: { from: number; to: number; insert: string }[] = []
+    let newCursorPos = from
+    
+    for (let lineNum = fromLine.number; lineNum <= toLine.number; lineNum++) {
+      const line = doc.line(lineNum)
+      const lineText = line.text
+      
+      // Find indentation (spaces at start)
+      const indentMatch = lineText.match(/^(\s*)/)
+      const indent = indentMatch ? indentMatch[1] : ''
+      const contentStart = indent.length
+      const restOfLine = lineText.slice(contentStart)
+      
+      // Check what's at the start of the content
+      const hasCurrentMarker = restOfLine.startsWith(marker)
+      const hasAlternateMarker = alternateMarker && restOfLine.startsWith(alternateMarker)
+      
+      if (hasCurrentMarker) {
+        // Remove current marker
+        changes.push({
+          from: line.from + contentStart,
+          to: line.from + contentStart + marker.length,
+          insert: ''
+        })
+        if (lineNum === fromLine.number) {
+          newCursorPos = Math.max(line.from + indent.length, from - marker.length)
+        }
+      } else if (hasAlternateMarker && alternateMarker) {
+        // Replace alternate marker with current marker
+        changes.push({
+          from: line.from + contentStart,
+          to: line.from + contentStart + alternateMarker.length,
+          insert: marker
+        })
+        if (lineNum === fromLine.number) {
+          newCursorPos = from + (marker.length - alternateMarker.length)
+        }
+      } else {
+        // Add current marker
+        changes.push({
+          from: line.from + contentStart,
+          to: line.from + contentStart,
+          insert: marker
+        })
+        if (lineNum === fromLine.number) {
+          newCursorPos = from + marker.length
+        }
+      }
+    }
+    
+    view.dispatch({
+      changes,
+      selection: { anchor: newCursorPos }
+    })
+    view.focus()
+  }
+
+  // Wrap current selection with prefix and suffix, or insert both at cursor
+  // (Kept for backwards compatibility, but toggleWrap is preferred)
+  export function wrapSelection(prefix: string, suffix: string) {
+    toggleWrap(prefix, suffix)
+  }
+
+  // Custom keymap for undo/redo and formatting shortcuts
+  function createUndoRedoKeymap() {
+    return keymap.of([
+      {
+        key: 'Mod-z',
+        run: (view) => {
+          if (undoManager && undoManager.canUndo()) {
+            undoManager.undo()
+            return true
+          }
+          return false
+        }
+      },
+      {
+        key: 'Mod-Shift-z',
+        run: (view) => {
+          if (undoManager && undoManager.canRedo()) {
+            undoManager.redo()
+            return true
+          }
+          return false
+        }
+      },
+      {
+        key: 'Mod-y',
+        run: (view) => {
+          if (undoManager && undoManager.canRedo()) {
+            undoManager.redo()
+            return true
+          }
+          return false
+        }
+      },
+      {
+        key: 'Mod-b',
+        run: () => {
+          toggleWrap('*', '*')
+          return true
+        }
+      },
+      {
+        key: 'Mod-i',
+        run: () => {
+          toggleWrap('_', '_')
+          return true
+        }
+      },
+      {
+        key: 'Mod-u',
+        run: () => {
+          toggleWrap('#underline[', ']')
+          return true
+        }
+      }
+    ])
+  }
+
   function initializeEditor() {
     if (!editorElement || !ytext || !provider) return
 
@@ -82,11 +337,11 @@
     const state = EditorState.create({
       doc: ytext.toString(),
       extensions: [
-        EditorView.lineWrapping,
+        lineWrappingCompartment.of(getLineWrappingExtensions()),
         basicSetup,
         themeCompartment.of(getThemeExtensions()),
         yCollab(ytext, provider.awareness, { undoManager }),
-        keymap.of(yUndoManagerKeymap),
+        createUndoRedoKeymap(),
         commentsExtension(),
         lintGutter(),
       ],
@@ -138,10 +393,11 @@
     view.setState(EditorState.create({
       doc: ytext.toString(),
       extensions: [
+        lineWrappingCompartment.of(getLineWrappingExtensions()),
         basicSetup,
         themeCompartment.of(getThemeExtensions()),
         yCollab(ytext, provider.awareness, { undoManager }),
-        keymap.of(yUndoManagerKeymap),
+        createUndoRedoKeymap(),
         commentsExtension(),
         lintGutter(),
       ],
