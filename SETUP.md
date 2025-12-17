@@ -2,6 +2,26 @@
 
 This guide will help you set up and run Collabst locally using Docker Compose.
 
+## Easy setup and usage instructions
+
+Run the setup script to prepare your environment:
+
+```bash
+sh ./scripts/setup_dev.sh
+```
+
+To start the application after setup, run:
+
+```bash
+sh ./scripts/start_dev.sh
+```
+
+To stop the application, run:
+
+```bash
+sh ./scripts/stop_dev.sh
+```
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed on your system:
@@ -21,7 +41,7 @@ docker-compose --version
 
 ```bash
 git clone <repository-url>
-cd Collabst
+cd collabst
 ```
 
 ### 2. Set Up Environment Variables
