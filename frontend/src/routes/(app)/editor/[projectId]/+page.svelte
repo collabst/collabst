@@ -23,10 +23,8 @@
   import UserPresence from '$lib/components/editor/UserPresence.svelte'
   import type { Project, File as ProjectFile, Asset, Diagnostic } from '$lib/types'
   import type { YjsConnection } from '$lib/yjs'
-  import { addFileToCompiler, compileTypst, renderTypst, cleanupDeletedAssets, resetAssetCache } from "$lib/preview/compiler";
-  import { parseRange } from '$lib/preview/diagnostics'
-  import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
-  import { convertDiagnosticsToLint } from '$lib/preview/diagnostics'
+  import IncrementalPreview from '$lib/components/editor/IncrementalPreview.svelte'
+  import { convertDiagnosticsToLint, parseRange } from '$lib/preview/diagnostics'
   import { setDiagnostics } from '@codemirror/lint'
   import IssuesPanel from '$lib/components/editor/IssuesPanel.svelte'
 
@@ -283,7 +281,7 @@
       selectedFile = newFolder
       selectedAsset = null
       showCreateFolderModal = false
-      notifications.show('Folder created successfully', 'success')
+      notifications.show('Folder created successfully', 'info')
     } catch (error: any) {
       console.error('Failed to create folder:', error)
       const message = error?.response?.data?.detail || 'Failed to create folder'
@@ -303,7 +301,7 @@
         assets = [...assets, asset]
       }
       showUploadAssetModal = false
-      notifications.show('Asset uploaded successfully', 'success')
+      notifications.show('Asset uploaded successfully', 'info')
     } catch (error: any) {
       console.error('Failed to upload asset:', error)
       const message = error?.response?.data?.detail || 'Failed to upload asset'
@@ -419,7 +417,7 @@
       if (selectedAsset?.id === assetId) {
         selectedAsset = updatedAsset
       }
-      notifications.show('Asset moved successfully', 'success')
+      notifications.show('Asset moved successfully', 'info')
     } catch (error: any) {
       console.error('Failed to move asset:', error)
       const message = error?.response?.data?.detail || 'Failed to move asset'
@@ -505,31 +503,8 @@
   }
 
   async function handleDownloadPDF() {
-    if (!browser || !compiler || files.length === 0) {
-      console.error("Compiler or files not ready for PDF export");
-      return;
-    }
-
-    try {
-      // Compile to PDF
-      console.log(compiledResult);
-      typst.pdf({mainFilePath:compiledMainPath}).then((pdfData: Uint8Array) => {
-        // Convert Uint8Array to Blob - need to create a new Uint8Array with proper ArrayBuffer
-        const pdfFile = new Blob([new Uint8Array(pdfData)], { type: 'application/pdf' });
-        
-        // Creates element with <a> tag
-        const link = document.createElement('a');
-        // Sets file content in the object URL
-        link.href = URL.createObjectURL(pdfFile);
-        // Sets file name
-        link.download = project?.name ? `${project.name}.pdf` : 'document.pdf';
-        // Triggers a click event to <a> tag to save file.
-        link.click();
-        URL.revokeObjectURL(link.href);
-      });
-    } catch (error) {
-      console.error("Failed to generate PDF:", error);
-    }
+    // TODO: Implement PDF export with incremental compiler
+    notifications.show('PDF export coming soon', 'info')
   }
 
   function onFileCreated(file: ProjectFile) {
@@ -670,69 +645,54 @@
   })
 
   onDestroy(() => {
-    fileObservers.forEach(unobserve => unobserve())
-    fileObservers.clear()
     if (yjsConnection) destroyYjsConnection(yjsConnection)
     if (projectSync) projectSync.destroy()
-    resetAssetCache()
-  })
-
-  // Clean up deleted/renamed assets and files when arrays change
-  $effect(() => {
-    if (compiler && assets && files) {
-      cleanupDeletedAssets(compiler, assets, files)
-    }
   })
 
   let selectedYtext = $derived(selectedFile && yjsConnection?.ydoc
     ? getFileText(yjsConnection.ydoc, selectedFile.id)
     : null)
 
-  let fileObservers = new Map<number, () => void>()
+  // Track file observers for Yjs content changes
+  let fileObservers = new Map<number, () => void>();
+  let contentVersion = $state(0); // Increment to trigger reactivity
 
+  // Initialize file content and set up observers
   $effect(() => {
-    void compiler;
-    void renderer;
-    void selectedFile;
     if (browser && yjsConnection?.ydoc && files.length > 0) {
       const ydoc = yjsConnection.ydoc
-      
-      // Clear old observers
-      fileObservers.forEach(unobserve => unobserve())
-      fileObservers.clear()
 
-      // Set up observers for all files
+      // Clear old observers
+      fileObservers.forEach(unobserve => unobserve());
+      fileObservers.clear();
+
+      // Initialize file content and observe changes
       files.forEach(file => {
         const ytext = getFileText(ydoc, file.id)
-        
-        // Initialize file content if empty
-        if (ytext && ytext.length === 0 && file.content) {
-          ytext.insert(0, file.content)
-        }
-
-        // Observe changes in all files
         if (ytext) {
-          const handler = () => triggerCompile()
-          ytext.observe(handler)
-          fileObservers.set(file.id, () => ytext.unobserve(handler))
+          // Initialize if empty
+          if (ytext.length === 0 && file.content) {
+            ytext.insert(0, file.content)
+          }
+
+          // Observe changes to trigger preview updates
+          const handler = () => {
+            contentVersion++; // Trigger reactivity
+          };
+          ytext.observe(handler);
+          fileObservers.set(file.id, () => ytext.unobserve(handler));
         }
-      })
-      console.log(`[YJS] Set up observers for ${fileObservers.size}`)
-      console.log(selectedFile, compiler, renderer);
-      // Trigger initial compile
-      if (selectedFile && compiler && renderer) {
-        triggerCompile()
-      }
+      });
     }
   })
 
-  // Clean up observers when files change or component unmounts
+  // Clean up observers
   $effect(() => {
-    if (browser && files.length === 0) {
-      fileObservers.forEach(unobserve => unobserve())
-      fileObservers.clear()
-    }
-  })
+    return () => {
+      fileObservers.forEach(unobserve => unobserve());
+      fileObservers.clear();
+    };
+  });
 
   // Prioritize asset when both are set (asset is what user is actually viewing)
   let selectedItem = $derived(selectedAsset || selectedFile)
@@ -754,163 +714,46 @@
     }
   })
 
-  // Typst compiler and renderer
-  let typst: any = null;
-  let compiler: any = $state<null>(null);
-  let renderer: any = $state<null>(null);
+  // Diagnostics state for linter and issues panel
   let diagnostics = $state<Diagnostic[]>([]);
-  let previewHtml = $state<string>("");
-  let compiledResult: any = null;
-  let compiledMainPath: string = "";
 
-  let isLoading: boolean = true;
-  let version: string = "0.7.0-rc1";
-  let isCompiling = false;
-  let pendingCompile = false;
+  // Get files with current Yjs content for preview
+  let filesWithContent = $derived.by(() => {
+    // Track contentVersion to react to Yjs changes
+    void contentVersion;
 
-  const triggerCompile = debounce(() => update(), 50);
+    return files.map((file) => {
+      const ytextForFile = yjsConnection?.ydoc
+        ? getFileText(yjsConnection.ydoc, file.id)
+        : null;
 
-  function debounce<T extends (...args: any[]) => void>(fn: T, delay = 400) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: Parameters<T>) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => fn(...args), delay);
-    };
-  }
-
-  onMount(async () => {
-    // Check if already loaded
-    if ((window as any).$typst) {
-      typst = (window as any).$typst;
-      compiler = await typst.getCompiler();
-      renderer = await typst.getRenderer();
-      isLoading = false;
-      return;
-    }
-
-    // Only load script if not already present
-    if (document.querySelector(`script[src*="typst.ts@${version}"]`)) {
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts@${version}/dist/esm/contrib/all-in-one-lite.bundle.js`;
-
-    script.onload = async () => {
-      typst = (window as any).$typst;
-
-      typst.setCompilerInitOptions({
-        getModule: () =>
-          `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${version}/pkg/typst_ts_web_compiler_bg.wasm`,
-      });
-
-      typst.setRendererInitOptions({
-        getModule: () =>
-          `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@${version}/pkg/typst_ts_renderer_bg.wasm`,
-      });
-
-      compiler = await typst.getCompiler();
-      renderer = await typst.getRenderer();
-      isLoading = false;
-    };
-    document.head.appendChild(script);
+      return {
+        ...file,
+        content: ytextForFile ? ytextForFile.toString() : file.content,
+      };
+    });
   });
-  $effect(() => {
-      void isLoading;
-      void compiler;
-      void renderer;
-      void selectedFile;
-      void previewFileId;
-      void assets;
-      void browser;
-    if (!isLoading && assets && browser && compiler && renderer && selectedFile && previewFileId !== null) {
-      triggerCompile();
-    }
-  })
 
-  async function update() {
-    if (!browser || !compiler || !renderer || !selectedFile) return;
+  // Get preview file path
+  let previewFile = $derived(
+    previewFileId
+      ? filesWithContent.find(f => f.id === previewFileId)
+      : filesWithContent.find(f => f.name === 'main.typ') || filesWithContent.find(f => f.name.endsWith('.typ'))
+  );
 
-    if (isCompiling) {
-      pendingCompile = true;
-      return;
-    }
+  let previewFilePath = $derived(previewFile?.path || '/main.typ');
 
-    isCompiling = true;
 
-    try {
-      const filesWithContent = files.map((file) => {
-        const ytextForFile = yjsConnection?.ydoc
-          ? getFileText(yjsConnection.ydoc, file.id)
-          : null;
-
-        return {
-          ...file,
-          content: ytextForFile ? ytextForFile.toString() : file.content,
-        };
-      });
-
-      await addFileToCompiler(compiler, filesWithContent, Number(projectId));
-      await addFileToCompiler(compiler, assets, Number(projectId));
-
-      // Use preview file if set, otherwise default to main.typ or first .typ file
-      const previewFile = previewFileId
-        ? filesWithContent.find(f => f.id === previewFileId)
-        : filesWithContent.find(f => f.name === 'main.typ') || filesWithContent.find(f => f.name.endsWith('.typ'));
-
-      if (!previewFile) {
-        console.warn("No .typ file found for preview");
-        return;
-      }
-
-      const mainFilePath = previewFile.path;
-      const normalizedMainPath = mainFilePath.startsWith("/")
-        ? mainFilePath
-        : `/${mainFilePath}`;
-
-      const result = await compileTypst(compiler, normalizedMainPath);
-
-      if (result.diagnostics && result.diagnostics.length > 0) {
-        diagnostics = result.diagnostics.map((d: any) => ({
-          severity: d.severity,
-          message: d.message,
-          range: parseRange(d.range),
-          path: d.path,
-        }));
-      } else {
-        diagnostics = [];
-      }
-
-      updateLinter();
-
-      if (result.result && !result.hasError) {
-        compiledResult = result.result;
-        compiledMainPath = normalizedMainPath;
-        previewHtml = await renderTypst(renderer, result.result);
-      } else {
-        // Keep the last rendered state on error
-        console.error("Compilation failed:", {
-          hasError: result.hasError,
-          diagnostics: diagnostics,
-          mainFile: normalizedMainPath
-        });
-      }
-    } catch (error) {
-      console.error("Error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        mainFile: selectedFile?.path,
-        filesCount: files.length,
-        assetsCount: assets.length
-      });
-    } finally {
-      isCompiling = false;
-      if (pendingCompile) {
-        pendingCompile = false;
-        update();
-      }
-    }
+  // Handle diagnostics from IncrementalPreview
+  function handleDiagnostics(diags: any[]) {
+    // Parse diagnostics range from compiler format
+    diagnostics = diags.map((d: any) => ({
+      severity: d.severity,
+      message: d.message,
+      range: parseRange(d.range),
+      path: d.path,
+    }));
+    updateLinter();
   }
 
   function gotoDiagnostic(diagnostic: Diagnostic) {
@@ -1103,12 +946,11 @@
       </div>
 
       <div style="width: {previewPanelWidth}px; flex: 0 0 auto;">
-        <PreviewPane
-          {previewHtml}
-          onDownloadPDF={handleDownloadPDF}
-          {negativePreview}
-          panelWidth={previewPanelWidth}
-          {showToolbar}
+        <IncrementalPreview
+          files={filesWithContent}
+          {assets}
+          mainFilePath={previewFilePath}
+          onDiagnostics={handleDiagnostics}
         />
       </div>
     </div>
