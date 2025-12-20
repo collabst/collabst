@@ -27,6 +27,7 @@
   import { convertDiagnosticsToLint, parseRange } from '$lib/preview/diagnostics'
   import { setDiagnostics } from '@codemirror/lint'
   import IssuesPanel from '$lib/components/editor/IssuesPanel.svelte'
+  import SearchPanel from '$lib/components/editor/SearchPanel.svelte';
 
   let projectId = $derived($page.params.projectId)
 
@@ -783,6 +784,31 @@
     }
   }
 
+  function gotoMatch(filePath: string, startLine: number, startChar: number, endLine?: number, endChar?: number) {
+    // Find the file by path
+    const matchFile = files.find(f => {
+      const filePathNormalized = f.path.startsWith('/') ? f.path.slice(1) : f.path
+      const targetPathNormalized = filePath.startsWith('/') ? filePath.slice(1) : filePath
+      return filePathNormalized === targetPathNormalized || f.name === filePath
+    })
+
+    if (matchFile) {
+      // Select the file
+      selectedFile = matchFile
+      selectedAsset = null
+
+      // Navigate to the match in the editor
+      setTimeout(() => {
+        editorPane?.navigateToDiagnostic?.(
+          startLine + 1,
+          startChar,
+          endLine ? endLine + 1 : startLine + 1,
+          endChar ? endChar : startChar
+        )
+      }, 100)
+    }
+  }
+
   function updateLinter() {
     const editorView = editorPane?.getEditorView?.()
     if (editorView) {
@@ -898,7 +924,7 @@
         </div>
       {:else if activePanel === 'search'}
         <div style="width: {leftPanelWidth}px;">
-          <PlaceholderPanel title="Search" />
+          <SearchPanel {files} ydoc={yjsConnection?.ydoc || null} {gotoMatch} />
         </div>
       {:else if activePanel === 'outline'}
         <div style="width: {leftPanelWidth}px;">
@@ -906,7 +932,7 @@
         </div>
       {:else if activePanel === 'issues'}
         <div style="width: {leftPanelWidth}px;">
-          <IssuesPanel {diagnostics} gotoDiagnostic={gotoDiagnostic} />
+          <IssuesPanel {diagnostics} {gotoDiagnostic} />
         </div>
       {:else if activePanel === 'comments'}
         <div style="width: {leftPanelWidth}px;">
