@@ -199,6 +199,14 @@
     }
   }
 
+  async function handleDelete(item: TreeItem) {
+    if (item.isAsset && onDeleteAsset) {
+      await onDeleteAsset(item.id)
+    } else if (!item.isAsset && onDeleteFile) {
+      await onDeleteFile(item.id)
+    }
+  }
+
   function handleToggleFolder(folderId: number) {
     if (expandedFolders.has(folderId)) {
       expandedFolders.delete(folderId)
