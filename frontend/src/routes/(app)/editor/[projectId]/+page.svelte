@@ -977,6 +977,7 @@
           {assets}
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
+          projectName={project.name}
         />
       </div>
     </div>
