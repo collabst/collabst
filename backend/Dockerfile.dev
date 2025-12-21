@@ -1,27 +1,33 @@
 FROM python:3.12-slim
 
+ARG UID=1000
+ARG GID=1000
+
+# Create non-root user
+RUN groupadd -g ${GID} app \
+ && useradd -u ${UID} -g app -m app
+
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Set working directory
+# Environment for non-root tools
+ENV HOME=/home/app
+ENV UV_CACHE_DIR=/home/app/.cache/uv
+ENV PATH=/home/app/.local/bin:$PATH
+
+# Create required dirs and fix ownership
+RUN mkdir -p /app /home/app/.cache \
+ && chown -R app:app /app /home/app
+
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
+# Switch user BEFORE installing deps
+USER app
 
-# Install dependencies
-RUN uv sync --frozen
-
-# Install dependencies using uv
-RUN uv pip install --system -r pyproject.toml
-
-# Copy scripts and make them executable
-COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh
+# Copy entrypoint
+COPY --chown=app:app scripts/entrypoint.sh /app/scripts/entrypoint.sh
 RUN chmod +x /app/scripts/entrypoint.sh
 
-# Expose the port the app runs on
 EXPOSE 8000
 
-# Use entrypoint script to run migrations then start the app
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
-

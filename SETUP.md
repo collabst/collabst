@@ -1,23 +1,17 @@
 # Collabst Setup Guide
 
-This guide will help you set up and run Collabst locally using Docker Compose.
 
-## Easy Setup with Makefile
+This guide will help you set up and run Collabst locally using the Makefile and Docker Compose.
 
-For the quickest setup, use the included Makefile commands:
+## Quick Start
+
+Use the Makefile for all setup and management tasks:
 
 ```bash
-# Setup environment
-make setup
-
-# Start the application
-make start
-
-# Or start in detached mode (background)
-make start ARGS='-d'
-
-# View all available commands
-make help
+make setup      # Set up environment (.env file)
+make start      # Start all services
+make startd     # Start in detached mode
+make help       # View all available commands
 ```
 
 For more detailed instructions or manual setup, continue reading below.
@@ -35,7 +29,7 @@ docker --version
 docker-compose --version
 ```
 
-## Quick Start
+## Step-by-Step Setup
 
 ### 1. Clone the Repository
 
@@ -44,12 +38,14 @@ git clone <repository-url>
 cd collabst
 ```
 
-### 2. Set Up Environment Variables
+### 2. Set Up Environment
 
 **Using Makefile (Recommended):**
 ```bash
 make setup
 ```
+
+**If you are on MacOS, do manually create the `.env` file without UID/GID as shown below.**
 
 **Or manually:**
 
@@ -65,26 +61,11 @@ echo "UID=$(id -u)" >> .env
 echo "GID=$(id -g)" >> .env
 ```
 
-**If you are on MacOS, you can skip the UID/GID step.**
+For advanced users: you can still use `docker-compose -f docker-compose.dev.yml` directly if needed, but this guide will only reference the Makefile commands for simplicity.
 
 ### 3. Configure Environment Variables (Optional)
 
-Open the `.env` file and customize the settings if needed. The default values should work for local development:
-
-```dotenv
-# Port Configuration
-POSTGRES_PORT=5432
-REDIS_PORT=6379
-MINIO_PORT=9000
-MINIO_CONSOLE_PORT=9001
-BACKEND_PORT=8000
-FRONTEND_PORT=5137
-
-# Security (⚠️ Change these in production!)
-POSTGRES_PASSWORD=postgres
-MINIO_ROOT_PASSWORD=minioadmin
-SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
-```
+Open the `.env` file and customize the settings if needed. The default values should work for local development.
 
 > **⚠️ Important for Production:** 
 > - Generate a secure `SECRET_KEY` using: `openssl rand -hex 32`
@@ -92,224 +73,117 @@ SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
 
 ### 4. Launch the Application
 
-**Using Makefile (Recommended):**
 ```bash
-# Start in interactive mode (see logs)
-make start
-
-# Or start in detached mode (background)
-make start ARGS='-d'
-
-# Start with rebuild
-make start ARGS='--build'
-```
-
-**Or using Docker Compose directly:**
-```bash
-# Interactive mode
-docker-compose -f docker-compose.dev.yml up
-
-# Detached mode
-docker-compose -f docker-compose.dev.yml up -d
+make start                 # Start in interactive mode (see logs)
+make startd                # Start in detached mode (background)
+make build                 # Build or rebuild services
 ```
 
 ### 5. Access the Application
 
-Once all services are running, you can access:
+Once running, access:
 
 - **Frontend (Web UI):** http://localhost:5137
 - **Backend API:** http://localhost:8000
 - **API Documentation:** http://localhost:8000/docs
 - **MinIO Console:** http://localhost:9001 (login with `minioadmin` / `minioadmin`)
 
+
 ## Managing the Application
 
-### View Logs
-
-**Using Makefile:**
+### Logs
 ```bash
-# Follow logs from all services
-make logs
-
-# Follow logs from a specific service
-make logs SERVICE=backend
-make logs SERVICE=frontend
+make logs                  # All services
+make logs SERVICE=backend  # Specific service
 ```
 
-**Using Docker Compose:**
+### Stop
 ```bash
-# View logs from all services
-docker-compose -f docker-compose.dev.yml logs
-
-# View logs from a specific service
-docker-compose -f docker-compose.dev.yml logs backend
-
-# Follow logs in real-time
-docker-compose -f docker-compose.dev.yml logs -f
+make stop                # Stop and remove containers
+make stop ARGS='-v'      # Remove volumes too
 ```
 
-### Stop the Application
-
-**Using Makefile:**
+### Restart
 ```bash
-# Stop and remove containers
-make stop
-
-# Stop and remove volumes too
-make stop ARGS='-v'
+make restart             # Restart all services
+make restart SERVICE=backend  # Restart one service
 ```
 
-**Using Docker Compose:**
+### Status
 ```bash
-# Stop all services
-docker-compose -f docker-compose.dev.yml stop
-
-# Stop and remove containers
-docker-compose -f docker-compose.dev.yml down
-```
-
-### Restart Services
-
-**Using Makefile:**
-```bash
-# Restart all services
-make restart
-
-# Restart a specific service
-make restart SERVICE=backend
-```
-
-**Using Docker Compose:**
-```bash
-# Restart all services
-docker-compose -f docker-compose.dev.yml restart
-
-# Restart a specific service
-docker-compose -f docker-compose.dev.yml restart backend
+make status              # Show status of all services
 ```
 
 ### Clean Up (Remove All Data)
-
-⚠️ **Warning:** This will delete all data including the database!
-
-**Using Makefile:**
+⚠️ **Warning:** This deletes all data including the database!
 ```bash
-make clean  # Includes a 5-second warning before proceeding
-```
-
-**Using Docker Compose:**
-```bash
-docker-compose -f docker-compose.dev.yml down -v
+make clean
 ```
 
 ## Troubleshooting
 
 ### Port Already in Use
-
-If you encounter port conflicts, edit the `.env` file and change the port numbers:
-
+Edit `.env` and change the port numbers, then restart:
 ```dotenv
-BACKEND_PORT=8001  # Change from 8000 to 8001
-FRONTEND_PORT=5138  # Change from 5137 to 5138
+BACKEND_PORT=8001
+FRONTEND_PORT=5138
 ```
-
-Then restart the services.
 
 ### Services Not Starting
-
-Check the health of individual services:
-
-**Using Makefile:**
+Check status and logs:
 ```bash
 make status
-```
-
-**Using Docker Compose:**
-```bash
-docker-compose -f docker-compose.dev.yml ps
-```
-
-If a service is unhealthy, check its logs:
-
-```bash
-docker-compose -f docker-compose.dev.yml logs <service-name>
+make logs SERVICE=<service-name>
 ```
 
 ### Database Issues
-
-If you encounter database connection issues, try:
-
-1. Ensure PostgreSQL is healthy:
-   ```bash
-   docker-compose -f docker-compose.dev.yml logs postgres
-   ```
-
-2. Reset the database:
-   ```bash
-   docker-compose -f docker-compose.dev.yml down -v
-   docker-compose -f docker-compose.dev.yml up
-   ```
+Try restarting with volume removal:
+```bash
+make stop ARGS='-v'
+make start
+```
 
 ### Rebuilding Services
-
-If you've made changes to Dockerfiles or dependencies:
-
-**Using Makefile:**
+If you change Dockerfiles or dependencies:
 ```bash
-# Rebuild and start
-make build
-
-# Rebuild in detached mode
-make build ARGS='-d'
-
-# Force rebuild without cache
-make rebuild
+make build           # Rebuild
+make build ARGS='-d' # Rebuild in detached mode
+make rebuild         # Force rebuild without cache
 ```
 
-**Using Docker Compose:**
-```bash
-# Rebuild and start
-docker-compose -f docker-compose.dev.yml up --build
-
-# Force rebuild without cache
-docker-compose -f docker-compose.dev.yml build --no-cache
-docker-compose -f docker-compose.dev.yml up
-```
 
 ## Architecture
 
-The application consists of the following services:
+Services:
+- **PostgreSQL**: Main database
+- **Redis**: Caching and WebSocket coordination
+- **MinIO**: S3-compatible object storage
+- **Backend**: FastAPI app
+- **Frontend**: SvelteKit app
 
-- **PostgreSQL** (port 5432): Main database
-- **Redis** (port 6379): Caching and WebSocket coordination
-- **MinIO** (ports 9000, 9001): S3-compatible object storage for files
-- **Backend** (port 8000): FastAPI application
-- **Frontend** (port 5137): SvelteKit web application
+All services are managed with Docker Compose and share data via Docker volumes.
 
-All services are orchestrated using Docker Compose and share data through Docker volumes.
 
 ## Development
-
-For development, the services are configured with:
 
 - **Hot reload**: Code changes are reflected automatically
 - **Volume mounts**: Local code is mounted into containers
 - **Health checks**: Ensures services are ready before starting dependent services
 
+
 ## Next Steps
 
-After setting up Collabst:
+1. Register: http://localhost:5137/register
+2. Log in and create collaborative Typst projects
+3. Explore API docs: http://localhost:8000/docs
 
-1. Create an account at http://localhost:5137/register
-2. Log in and start creating collaborative Typst projects
-3. Explore the API documentation at http://localhost:8000/docs
 
 ## Support
 
-For issues and questions, please refer to:
+See:
 - [README.md](README.md) for project overview
 - [Backend Architecture](backend/ARCHITECTURE.md) for technical details
-- [GitHub Issues](<repository-issues-url>) for bug reports
+- GitHub Issues for bug reports
 
 ---
 
