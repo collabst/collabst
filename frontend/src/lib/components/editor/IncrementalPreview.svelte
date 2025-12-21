@@ -19,13 +19,15 @@
     assets?: Asset[];
     mainFilePath?: string;
     onDiagnostics?: (diagnostics: Diagnostic[]) => void;
+    projectName?: string;
   }
 
   let {
     files = [],
     assets = [],
     mainFilePath = '/main.typ',
-    onDiagnostics
+    onDiagnostics,
+    projectName
   }: Props = $props();
 
   let previewContainer: HTMLDivElement | undefined;
@@ -263,7 +265,7 @@
       previewContainer.addEventListener('scroll', handleScroll);
       // previewContainer.addEventListener('resize', handleScroll);
       const observer = new ResizeObserver(() => {
-        if (typstDoc) typstDoc.addViewportChange();
+        handleScroll();
       });
       observer.observe(previewContainer);
 
@@ -289,11 +291,13 @@
     }
     (previewContainer as any)._scrollTimeout = setTimeout(() => {
       typstDoc.addViewportChange();
-    }, 500);
+    }, 200);
   }
 
   // Sync files and assets with the worker
-  async function syncFilesAndAssets() {
+  // Debounce syncFilesAndAssets to prevent rapid repeated calls
+  let syncTimeout: any = null;
+  async function _syncFilesAndAssets() {
     if (!worker || !workerReady) return;
 
     // Handle files
@@ -368,6 +372,13 @@
 
     // Trigger compilation
     compile();
+  }
+
+  function syncFilesAndAssets() {
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+      _syncFilesAndAssets();
+    }, 30); // 30ms debounce
   }
 
   function compile() {
@@ -445,12 +456,14 @@
           console.error('Compilation error:', e.data.error);
           break;
 
-        case 'exportedPDF':
+        case 'pdf':
           const pdfBlob = new Blob([e.data.pdfData], { type: 'application/pdf' });
           const pdfUrl = URL.createObjectURL(pdfBlob);
           const pdfLink = document.createElement('a');
           pdfLink.href = pdfUrl;
-          pdfLink.download = 'document.pdf';
+          // get project name
+          console.log("projectName:", projectName);
+          pdfLink.download = `${projectName || 'document'}.pdf`;
           document.body.appendChild(pdfLink);
           pdfLink.click();
           document.body.removeChild(pdfLink);
