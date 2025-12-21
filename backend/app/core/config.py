@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -29,6 +30,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token with sliding expiration
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+
+    # Registration enabled/disabled
+    REGISTRATION_ENABLED: bool = True
 
 
 settings = Settings()

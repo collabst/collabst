@@ -14,11 +14,19 @@ from app.schemas.user import UserCreate, User as UserSchema, Token
 router = APIRouter()
 
 
+
 @router.post("/register", response_model=UserSchema)
 async def register(
     user_in: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    # Check if registration is enabled via settings
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registration is currently disabled.",
+        )
+
     result = await db.execute(select(User).where(User.email == user_in.email))
     if result.scalar_one_or_none():
         raise HTTPException(
