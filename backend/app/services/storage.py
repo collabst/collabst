@@ -6,6 +6,7 @@ from app.core.config import settings
 
 class StorageService:
     def __init__(self):
+        print(settings.MINIO_ENDPOINT, settings.MINIO_PUBLIC_ENDPOINT)
         self.client = Minio(
             settings.MINIO_ENDPOINT,
             access_key=settings.MINIO_ACCESS_KEY,

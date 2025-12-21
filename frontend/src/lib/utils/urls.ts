@@ -10,17 +10,7 @@ import { browser } from '$app/environment'
  * Uses http/https based on current protocol
  */
 export const getApiUrl = (): string => {
-  // Default for SSR
-  if (!browser) {
-    return `http://localhost:${import.meta.env.VITE_API_PORT || '8000'}`
-  }
-
-  // Use current browser protocol and hostname with port from env
-  const protocol = window.location.protocol // 'http:' or 'https:'
-  const hostname = window.location.hostname // just hostname without port
-  const port = import.meta.env.VITE_API_PORT || '8000'
-
-  return `${protocol}//${hostname}:${port}`
+    return `${import.meta.env.VITE_API_URL}`
 }
 
 /**
@@ -28,15 +18,8 @@ export const getApiUrl = (): string => {
  * Automatically converts http -> ws and https -> wss
  */
 export const getWsUrl = (): string => {
-  // Default for SSR
-  if (!browser) {
-    return `ws://localhost:${import.meta.env.VITE_API_PORT || '8000'}`
-  }
-
-  // Use current browser protocol and hostname with port from env
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const hostname = window.location.hostname // just hostname without port
-  const port = import.meta.env.VITE_API_PORT || '8000'
-
-  return `${protocol}//${hostname}:${port}`
+  const apiUrl = new URL(import.meta.env.VITE_API_URL)
+  const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+  console.log(`${wsProtocol}//${apiUrl.hostname}`)
+  return `${wsProtocol}//${apiUrl.hostname}/api`
 }
