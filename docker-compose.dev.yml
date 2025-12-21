@@ -51,11 +51,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     container_name: collabst-backend
-    user: "${UID:-}:${GID:-}"
     volumes:
-      - ./backend:/app
-      - /app/.venv
+      - ./backend:/app:z
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/collabst
       REDIS_URL: redis://redis:${REDIS_PORT}/0
@@ -84,13 +85,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     container_name: collabst-frontend
-    user: "${UID:-}:${GID:-}"
     ports:
       - "${FRONTEND_PORT}:5173"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/app:z
     environment:
       - VITE_API_PORT=${BACKEND_PORT}
     depends_on:

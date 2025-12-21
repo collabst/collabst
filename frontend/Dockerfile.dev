@@ -1,16 +1,29 @@
 FROM node:20-slim
 
-# Set working directory
+ARG UID=1000
+ARG GID=1000
+
+# Rename node user/group to app, set UID/GID, and home
+RUN groupmod -n app node \
+ && groupmod -g ${GID} app \
+ && usermod -l app -d /home/app -m node \
+ && usermod -u ${UID} -g ${GID} app \
+ && chown -R app:app /home/app
+
+ENV HOME=/home/app
+
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Fix ownership
+RUN chown -R app:app /app
 
-# Install dependencies
-RUN npm install
+# Switch user BEFORE npm install
+USER app
 
-# Expose port
+# Copy entrypoint
+COPY --chown=app:app scripts/entrypoint.sh /app/scripts/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint.sh
+
 EXPOSE 5173
 
-# Run development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
