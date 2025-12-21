@@ -69,6 +69,7 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED}
     ports:
       - "${BACKEND_PORT}:8000"
     depends_on:
