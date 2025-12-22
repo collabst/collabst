@@ -978,6 +978,8 @@
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
+          {negativePreview}
+          {showToolbar}
         />
       </div>
     </div>
