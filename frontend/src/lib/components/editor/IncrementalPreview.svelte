@@ -11,6 +11,7 @@
   import { browser } from '$app/environment';
   import type { File as ProjectFile, Asset, Diagnostic } from '$lib/types';
   import { assetsApi } from "../../services/api";
+  import JSZip from 'jszip';
   // Will be set dynamically in browser only
   let TypstSvgDocument: any = null;
 
@@ -154,8 +155,45 @@
       alert("Export as SVG not implemented yet");
     }
 
-    function exportSourcesAsZip() {
-      alert("Export sources as ZIP not implemented yet");
+    async function exportSourcesAsZip() {
+      try {
+        const zip = new JSZip();
+
+        // Add all project files
+        for (const file of files) {
+          if (!file.is_folder) {
+            const path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
+            zip.file(path, file.content);
+          }
+        }
+
+        // Add all assets
+        for (const asset of assets) {
+          try {
+            const { url } = await assetsApi.getUrl(asset.project_id, asset.id);
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const path = asset.path.startsWith('/') ? asset.path.slice(1) : asset.path;
+            zip.file(path, arrayBuffer);
+          } catch (error) {
+            console.error('Failed to add asset to ZIP:', asset.path, error);
+          }
+        }
+
+        // Generate ZIP and download
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${projectName || 'project'}-sources.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to export sources as ZIP:', error);
+        alert('Failed to export sources as ZIP');
+      }
     }
 
     const exportItems = [
