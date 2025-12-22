@@ -2,7 +2,7 @@ name: Deploy to self-hosted runner
 
 on:
   push:
-    branches: [ refacto/clean_url ]
+    branches: [ dev ]
 
 jobs:
   deploy:
