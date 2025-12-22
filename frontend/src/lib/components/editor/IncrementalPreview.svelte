@@ -590,7 +590,7 @@
   .preview-container {
     flex: 1;
     overflow: auto;
-    background: #f8f8f8;
+    background: var(--bg-preview);
     position: relative;
     scrollbar-gutter: stable; /* workaround for layout shift when scrollbar appears */
     /* overflow: overlay; */
