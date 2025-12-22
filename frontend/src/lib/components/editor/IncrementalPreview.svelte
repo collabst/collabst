@@ -302,10 +302,10 @@
       typstDoc.setPartialRendering(true);
       previewContainer.addEventListener('scroll', handleScroll);
       // previewContainer.addEventListener('resize', handleScroll);
-      const observer = new ResizeObserver(() => {
-        handleScroll();
-      });
-      observer.observe(previewContainer);
+      // const observer = new ResizeObserver(() => {
+      //   handleScroll();
+      // });
+      // observer.observe(previewContainer);
 
       // setTimeout(() => {
       //   if (typstDoc) typstDoc.addViewportChange();
