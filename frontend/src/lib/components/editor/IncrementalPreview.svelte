@@ -11,6 +11,7 @@
   import { browser } from '$app/environment';
   import type { File as ProjectFile, Asset, Diagnostic } from '$lib/types';
   import { assetsApi } from "../../services/api";
+  import { theme as themeStore } from '$lib/stores/theme';
   import JSZip from 'jszip';
   // Will be set dynamically in browser only
   let TypstSvgDocument: any = null;
@@ -21,6 +22,8 @@
     mainFilePath?: string;
     onDiagnostics?: (diagnostics: Diagnostic[]) => void;
     projectName?: string;
+    negativePreview?: boolean;
+    showToolbar?: boolean;
   }
 
   let {
@@ -28,13 +31,24 @@
     assets = [],
     mainFilePath = '/main.typ',
     onDiagnostics,
-    projectName
+    projectName,
+    negativePreview = false,
+    showToolbar = true
   }: Props = $props();
 
   let previewContainer: HTMLDivElement | undefined;
   let docContainer: HTMLDivElement | undefined;
   let currentZoomScale = $state(1);
   let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>('custom');
+  let currentTheme = $state<'light' | 'dark'>($themeStore);
+  
+  // Subscribe to theme changes
+  $effect(() => {
+    currentTheme = $themeStore;
+  });
+  
+  // Compute whether to apply negative filter (only in dark theme)
+  let shouldApplyNegativeFilter = $derived(negativePreview && currentTheme === 'dark');
 
     // --- Toolbar Handlers ---
 
@@ -556,9 +570,10 @@
 </script>
 
 <div class="preview-wrapper">
+  {#if showToolbar}
   <div class="preview-toolbar">
     <div class="zoom-controls">
-      <Tooltip text="Zoom out" position="bottom">
+      <Tooltip text="Zoom out" shortcut="Ctrl -" position="bottom">
         <ToolButton icon={Minus} onclick={zoomOut} position="first" />
       </Tooltip>
       <Tooltip text="Zoom options" position="bottom">
@@ -571,7 +586,7 @@
           allowIconOverflow={false}
         />
       </Tooltip>
-      <Tooltip text="Zoom in" position="bottom">
+      <Tooltip text="Zoom in" shortcut="Ctrl +" position="bottom">
         <ToolButton icon={Plus} onclick={zoomIn} position="last" />
       </Tooltip>
     </div>
@@ -589,7 +604,8 @@
       </Tooltip>
     </div>
   </div>
-  <div class="preview-container" bind:this={previewContainer}>
+  {/if}
+  <div class="preview-container" bind:this={previewContainer} class:negative-filter={shouldApplyNegativeFilter}>
     <div class="doc-container" bind:this={docContainer}></div>
   </div>
 </div>
@@ -609,10 +625,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding-bottom: var(--space-2);
+    padding: 0 0 var(--space-2) 0;
     overflow: visible;
-    background: var(--bg-top-bar, #fff);
-    border-bottom: 1px solid #eee;
+    background: var(--bg-top-bar);
   }
 
   .zoom-controls {
@@ -631,7 +646,8 @@
     background: var(--bg-preview);
     position: relative;
     scrollbar-gutter: stable; /* workaround for layout shift when scrollbar appears */
-    /* overflow: overlay; */
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
   }
 
   .doc-container {
@@ -664,5 +680,9 @@
   :global(.tsel::selection) {
     color: transparent;
     background: #7db9dea0;
+  }
+
+  :global(.negative-filter .typst-doc) {
+    filter: invert(1);
   }
 </style>
