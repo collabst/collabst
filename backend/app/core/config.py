@@ -29,7 +29,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Short-lived access token
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token with sliding expiration
 
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    WEB_URL: str = "http://localhost:5173"
+    
+
+    CORS_ORIGINS: list[str] = [WEB_URL]
 
     # Registration enabled/disabled
     REGISTRATION_ENABLED: bool = True

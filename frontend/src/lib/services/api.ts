@@ -5,8 +5,9 @@ import { getApiUrl } from '../utils/urls'
 const API_URL = getApiUrl()
 
 const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
+  baseURL: `${API_URL}`,
 })
+console.log(`API base URL: ${API_URL}`)
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {

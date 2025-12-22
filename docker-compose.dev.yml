@@ -61,16 +61,18 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/collabst
       REDIS_URL: redis://redis:${REDIS_PORT}/0
       MINIO_ENDPOINT: minio:${MINIO_PORT}
-      MINIO_PUBLIC_ENDPOINT: localhost:${MINIO_PORT}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_URL}
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_SECURE: "false"
-      MINIO_PUBLIC_SECURE: "false"
+      MINIO_PUBLIC_SECURE: ${MINIO_PUBLIC_SECURE}
       MINIO_BUCKET_NAME: collabst
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: HS256
+      WEB_URL: ${WEB_URL}
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED}
+      API_V1_STR: ${API_V1_STR}
     ports:
       - "${BACKEND_PORT}:8000"
     depends_on:
@@ -95,6 +97,8 @@ services:
       - ./frontend:/app:z
     environment:
       - VITE_API_PORT=${BACKEND_PORT}
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_WEB_URL=${WEB_URL}
     depends_on:
       - backend
 
