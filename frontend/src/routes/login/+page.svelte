@@ -24,6 +24,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Login - Collabst</title>
+</svelte:head>
+
 <AuthLayout>
   <h1>Typst Collaboration</h1>
   <h2>Login</h2>
@@ -34,22 +38,26 @@
 
   <form onsubmit={handleSubmit}>
     <div class="field">
-      <label>Email</label>
+      <label for="login-email">Email</label>
       <input
+        id="login-email"
         type="email"
         bind:value={email}
         required
         placeholder="your@email.com"
+        autocomplete="email"
       />
     </div>
 
     <div class="field">
-      <label>Password</label>
+      <label for="login-password">Password</label>
       <input
+        id="login-password"
         type="password"
         bind:value={password}
         required
         placeholder="••••••••"
+        autocomplete="current-password"
       />
     </div>
 

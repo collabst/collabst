@@ -37,6 +37,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Register - Collabst</title>
+</svelte:head>
+
 <AuthLayout>
   <h1>Typst Collaboration</h1>
   <h2>Create Account</h2>
@@ -54,17 +58,19 @@
         bind:value={email}
         required
         placeholder="your@email.com"
+        autocomplete="email"
       />
     </div>
 
     <div class="field">
-      <label for="register-username">Username</label>
+      <label for="register-username">Displayed Name</label>
       <input
         id="register-username"
         type="text"
         bind:value={username}
         required
-        placeholder="username"
+        placeholder="Your name"
+        autocomplete="name"
       />
     </div>
 
@@ -76,6 +82,7 @@
         bind:value={password}
         required
         placeholder="••••••••"
+        autocomplete="new-password"
       />
     </div>
 
@@ -87,6 +94,7 @@
         bind:value={confirmPassword}
         required
         placeholder="••••••••"
+        autocomplete="new-password"
       />
     </div>
 
