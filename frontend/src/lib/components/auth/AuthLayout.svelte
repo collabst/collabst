@@ -137,6 +137,7 @@
         grid-auto-rows: 50px;
         gap: 10px;
         padding: 3px;
+        rotate: 1deg;
         pointer-events: none;
         z-index: 0;
         justify-content: space-evenly;
@@ -148,7 +149,7 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        animation: float 8s ease-in-out infinite;
+        animation: spin 8s linear infinite;
         justify-self: center;
         align-self: center;
         will-change: transform; /* GPU acceleration hint */
@@ -157,26 +158,29 @@
     }
 
     .container[data-theme="light"] .circle {
-        background: rgba(255, 255, 255, 0.25);
+        background: rgba(189, 255, 234, 0.16);
     }
 
     .container[data-theme="dark"] .circle {
-        background: rgba(30, 30, 30, 0.25);
+        background: rgba(8, 77, 66, 0.16);
     }
 
-    @keyframes float {
-        0%,
-        100% {
-            transform: translate(0, 0) scale(1);
+    @keyframes spin {
+        0% {
+            transform: rotate(0) scale(1);
+            transform-origin: left center;
         }
         25% {
-            transform: translate(10px, -15px) scale(1.1);
+            transform: rotate(90deg) scale(2);
+            transform-origin: right center;
         }
         50% {
-            transform: translate(-5px, -10px) scale(0.9);
+            transform: rotate(180deg) scale(1);
+            transform-origin: left center;
         }
         75% {
-            transform: translate(-10px, 5px) scale(1.05);
+            transform: rotate(270deg) scale(0.5);
+            transform-origin: right center;
         }
     }
 
@@ -327,7 +331,7 @@
     }
 
     .card :global(label) {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 600;
     }
 
@@ -354,8 +358,8 @@
     }
 
     .container[data-theme="dark"] .card :global(input) {
-        background: #2d2d2d;
-        border-color: #404040;
+        background: #061d1f;
+        border-color: #3f524c;
         color: #e0e0e0;
     }
 
@@ -416,7 +420,7 @@
     .card :global(.footer) {
         margin-top: 1.5rem;
         text-align: center;
-        font-size: 15px;
+        font-size: 16px;
     }
 
     .container[data-theme="light"] .card :global(.footer) {
