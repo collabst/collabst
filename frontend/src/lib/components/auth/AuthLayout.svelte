@@ -149,7 +149,7 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        animation: spin 8s linear infinite;
+        animation: spin 9s linear infinite;
         justify-self: center;
         align-self: center;
         will-change: transform; /* GPU acceleration hint */
