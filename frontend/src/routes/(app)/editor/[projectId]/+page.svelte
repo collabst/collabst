@@ -28,6 +28,7 @@
   import { setDiagnostics } from '@codemirror/lint'
   import IssuesPanel from '$lib/components/editor/IssuesPanel.svelte'
   import SearchPanel from '$lib/components/editor/SearchPanel.svelte';
+  import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
 
   let projectId = $derived($page.params.projectId)
 
@@ -43,7 +44,6 @@
   let showDeleteModal = $state(false)
   let deleteTarget = $state<{ type: 'file' | 'asset'; id: number; name: string } | null>(null)
   let showCollaborators = false
-  let activePanel = $state<string | null>('files')
   let fileTreeHasFocus = $state(false)
   let isEditingProjectName = $state(false)
   let editingProjectName = $state('')
@@ -68,12 +68,18 @@
   
   let editorPaneRef = $state<any>(null) // Reference to EditorPane component
   
+  // Load layout state from localStorage
+  const savedLayout = browser ? loadLayoutState() : null;
+  
   // Panel widths for resizable panels
-  let leftPanelWidth = $state(250) // Default width in pixels
+  let leftPanelWidth = $state(savedLayout?.leftPanelWidth ?? 250) // Default width in pixels
   let editorPanelWidth = 0 // Will be calculated
   let previewPanelWidth = $state(0) // Will be calculated
   const MIN_PANEL_WIDTH = 200 // Minimum width for any panel
   const ACTIVITY_BAR_WIDTH = 56 // Fixed activity bar width
+  
+  // Initialize active panel based on saved state
+  let activePanel = $state<string | null>(savedLayout?.leftPanelVisible ? 'files' : null)
   
   let isResizingLeft = false
   let isResizingRight = false
@@ -89,6 +95,16 @@
       activePanel = activityId
     }
   }
+  
+  // Save left panel state when it changes
+  $effect(() => {
+    if (browser) {
+      saveLayoutState({
+        leftPanelVisible: activePanel !== null,
+        leftPanelWidth: leftPanelWidth,
+      });
+    }
+  });
   
   function handleLeftResizeStart(e: MouseEvent) {
     if (!activePanel) return
@@ -131,6 +147,13 @@
       // Only allow resize if editor maintains minimum width
       if (editorWidth >= MIN_PANEL_WIDTH) {
         previewPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth)
+        
+        // Save editor/preview ratio
+        if (browser) {
+          const availableWidth = totalWidth - ACTIVITY_BAR_WIDTH - (activePanel ? leftPanelWidth + 12 : 0) - 24 - 16;
+          const ratio = (availableWidth - previewPanelWidth) / availableWidth;
+          saveLayoutState({ editorPreviewRatio: ratio });
+        }
       }
     }
   }
@@ -577,17 +600,19 @@
         previewFileId = parseInt(savedPreviewId, 10)
       }
       
-      // Initialize panel widths based on current window size
+      // Initialize panel widths based on current window size and saved ratio
       const windowWidth = window.innerWidth
       const availableWidth = windowWidth - ACTIVITY_BAR_WIDTH - 16 // 16px for padding
       
       if (activePanel) {
-        // When left panel is open: split remaining space between editor and preview
+        // When left panel is open: split remaining space between editor and preview using saved ratio
         const remainingWidth = availableWidth - leftPanelWidth - 24 // 24px for resize handles
-        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, remainingWidth * 0.4) // 40% for preview
+        const savedRatio = savedLayout?.editorPreviewRatio ?? 0.6;
+        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, remainingWidth * (1 - savedRatio))
       } else {
-        // When left panel is closed: split between editor and preview
-        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, availableWidth * 0.4)
+        // When left panel is closed: split between editor and preview using saved ratio
+        const savedRatio = savedLayout?.editorPreviewRatio ?? 0.6;
+        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, availableWidth * (1 - savedRatio))
       }
     }
 
@@ -978,6 +1003,8 @@
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
+          {negativePreview}
+          {showToolbar}
         />
       </div>
     </div>

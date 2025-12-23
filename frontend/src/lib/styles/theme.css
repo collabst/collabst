@@ -147,7 +147,7 @@
   --bg-file-panel: #181818;    /* File list - darker than background */
   --bg-top-bar: #1e1e1e;       /* Top bar - same as file panel */
   --bg-comments-panel: #1a1a1a; /* Comments panel - darkest */
-  --bg-preview: #373737;     /* Preview pane background */
+  --bg-preview: #181818;     /* Preview pane background */
   --bg-typst-doc: #ffffff;    /* Typst document background */
   
   /* Surface Colors - Neutral grey tones */
@@ -204,7 +204,7 @@
   --bg-file-panel: #dbdbdb;    /* File list - darker than background */
   --bg-top-bar: #e8e8e8;       /* Top bar - same as file panel */
   --bg-comments-panel: #d4d4d4; /* Comments panel - darkest */
-  --bg-preview: #d4d4d4;     /* Preview pane background */
+  --bg-preview: #dbdbdb;     /* Preview pane background */
   --bg-typst-doc: #ffffff;    /* Typst document background - white for clarity */
   
   /* Surface Colors - Adjusted to match new scheme */
