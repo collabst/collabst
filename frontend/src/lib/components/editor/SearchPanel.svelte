@@ -36,6 +36,33 @@
     gotoMatch = () => {},
   }: SearchPanelProps = $props();
 
+  let searchInput: HTMLInputElement | undefined;
+  let replaceInput: HTMLInputElement | undefined;
+
+  // Auto-focus search input when component mounts
+  $effect(() => {
+    if (searchInput) {
+      setTimeout(() => {
+        searchInput?.focus();
+        searchInput?.select();
+      }, 0);
+    }
+  });
+
+  function handleSearchKeydown(e: KeyboardEvent) {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      replaceInput?.focus();
+    }
+  }
+
+  function handleReplaceKeydown(e: KeyboardEvent) {
+    if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      searchInput?.focus();
+    }
+  }
+
   interface SearchMatch {
     filePath: string;
     startLine: number;
@@ -241,11 +268,13 @@
     <div class="search-replace-container">
       <div class="search-area">
         <input
+          bind:this={searchInput}
           id="search-input"
           class="search-input"
           type="text"
           placeholder="Search..."
           oninput={updateSearch}
+          onkeydown={handleSearchKeydown}
         />
         <IconButton
           variant="flat"
@@ -274,10 +303,12 @@
       </div>
       <div class="replace-area">
         <input
+          bind:this={replaceInput}
           id="replace-input"
           class="replace-input"
           type="text"
           placeholder="Replace..."
+          onkeydown={handleReplaceKeydown}
         />
         <IconButton
           variant="flat"
@@ -388,7 +419,7 @@
     width: 100%;
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-lg);
-    background: var(--bg-input);
+    background: var(--bg-editor);
     align-items: center;
     padding: var(--space-1);
   }
@@ -397,9 +428,9 @@
   .replace-input {
     flex: 1;
     padding: var(--space-2);
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     color: var(--text-primary);
-    background: var(--bg-input);
+    background: var(--bg-editor);
     min-width: 0;
     border: 0;
   }
