@@ -2,6 +2,7 @@ import { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
+import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
 
 // Dark theme colors
 const darkText = "#cccccc",
@@ -103,42 +104,7 @@ export const greyDarkTheme = EditorView.theme({
 }, {dark: true})
 
 /// The highlighting style for code in the Grey Dark theme.
-export const greyDarkHighlightStyle = HighlightStyle.define([
-  {tag: t.keyword,
-   color: '#d4d4d4'},
-  {tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName],
-   color: '#b8b8b8'},
-  {tag: [t.function(t.variableName), t.labelName],
-   color: '#dcdcdc'},
-  {tag: [t.color, t.constant(t.name), t.standard(t.name)],
-   color: '#c0c0c0'},
-  {tag: [t.definition(t.name), t.separator],
-   color: darkText},
-  {tag: [t.typeName, t.className, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace],
-   color: '#b0b0b0'},
-  {tag: [t.operator, t.operatorKeyword, t.url, t.escape, t.regexp, t.link, t.special(t.string)],
-   color: '#c8c8c8'},
-  {tag: [t.meta, t.comment],
-   color: darkTextTertiary},
-  {tag: t.strong,
-   fontWeight: 'bold'},
-  {tag: t.emphasis,
-   fontStyle: 'italic'},
-  {tag: t.strikethrough,
-   textDecoration: 'line-through'},
-  {tag: t.link,
-   color: '#9d9d9d',
-   textDecoration: 'underline'},
-  {tag: t.heading,
-   fontWeight: 'bold',
-   color: darkText},
-  {tag: [t.atom, t.bool, t.special(t.variableName)],
-   color: '#b8b8b8'},
-  {tag: [t.processingInstruction, t.string, t.inserted],
-   color: '#a8a8a8'},
-  {tag: t.invalid,
-   color: darkInvalid},
-])
+export const greyDarkHighlightStyle = oneDarkHighlightStyle
 
 /// Extension to enable the Grey Dark theme (both the editor theme and
 /// the highlight style).

@@ -21,6 +21,7 @@
     "@lucide/svelte": "^0.561.0",
     "axios": "^1.13.2",
     "codemirror": "^6.0.2",
+    "codemirror-lang-typst": "^0.4.0",
     "jszip": "^3.10.1",
     "svelte": "^5.45.8",
     "y-codemirror.next": "^0.3.5",
@@ -40,6 +41,8 @@
     "svelte-preprocess": "^6.0.3",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.5.0"
   }
 }
