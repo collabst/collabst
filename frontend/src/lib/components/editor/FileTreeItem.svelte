@@ -279,7 +279,7 @@
           {#each usersViewing as user}
             <div
               class="user-dot"
-              style="background-color: {user.color}"
+              style="background-color: {user.color}; color: {user.color};"
               title="{user.name} is viewing"
             />
           {/each}
@@ -438,8 +438,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 8px currentColor;
   }
 
   .size {
