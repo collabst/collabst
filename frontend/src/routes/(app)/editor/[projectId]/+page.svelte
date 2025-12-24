@@ -245,6 +245,28 @@
     try {
       const data = await filesApi.list(Number(projectId))
       files = data
+      
+      // If project has no files, create main.typ automatically
+      if (data.length === 0) {
+        try {
+          const mainFile = await filesApi.create(
+            Number(projectId),
+            'main.typ',
+            '/',
+            'typst',
+            '',
+            null
+          )
+          files = [mainFile]
+          selectedFile = mainFile
+          // Set it as the preview file
+          handleSetPreviewFile(mainFile.id)
+          return
+        } catch (error) {
+          console.error('Failed to create initial main.typ file:', error)
+        }
+      }
+      
       if (data.length > 0 && !selectedFile) {
         // Select preview file if set, otherwise select first file
         if (previewFileId) {
