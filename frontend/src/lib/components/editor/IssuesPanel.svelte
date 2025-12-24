@@ -4,6 +4,13 @@
   export let diagnostics: Diagnostic[] = [];
   export let gotoDiagnostic: (diagnostic: Diagnostic) => void;
 
+  function handleKeydown(event: KeyboardEvent, diagnostic: Diagnostic) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      gotoDiagnostic(diagnostic);
+    }
+  }
+
   function severityValue(severity: string): number {
     switch (severity) {
       case "error":
@@ -27,7 +34,7 @@
 
 <div class="issues-panel">
   <div class="panel-header">
-    <h3>Issues and Suggestions</h3>
+    <h3>Issues & Suggestions</h3>
   </div>
   <div class="panel-content">
     {#if diagnostics.length === 0}
@@ -36,12 +43,15 @@
       {#each sortedDiagnostics as diagnostic}
         <div
           class="issue-item issue-severity-{diagnostic.severity}"
+          role="button"
+          tabindex="0"
           on:click={() => gotoDiagnostic(diagnostic)}
+          on:keydown={(e) => handleKeydown(e, diagnostic)}
         >
           <strong>{diagnostic.severity}: {diagnostic.message}</strong>
           {#if diagnostic.range}
-            <p>in {diagnostic.path}</p>
-            <p>
+            <p class="location-text">in {diagnostic.path}</p>
+            <p class="location-text">
               at
               {diagnostic.range.start.line + 1}:{diagnostic.range.start
                 .character + 1}
@@ -59,7 +69,7 @@
 <style>
   .issues-panel {
     width: 100%;
-    height: 100%;
+    height: calc(100% - var(--space-3));
     background: var(--bg-file-panel);
     display: flex;
     flex-direction: column;
@@ -94,13 +104,13 @@
     width: 100%;
     padding: var(--space-3);
     margin-bottom: var(--space-3);
-    border-radius: 6px;
+    border-radius: 16px;
     background: color-mix(
       in srgb,
       var(--color-bg),
       transparent var(--transparent)
     );
-    border-left: 4px solid var(--color);
+    border-left: 5px solid var(--color);
   }
 
   .issue-severity-error {
@@ -124,10 +134,15 @@
   }
 
   .issue-item:hover {
-    --transparent: 40%;
+    --transparent: 50%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
   }
 
   .issue-item:active {
-    --transparent: 10%;
+    --transparent: 20%;
+  }
+
+  .location-text {
+    font-size: var(--text-sm);
   }
 </style>
