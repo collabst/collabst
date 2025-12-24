@@ -21,5 +21,6 @@ export const getWsUrl = (): string => {
   const apiUrl = new URL(import.meta.env.VITE_API_URL)
   const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
   console.log(`${wsProtocol}//${apiUrl.hostname}`)
-  return `${wsProtocol}//${apiUrl.hostname}/api`
+  const port = apiUrl.port ? `:${apiUrl.port}` : ''
+  return `${wsProtocol}//${apiUrl.host}${apiUrl.pathname}`
 }

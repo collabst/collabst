@@ -48,11 +48,11 @@ def read_root():
     return {"message": "Typst Collaboration Platform API", "version": settings.VERSION}
 
 
-@app.websocket("/ws/{document_id}")
+@app.websocket(f"{settings.API_V1_STR}" + "/ws/{document_id}")
 async def websocket_route(websocket: WebSocket, document_id: str):
     await websocket_endpoint(websocket, document_id)
 
 
-@app.websocket("/ws/project/{project_id}")
+@app.websocket(f"{settings.API_V1_STR}" + "/ws/project/{project_id}")
 async def project_websocket_route(websocket: WebSocket, project_id: int):
     await project_websocket_endpoint(websocket, project_id)

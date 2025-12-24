@@ -11,6 +11,11 @@
   import { commentsExtension, CommentRangeTracker } from '$lib/codemirror/comments'
   import { theme as themeStore } from '$lib/stores/theme'
   import type { Diagnostic } from '$lib/types'
+  import {
+      bracketMatching,
+      foldGutter,
+      indentOnInput,
+  } from '@codemirror/language';
 
   export let ytext: Y.Text
   export let provider: WebsocketProvider
@@ -30,6 +35,7 @@
   let currentTheme: 'light' | 'dark' = $themeStore
   const themeCompartment = new Compartment()
   const lineWrappingCompartment = new Compartment()
+  const languageCompartment = new Compartment()
 
   // Subscribe to theme changes
   $: currentTheme = $themeStore
@@ -42,6 +48,7 @@
     updateLineWrapping()
   }
 
+
   // Get theme extensions based on current theme
   function getThemeExtensions() {
     return currentTheme === 'light' ? [greyLight] : [greyDark]
@@ -51,6 +58,21 @@
   function getLineWrappingExtensions() {
     return wrapLines ? [EditorView.lineWrapping] : []
   }
+
+  // Get language extensions based on file name
+  async function getLanguageExtensions() {
+    const extension = fileName.split('.').pop()?.toLowerCase()
+
+    if (extension === 'typ') {
+      if (typeof window !== 'undefined') {
+        const { typst } = await import('codemirror-lang-typst')
+        return [typst()]
+      }
+    }
+
+    return []
+  }
+
 
   // Update editor theme when theme changes
   function updateEditorTheme() {
@@ -64,9 +86,18 @@
   // Update line wrapping when prop changes
   function updateLineWrapping() {
     if (!view) return
-    
+
     view.dispatch({
       effects: lineWrappingCompartment.reconfigure(getLineWrappingExtensions())
+    })
+  }
+
+  // Update language when fileName changes
+  function updateLanguage() {
+    if (!view) return
+
+    view.dispatch({
+      effects: languageCompartment.reconfigure(getLanguageExtensions())
     })
   }
   // Store cursor positions as Yjs relative positions per file
@@ -325,20 +356,27 @@
     ])
   }
 
-  function initializeEditor() {
+  async function initializeEditor() {
     if (!editorElement || !ytext || !provider) return
 
     console.log('[CodeEditor] Initializing editor for file', fileId)
     currentFileId = fileId
+
+    // Load language extensions if needed
+    const languageExtensions = await getLanguageExtensions()
 
     undoManager = new Y.UndoManager(ytext)
 
     const state = EditorState.create({
       doc: ytext.toString(),
       extensions: [
+        foldGutter(),
         lineWrappingCompartment.of(getLineWrappingExtensions()),
         basicSetup,
         themeCompartment.of(getThemeExtensions()),
+        languageExtensions,
+        bracketMatching(),
+        indentOnInput(),
         yCollab(ytext, provider.awareness, { undoManager }),
         createUndoRedoKeymap(),
         commentsExtension(),
@@ -363,11 +401,14 @@
     }
   }
 
-  function switchFile() {
+  async function switchFile() {
     if (!view || !ytext || !provider) return
     if (currentFileId === fileId) return
 
     console.log('[CodeEditor] Switching from file', currentFileId, 'to', fileId)
+
+    // Load language extensions if needed
+    const languageExtensions = await getLanguageExtensions()
 
     // Save current cursor position as relative position before switching
     if (currentFileId !== null) {
@@ -394,7 +435,11 @@
       extensions: [
         lineWrappingCompartment.of(getLineWrappingExtensions()),
         basicSetup,
+        foldGutter(),
         themeCompartment.of(getThemeExtensions()),
+        languageExtensions,
+        bracketMatching(),
+        indentOnInput(),
         yCollab(ytext, provider.awareness, { undoManager }),
         createUndoRedoKeymap(),
         commentsExtension(),
