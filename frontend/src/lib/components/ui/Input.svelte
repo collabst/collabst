@@ -11,6 +11,8 @@
     error?: string
     label?: string
     class?: string
+    autofocus?: boolean
+    inputElement?: HTMLInputElement
     oninput?: (e: Event) => void
     onchange?: (e: Event) => void
   }
@@ -25,6 +27,8 @@
     error = '',
     label = '',
     class: className = '',
+    autofocus = false,
+    inputElement = $bindable(undefined),
     oninput,
     onchange
   }: InputProps = $props()
@@ -39,11 +43,13 @@
   {/if}
   
   <input
+    bind:this={inputElement}
     {type}
     bind:value
     {placeholder}
     {disabled}
     {required}
+    autofocus={autofocus}
     class="input {error ? 'input-error' : ''}"
     {oninput}
     {onchange}

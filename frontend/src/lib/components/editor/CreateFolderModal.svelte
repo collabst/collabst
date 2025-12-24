@@ -1,11 +1,25 @@
 <script lang="ts">
   import { Modal, Input, Button } from '$lib/components/ui'
 
-  export let show: boolean
-  export let onClose: () => void
-  export let onSubmit: (folderName: string) => void
+  interface Props {
+    show: boolean
+    onClose: () => void
+    onSubmit: (folderName: string) => void
+  }
+
+  let { show = $bindable(), onClose, onSubmit }: Props = $props()
 
   let folderName = ''
+  let inputElement: HTMLInputElement | undefined
+
+  // Auto-focus when modal opens
+  $effect(() => {
+    if (show && inputElement) {
+      setTimeout(() => {
+        inputElement?.focus()
+      }, 0)
+    }
+  })
 
   function handleSubmit() {
     if (folderName.trim()) {
@@ -20,6 +34,7 @@
   <form on:submit|preventDefault={handleSubmit}>
     <Input
       bind:value={folderName}
+      bind:inputElement
       label="Folder Name"
       placeholder="my-folder"
       required

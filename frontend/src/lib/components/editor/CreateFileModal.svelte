@@ -1,11 +1,25 @@
 <script lang="ts">
   import { Modal, Input, Button } from '$lib/components/ui'
   
-  export let show: boolean
-  export let onClose: () => void
-  export let onSubmit: (fileName: string) => void
+  interface Props {
+    show: boolean
+    onClose: () => void
+    onSubmit: (fileName: string) => void
+  }
+
+  let { show = $bindable(), onClose, onSubmit }: Props = $props()
 
   let fileName = ''
+  let inputElement: HTMLInputElement | undefined
+
+  // Auto-focus when modal opens
+  $effect(() => {
+    if (show && inputElement) {
+      setTimeout(() => {
+        inputElement?.focus()
+      }, 0)
+    }
+  })
 
   function handleSubmit() {
     if (fileName.trim()) {
@@ -20,6 +34,7 @@
   <form on:submit|preventDefault={handleSubmit}>
     <Input
       bind:value={fileName}
+      bind:inputElement
       label="File Name"
       placeholder="main.typ"
       required

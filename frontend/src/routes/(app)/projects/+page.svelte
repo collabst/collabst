@@ -28,6 +28,17 @@
   let newProjectDescription = ''
   let inviteEmail = ''
   let inviteRole = 'editor'
+  let projectNameInput: HTMLInputElement | undefined
+  let inviteEmailInput: HTMLInputElement | undefined
+
+  // Focus inputs when modals open
+  $: if (showCreateModal && projectNameInput) {
+    setTimeout(() => projectNameInput?.focus(), 0)
+  }
+
+  $: if (showInviteModal && inviteEmailInput) {
+    setTimeout(() => inviteEmailInput?.focus(), 0)
+  }
 
   // Helper to check if current user is a collaborator (not owner)
   function isCollaborator(project: Project): boolean {
@@ -57,12 +68,14 @@
   async function handleCreateProject(e: Event) {
     e.preventDefault()
     try {
-      await projectsApi.create(newProjectName, newProjectDescription)
+      const newProject = await projectsApi.create(newProjectName, newProjectDescription)
       showCreateModal = false
       newProjectName = ''
       newProjectDescription = ''
-      loadProjects()
+      
       notifications.show('Project created successfully!', 'info', 2000)
+      // Navigate to the editor - it will handle creating the initial file
+      goto(`/editor/${newProject.id}`)
     } catch (error: any) {
       console.error('Failed to create project:', error)
       const message = error?.response?.data?.detail || 'Failed to create project'
@@ -254,13 +267,14 @@
     </div>
 
     {#if showCreateModal}
-      <div class="modal" on:click={() => showCreateModal = false}>
+      <div class="modal" on:click={() => showCreateModal = false} on:keydown={(e) => e.key === 'Escape' && (showCreateModal = false)} role="presentation">
         <div class="modal-content" on:click|stopPropagation>
           <h2>Create New Project</h2>
           <form on:submit={handleCreateProject}>
             <div class="field">
               <label>Project Name</label>
               <input
+                bind:this={projectNameInput}
                 type="text"
                 bind:value={newProjectName}
                 required
@@ -295,6 +309,7 @@
             <div class="field">
               <label>Email Address</label>
               <input
+                bind:this={inviteEmailInput}
                 type="email"
                 bind:value={inviteEmail}
                 required
