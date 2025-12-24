@@ -84,16 +84,16 @@
     {#each topActivities as activity (activity.id)}
       <Tooltip text={activity.label} position="right">
         {#if activity.id === "issues"}
-          <Notifiable hasNotification={issueNotification} color="var(--color-{issueSeverity}-text)">
-            <button
-              class="activity-btn"
-              class:active={activePanel === activity.id}
-              on:click={() => handleClick(activity)}
-              aria-label={activity.label}
-            >
+          <button
+            class="activity-btn"
+            class:active={activePanel === activity.id}
+            on:click={() => handleClick(activity)}
+            aria-label={activity.label}
+          >
+            <Notifiable hasNotification={issueNotification} color="var(--color-{issueSeverity}-text)" count={diagnostics.length}>
               <svelte:component this={activity.icon} size={24} />
-            </button>
-          </Notifiable>
+            </Notifiable>
+          </button>
         {:else}
           <button
             class="activity-btn"
