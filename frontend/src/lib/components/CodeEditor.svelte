@@ -7,6 +7,7 @@
   import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
   import { greyDark, greyLight } from "$lib/codemirror/greyTheme";
   import { keymap } from "@codemirror/view";
+  import { openSearchPanel, search } from "@codemirror/search";
   import * as Y from "yjs";
   import type { WebsocketProvider } from "y-websocket";
   import {
@@ -156,6 +157,13 @@
         selection: { anchor: 0, head: view.state.doc.length },
         userEvent: "select",
       });
+      view.focus();
+    }
+  }
+
+  export function openSearch() {
+    if (view) {
+      openSearchPanel(view);
       view.focus();
     }
   }
@@ -314,12 +322,6 @@
     view.focus();
   }
 
-  // Wrap current selection with prefix and suffix, or insert both at cursor
-  // (Kept for backwards compatibility, but toggleWrap is preferred)
-  export function wrapSelection(prefix: string, suffix: string) {
-    toggleWrap(prefix, suffix);
-  }
-
   // Custom keymap for undo/redo and formatting shortcuts
   function createUndoRedoKeymap() {
     return keymap.of([
@@ -394,6 +396,7 @@
         foldGutter(),
         lineWrappingCompartment.of(getLineWrappingExtensions()),
         basicSetup,
+        search(),
         themeCompartment.of(getThemeExtensions()),
         languageExtensions,
         bracketMatching(),
@@ -467,6 +470,7 @@
           lineWrappingCompartment.of(getLineWrappingExtensions()),
           basicSetup,
           foldGutter(),
+          search(),
           themeCompartment.of(getThemeExtensions()),
           languageExtensions,
           bracketMatching(),
