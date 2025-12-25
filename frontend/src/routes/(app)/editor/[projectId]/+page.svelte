@@ -23,12 +23,20 @@
   import UserPresence from '$lib/components/editor/UserPresence.svelte'
   import type { Project, File as ProjectFile, Asset, Diagnostic } from '$lib/types'
   import type { YjsConnection } from '$lib/yjs'
-  import IncrementalPreview from '$lib/components/editor/IncrementalPreview.svelte'
+  import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
   import { convertDiagnosticsToLint, parseRange } from '$lib/preview/diagnostics'
   import { setDiagnostics } from '@codemirror/lint'
   import IssuesPanel from '$lib/components/editor/IssuesPanel.svelte'
   import SearchPanel from '$lib/components/editor/SearchPanel.svelte';
   import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
+  import {
+    initAssetCache,
+    getCachedAsset,
+    cacheAsset,
+    removeCachedAsset,
+    createBlobUrl,
+    revokeBlobUrl
+  } from '$lib/utils/assetCache';
 
   let projectId = $derived($page.params.projectId)
 
@@ -321,6 +329,12 @@
         : selectedFile?.parent_id ?? null
 
       const asset = await assetsApi.upload(Number(projectId), file, parentId)
+
+      // Cache the uploaded asset immediately
+      const arrayBuffer = await file.arrayBuffer();
+      cacheAsset(Number(projectId), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
+        .catch(err => console.warn('Failed to cache uploaded asset:', err));
+
       if (!assets.find(a => a.id === asset.id)) {
         assets = [...assets, asset]
       }
@@ -495,7 +509,7 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
-    
+
     const targetId = deleteTarget.id
     const targetType = deleteTarget.type
 
@@ -508,6 +522,9 @@
         }
       } else {
         await assetsApi.delete(Number(projectId), targetId)
+        // Remove from cache
+        removeCachedAsset(Number(projectId), targetId)
+          .catch(err => console.warn('Failed to remove asset from cache:', err));
         assets = assets.filter(a => a.id !== targetId)
         if (selectedAsset?.id === targetId) {
           selectedAsset = null
@@ -524,6 +541,25 @@
   async function handleGetAssetUrl(assetId: number): Promise<string> {
     const { url } = await assetsApi.getUrl(Number(projectId), assetId)
     return url
+  }
+
+  async function handleGetAssetBlob(asset: Asset): Promise<string> {
+    // Try cache first
+    const cached = await getCachedAsset(Number(projectId), asset.id, asset.storage_path);
+    if (cached) {
+      return createBlobUrl(cached.blob, cached.mimeType);
+    }
+
+    // Fetch from API and cache
+    const { url } = await assetsApi.getUrl(Number(projectId), asset.id);
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+
+    // Cache for future use (fire and forget)
+    cacheAsset(Number(projectId), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
+      .catch(err => console.warn('Failed to cache asset:', err));
+
+    return createBlobUrl(arrayBuffer, asset.mime_type);
   }
 
   async function handleDownloadPDF() {
@@ -580,6 +616,9 @@
   }
 
   function onAssetDeleted(assetId: number) {
+    // Remove from cache
+    removeCachedAsset(Number(projectId), assetId)
+      .catch(err => console.warn('Failed to remove deleted asset from cache:', err));
     assets = assets.filter(a => a.id !== assetId)
     if (selectedAsset?.id === assetId) {
       selectedAsset = null
@@ -592,7 +631,10 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
+    // Initialize asset cache
+    await initAssetCache();
+
     // Load preview file from localStorage first
     if (browser) {
       const savedPreviewId = localStorage.getItem(`preview-file-${projectId}`)
@@ -770,7 +812,7 @@
   let previewFilePath = $derived(previewFile?.path || '/main.typ');
 
 
-  // Handle diagnostics from IncrementalPreview
+  // Handle diagnostics from PreviewPane
   function handleDiagnostics(diags: any[]) {
     // Parse diagnostics range from compiler format
     diagnostics = diags.map((d: any) => ({
@@ -979,10 +1021,12 @@
         bind:this={editorPane}
         {selectedFile}
         {selectedAsset}
+        {assets}
         ytext={selectedYtext}
         provider={yjsConnection?.provider || null}
         {isConnected}
         onGetAssetUrl={handleGetAssetUrl}
+        onGetAssetBlob={handleGetAssetBlob}
         ydoc={yjsConnection?.ydoc || null}
         currentUserId={$auth.user?.id || 0}
         currentUserName={$auth.user?.username || 'Unknown'}
@@ -997,7 +1041,7 @@
       </div>
 
       <div style="width: {previewPanelWidth}px; flex: 0 0 auto;">
-        <IncrementalPreview
+        <PreviewPane
           files={filesWithContent}
           {assets}
           mainFilePath={previewFilePath}
