@@ -16,7 +16,9 @@
   import PencilLine from '@lucide/svelte/icons/pencil-line'
   import Trash2 from '@lucide/svelte/icons/trash-2'
   import MoreHorizontal from '@lucide/svelte/icons/ellipsis'
+  import { onDestroy } from 'svelte'
   import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
+  import { revokeBlobUrl } from '$lib/utils/assetCache'
   import type * as Y from 'yjs'
   import type { WebsocketProvider } from 'y-websocket'
   import type { Component } from 'svelte'
@@ -24,10 +26,12 @@
   interface EditorPaneProps {
     selectedFile: ProjectFile | null
     selectedAsset: Asset | null
+    assets: Asset[]
     ytext: Y.Text | null
     provider: WebsocketProvider | null
     isConnected: boolean
     onGetAssetUrl: ((assetId: number) => Promise<string>) | null
+    onGetAssetBlob: ((asset: Asset) => Promise<string>) | null
     ydoc: Y.Doc | null
     currentUserId: number
     currentUserName: string
@@ -40,10 +44,12 @@
   let {
     selectedFile,
     selectedAsset,
+    assets = [],
     ytext,
     provider,
     isConnected,
     onGetAssetUrl = null,
+    onGetAssetBlob = null,
     ydoc,
     currentUserId,
     currentUserName,
@@ -52,6 +58,75 @@
     wrapLines = true,
     showToolbar = true
   }: EditorPaneProps = $props()
+
+  // Simple blob URL cache - keyed by asset ID
+  const blobUrlCache: Record<number, string> = {};
+  let currentBlobUrl = $state<string | null>(null);
+  let currentBlobAssetId = $state<number | null>(null);
+
+  // Load blob URL for an asset (with caching)
+  async function loadAssetBlobUrl(asset: Asset) {
+    const assetId = asset.id;
+
+    // Already cached?
+    if (blobUrlCache[assetId]) {
+      currentBlobUrl = blobUrlCache[assetId];
+      currentBlobAssetId = assetId;
+      return;
+    }
+
+    // Load and cache
+    if (onGetAssetBlob) {
+      try {
+        const url = await onGetAssetBlob(asset);
+
+        // Revoke old blob URL if replacing (e.g., asset was updated)
+        if (blobUrlCache[assetId]) {
+          revokeBlobUrl(blobUrlCache[assetId]);
+        }
+
+        blobUrlCache[assetId] = url;
+        // Only set if still viewing the same asset
+        if (selectedAsset?.id === assetId) {
+          currentBlobUrl = url;
+          currentBlobAssetId = assetId;
+        }
+      } catch (err) {
+        console.error('Failed to load asset blob:', assetId, err);
+      }
+    }
+  }
+
+  // Watch selectedAsset and load its blob URL
+  $effect(() => {
+    if (selectedAsset) {
+      // Check cache first (sync)
+      if (blobUrlCache[selectedAsset.id]) {
+        currentBlobUrl = blobUrlCache[selectedAsset.id];
+        currentBlobAssetId = selectedAsset.id;
+      } else {
+        // Clear current to show loading (prevents showing wrong asset type)
+        currentBlobUrl = null;
+        currentBlobAssetId = null;
+        loadAssetBlobUrl(selectedAsset);
+      }
+    } else {
+      currentBlobUrl = null;
+      currentBlobAssetId = null;
+    }
+  });
+
+  // Only show blob URL if it matches the selected asset
+  let safeBlobUrl = $derived(
+    selectedAsset && currentBlobAssetId === selectedAsset.id ? currentBlobUrl : null
+  );
+
+  // Cleanup on unmount
+  onDestroy(() => {
+    for (const url of Object.values(blobUrlCache)) {
+      revokeBlobUrl(url);
+    }
+  });
 
   let fileName = $derived(
     selectedFile
@@ -824,7 +899,26 @@
   {#if selectedAsset}
     <div class="asset-preview">
       <div class="preview-content">
-        {#if onGetAssetUrl}
+        {#if onGetAssetBlob}
+          {#if safeBlobUrl}
+            {#if isImage(selectedAsset.mime_type)}
+              <img src={safeBlobUrl} alt={selectedAsset.filename} />
+            {:else if isPdf(selectedAsset.mime_type)}
+              <iframe src={safeBlobUrl} title={selectedAsset.filename}></iframe>
+            {:else}
+              <div class="no-preview">
+                <p>No preview available for this file type</p>
+                <a href={safeBlobUrl} download={selectedAsset.filename} class="download-link">
+                  Download {selectedAsset.filename}
+                </a>
+              </div>
+            {/if}
+          {:else}
+            <div class="loading-preview">
+              <p>Loading preview...</p>
+            </div>
+          {/if}
+        {:else if onGetAssetUrl}
           {#await onGetAssetUrl(selectedAsset.id)}
             <div class="loading-preview">
               <p>Loading preview...</p>
@@ -842,7 +936,7 @@
                 </a>
               </div>
             {/if}
-          {:catch error}
+          {:catch}
             <div class="no-preview">
               <p>Failed to load preview</p>
             </div>
