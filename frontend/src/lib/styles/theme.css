@@ -230,11 +230,11 @@
   --border-error: var(--color-error);
   
   /* Notification colors for light mode */
-  --color-hint-bg: #dbeafe;
+  --color-hint-bg: #3177d2;
   --color-hint-text: #1e3a8a;
-  --color-info-bg: #dbeafe;
+  --color-info-bg: #337ad6;
   --color-info-text: #1e3a8a;
-  --color-warning-bg: #fef3c7;
+  --color-warning-bg: #e3bf2f;
   --color-warning-text: #78350f;
   --color-error-bg: #ef4444;
   --color-error-text: #7f1d1d;
