@@ -17,10 +17,10 @@
   import { theme as themeStore } from "$lib/stores/theme";
   import type { Diagnostic } from "$lib/types";
   import {
-      bracketMatching,
-      foldGutter,
-      indentOnInput,
-  } from '@codemirror/language';
+    bracketMatching,
+    foldGutter,
+    indentOnInput,
+  } from "@codemirror/language";
 
   export let ytext: Y.Text;
   export let provider: WebsocketProvider;
@@ -40,7 +40,7 @@
   let currentTheme: "light" | "dark" = $themeStore;
   const themeCompartment = new Compartment();
   const lineWrappingCompartment = new Compartment();
-  const languageCompartment = new Compartment()
+  const languageCompartment = new Compartment();
 
   // Subscribe to theme changes
   $: currentTheme = $themeStore;
@@ -52,7 +52,6 @@
   $: if (view && wrapLines !== undefined) {
     updateLineWrapping();
   }
-
 
   // Get theme extensions based on current theme
   function getThemeExtensions() {
@@ -66,18 +65,17 @@
 
   // Get language extensions based on file name
   async function getLanguageExtensions() {
-    const extension = fileName.split('.').pop()?.toLowerCase()
+    const extension = fileName.split(".").pop()?.toLowerCase();
 
-    if (extension === 'typ') {
-      if (typeof window !== 'undefined') {
-        const { typst } = await import('codemirror-lang-typst')
-        return [typst()]
+    if (extension === "typ") {
+      if (typeof window !== "undefined") {
+        const { typst } = await import("codemirror-lang-typst");
+        return [typst()];
       }
     }
 
-    return []
+    return [];
   }
-
 
   // Update editor theme when theme changes
   function updateEditorTheme() {
@@ -99,21 +97,13 @@
 
   // Update language when fileName changes
   function updateLanguage() {
-    if (!view) return
+    if (!view) return;
 
     view.dispatch({
-      effects: languageCompartment.reconfigure(getLanguageExtensions())
-    })
+      effects: languageCompartment.reconfigure(getLanguageExtensions()),
+    });
   }
 
-  // Update language when fileName changes
-  function updateLanguage() {
-    if (!view) return
-
-    view.dispatch({
-      effects: languageCompartment.reconfigure(getLanguageExtensions())
-    })
-  }
   // Store cursor positions as Yjs relative positions per file
   let cursorPositions: Map<number, any> = new Map();
 
@@ -380,13 +370,13 @@
   }
 
   async function initializeEditor() {
-    if (!editorElement || !ytext || !provider) return
+    if (!editorElement || !ytext || !provider) return;
 
     console.log("[CodeEditor] Initializing editor for file", fileId);
     currentFileId = fileId;
 
     // Load language extensions if needed
-    const languageExtensions = await getLanguageExtensions()
+    const languageExtensions = await getLanguageExtensions();
 
     undoManager = new Y.UndoManager(ytext);
 
@@ -438,7 +428,7 @@
     );
 
     // Load language extensions if needed
-    const languageExtensions = await getLanguageExtensions()
+    const languageExtensions = await getLanguageExtensions();
 
     // Save current cursor position as relative position before switching
     if (currentFileId !== null) {
