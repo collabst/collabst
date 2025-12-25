@@ -74,8 +74,6 @@
       : true
   )
   
-  let editorPaneRef = $state<any>(null) // Reference to EditorPane component
-  
   // Load layout state from localStorage
   const savedLayout = browser ? loadLayoutState() : null;
   
@@ -93,7 +91,7 @@
   let isResizingRight = false
   let resizeStartX = 0
   let resizeStartWidth = 0
-  let editorPane: any = $state(null)
+  let editorPane: any = $state(null) // Reference to EditorPane component
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
@@ -173,20 +171,38 @@
 
   // Editor action handlers
   function handleUndo() {
-    if (editorPaneRef && !selectedAsset) {
-      editorPaneRef.undo()
+    if (editorPane && !selectedAsset) {
+      editorPane.undo()
     }
   }
 
   function handleRedo() {
-    if (editorPaneRef && !selectedAsset) {
-      editorPaneRef.redo()
+    if (editorPane && !selectedAsset) {
+      editorPane.redo()
     }
   }
 
   function handleSelectAll() {
-    if (editorPaneRef && !selectedAsset) {
-      editorPaneRef.selectAll()
+    if (editorPane && !selectedAsset) {
+      editorPane.selectAll()
+    }
+  }
+
+  function handleSearchReplace() {
+    if (editorPane && !selectedAsset) {
+      editorPane.openSearch()
+    }
+  }
+
+  function handleToggleLineComment() {
+    if (editorPane && !selectedAsset) {
+      editorPane.toggleLineComment()
+    }
+  }
+
+  function handleToggleBlockComment() {
+    if (editorPane && !selectedAsset) {
+      editorPane.toggleBlockComment()
     }
   }
 
@@ -706,11 +722,23 @@
       }
     }
     
-    // Handle Cmd+S / Ctrl+S, F2 for rename, and Delete for delete
+    // Handle keyboard shortcuts: Ctrl+S, Ctrl+N, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
         notifications.show('All changes are saved automatically', 'info', 2000)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !e.shiftKey && !e.altKey) {
+        // Ctrl+N for new file - be very specific to override browser
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        showCreateFileModal = true
+        return false
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
+        // Ctrl+F for CodeMirror in-file search
+        e.preventDefault()
+        e.stopPropagation()
+        handleSearchReplace()
       } else if (e.key === 'F2') {
         e.preventDefault()
         handleRenameSelectedItem()
@@ -718,17 +746,27 @@
         // Only delete file/asset when file tree panel has focus
         e.preventDefault()
         handleDeleteSelectedItem()
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === '/' || (e.shiftKey && e.key === ':'))) {
+        // Ctrl+/ for line comment (including azerty support where / requires shift)
+        e.preventDefault()
+        e.stopPropagation()
+        handleToggleLineComment()
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'A') {
+        // Ctrl+Shift+A for block comment
+        e.preventDefault()
+        e.stopPropagation()
+        handleToggleBlockComment()
       }
     }
     
     window.addEventListener('beforeunload', handleBeforeUnload)
-    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handleKeyDown, true)  // Use capture phase to intercept Ctrl+N before browser
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keydown', handleKeyDown, true)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
@@ -946,10 +984,10 @@
           onExportSVG={() => console.log('Export SVG - to be implemented')}
           onUndo={handleUndo}
           onRedo={handleRedo}
-          onSearchReplace={() => console.log('Search and replace - to be implemented')}
+          onSearchReplace={handleSearchReplace}
           onSelectAll={handleSelectAll}
-          onToggleLineComment={() => console.log('Toggle line comment - to be implemented')}
-          onToggleBlockComment={() => console.log('Toggle block comment - to be implemented')}
+          onToggleLineComment={handleToggleLineComment}
+          onToggleBlockComment={handleToggleBlockComment}
           onAddComment={() => console.log('Add comment - to be implemented')}
           onShowToolbar={() => showToolbar = !showToolbar}
           onScrollOnType={() => console.log('Scroll on type - to be implemented')}

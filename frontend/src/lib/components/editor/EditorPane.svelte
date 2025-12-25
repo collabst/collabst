@@ -169,6 +169,24 @@
     }
   }
 
+  export function openSearch() {
+    if (codeEditor) {
+      codeEditor.openSearch()
+    }
+  }
+
+  export function toggleLineComment() {
+    if (codeEditor) {
+      codeEditor.toggleLinePrefix('// ')
+    }
+  }
+
+  export function toggleBlockComment() {
+    if (codeEditor) {
+      codeEditor.toggleWrap('/* ', ' */')
+    }
+  }
+
   export function canUndo(): boolean {
     return codeEditor ? codeEditor.canUndo() : false
   }

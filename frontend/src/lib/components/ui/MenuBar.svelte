@@ -159,7 +159,7 @@
     { label: 'Search and replace', icon: Search, onclick: () => onSearchReplace(), shortcut: 'Ctrl+F' },
     { label: 'Select all', icon: MousePointerClick, onclick: () => onSelectAll(), shortcut: 'Ctrl+A', separator: true },
     { label: 'Toggle line comment', onclick: () => onToggleLineComment(), shortcut: 'Ctrl+/' },
-    { label: 'Toggle block comment', onclick: () => onToggleBlockComment(), shortcut: 'Ctrl+⇧+/' },
+    { label: 'Toggle block comment', onclick: () => onToggleBlockComment(), shortcut: 'Ctrl+⇧+A' },
     { label: 'Add comment', icon: MessageSquarePlus, onclick: () => onAddComment() }
   ])
   
