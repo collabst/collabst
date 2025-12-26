@@ -2,7 +2,7 @@
 
 :root {
   /* === Color Palette === */
-  
+
   /* Primary Colors - Brand */
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
@@ -14,7 +14,7 @@
   --color-primary-700: #1d4ed8;
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
-  
+
   /* Secondary Colors - Accent */
   --color-secondary-50: #f5f3ff;
   --color-secondary-100: #ede9fe;
@@ -26,7 +26,7 @@
   --color-secondary-700: #6d28d9;
   --color-secondary-800: #5b21b6;
   --color-secondary-900: #4c1d95;
-  
+
   /* Neutral Colors - Grays */
   --color-gray-50: #f9fafb;
   --color-gray-100: #f3f4f6;
@@ -38,28 +38,28 @@
   --color-gray-700: #374151;
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
-  
+
   /* Semantic Colors */
   --color-success-light: #d1fae5;
   --color-success: #10b981;
   --color-success-dark: #059669;
-  
+
   --color-warning-light: #fef3c7;
   --color-warning: #f59e0b;
   --color-warning-dark: #d97706;
-  
+
   --color-error-light: #fee2e2;
   --color-error: #ef4444;
   --color-error-dark: #dc2626;
-  
+
   --color-info-light: #dbeafe;
   --color-info: #3b82f6;
   --color-info-dark: #2563eb;
-  
+
   --color-hint-light: #dbeafe;
   --color-hint: #3b82f6;
   --color-hint-dark: #2563eb;
-  
+
   /* Notification Colors */
   --color-hint-bg: #1e3a8a;
   --color-hint-text: #93c5fd;
@@ -69,27 +69,42 @@
   --color-warning-text: #fbbf24;
   --color-error-bg: #7f1d1d;
   --color-error-text: #fca5a5;
-  
+
   /* === Spacing Scale === */
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-5: 1.25rem;   /* 20px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-10: 2.5rem;   /* 40px */
-  --space-12: 3rem;     /* 48px */
-  --space-16: 4rem;     /* 64px */
-  
+  --space-1: 0.25rem;
+  /* 4px */
+  --space-2: 0.5rem;
+  /* 8px */
+  --space-3: 0.75rem;
+  /* 12px */
+  --space-4: 1rem;
+  /* 16px */
+  --space-5: 1.25rem;
+  /* 20px */
+  --space-6: 1.5rem;
+  /* 24px */
+  --space-8: 2rem;
+  /* 32px */
+  --space-10: 2.5rem;
+  /* 40px */
+  --space-12: 3rem;
+  /* 48px */
+  --space-16: 4rem;
+  /* 64px */
+
   /* === Border Radius === */
-  --radius-sm: 0.25rem;   /* 4px */
-  --radius-md: 0.375rem;  /* 6px */
-  --radius-lg: 0.5rem;    /* 8px */
-  --radius-xl: 0.75rem;   /* 12px */
-  --radius-2xl: 1rem;     /* 16px */
+  --radius-sm: 0.25rem;
+  /* 4px */
+  --radius-md: 0.375rem;
+  /* 6px */
+  --radius-lg: 0.5rem;
+  /* 8px */
+  --radius-xl: 0.75rem;
+  /* 12px */
+  --radius-2xl: 1rem;
+  /* 16px */
   --radius-full: 9999px;
-  
+
   /* === Shadows === */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -97,30 +112,38 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-  
+
   /* === Typography === */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   --font-mono: 'Source Code Pro', Menlo, Monaco, Consolas, 'Courier New', monospace;
-  
-  --text-xs: 0.75rem;     /* 12px */
-  --text-sm: 0.875rem;    /* 14px */
-  --text-base: 1rem;      /* 16px */
-  --text-lg: 1.125rem;    /* 18px */
-  --text-xl: 1.25rem;     /* 20px */
-  --text-2xl: 1.5rem;     /* 24px */
-  --text-3xl: 1.875rem;   /* 30px */
-  --text-4xl: 2.25rem;    /* 36px */
-  
+
+  --text-xs: 0.75rem;
+  /* 12px */
+  --text-sm: 0.875rem;
+  /* 14px */
+  --text-base: 1rem;
+  /* 16px */
+  --text-lg: 1.125rem;
+  /* 18px */
+  --text-xl: 1.25rem;
+  /* 20px */
+  --text-2xl: 1.5rem;
+  /* 24px */
+  --text-3xl: 1.875rem;
+  /* 30px */
+  --text-4xl: 2.25rem;
+  /* 36px */
+
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
-  
+
   /* === Transitions === */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* === Z-Index === */
   --z-dropdown: 1000;
   --z-sticky: 1020;
@@ -129,10 +152,10 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
-  
+
   /* === Dialog/Modal Blur Settings (Common) === */
   --dialog-backdrop-blur: 10px;
-  
+
   /* === Dropdown Menu Blur Settings (Common) === */
   --dropdown-blur: 14px;
 }
@@ -145,31 +168,39 @@
   --bg-tertiary: #2d2d30;
   --bg-elevated: #323233;
   --bg-overlay: rgba(0, 0, 0, 0.8);
-  --bg-canvas: #252526;        /* Canvas - slightly lighter than primary */
-  --bg-input: #1e1e1e;         /* Input background */
-  
+  --bg-canvas: #252526;
+  /* Canvas - slightly lighter than primary */
+  --bg-input: #1e1e1e;
+  /* Input background */
+
   /* Specific Component Backgrounds - Lightest to Darkest */
-  --bg-editor: #252526;        /* Editor code - lightest */
-  --bg-file-panel: #181818;    /* File list - darker than background */
-  --bg-top-bar: #1e1e1e;       /* Top bar - same as file panel */
-  --bg-comments-panel: #1a1a1a; /* Comments panel - darkest */
-  --bg-preview: #181818;     /* Preview pane background */
-  --bg-typst-doc: #ffffff;    /* Typst document background */
-  
+  --bg-editor: #252526;
+  /* Editor code - lightest */
+  --bg-file-panel: #181818;
+  /* File list - darker than background */
+  --bg-top-bar: #1e1e1e;
+  /* Top bar - same as file panel */
+  --bg-comments-panel: #1a1a1a;
+  /* Comments panel - darkest */
+  --bg-preview: #181818;
+  /* Preview pane background */
+  --bg-typst-doc: #ffffff;
+  /* Typst document background */
+
   /* Surface Colors - Neutral grey tones */
   --surface-primary: #252526;
   --surface-secondary: #2d2d30;
   --surface-tertiary: #323233;
   --surface-hover: #3e3e42;
   --surface-active: #4a4a4e;
-  
+
   /* Text Colors */
   --text-primary: #cccccc;
   --text-secondary: #9d9d9d;
   --text-tertiary: #6e6e6e;
   --text-disabled: #5a5a5a;
   --text-inverse: #1e1e1e;
-  
+
   /* Border Colors */
   --border-primary: #3e3e42;
   --border-secondary: #4a4a4e;
@@ -177,7 +208,7 @@
   --border-hover: #505054;
   --border-focus: var(--color-primary-500);
   --border-error: var(--color-error);
-  
+
   /* Notification colors for dark mode */
   --color-hint-bg: #1e3a8a;
   --color-hint-text: #93c5fd;
@@ -187,12 +218,12 @@
   --color-warning-text: #fbbf24;
   --color-error-bg: #7f1d1d;
   --color-error-text: #fca5a5;
-  
+
   /* Scrollbar colors for dark mode */
   --scrollbar-track: #1e1e1e;
   --scrollbar-thumb: #3e3e42;
   --scrollbar-thumb-hover: #4a4a4e;
-  
+
   /* Dialog/Modal Styling - Dark Theme */
   --dialog-transparency: 0.85;
   --dialog-bg: rgba(30, 30, 30, var(--dialog-transparency));
@@ -202,12 +233,13 @@
   --dialog-text-secondary: #aaa;
   --dialog-input-bg: #061d1f;
   --dialog-input-border: #3f524c;
-  --dialog-input-border-focus: #57afd1;  --dialog-cancel-btn-bg: rgba(62, 62, 66, 0.6);
+  --dialog-input-border-focus: #57afd1;
+  --dialog-cancel-btn-bg: rgba(62, 62, 66, 0.6);
   --dialog-cancel-btn-hover: rgba(74, 74, 78, 0.8);
-  
+
   /* Theme Color - for login, register, create project, send invitation */
   --color-theme: #45ae92;
-  --color-theme-hover: #40c39e;  
+  --color-theme-hover: #40c39e;
   /* Dropdown Menu Styling - Dark Theme */
   --dropdown-transparency: 0.5;
   --dropdown-bg: rgba(30, 30, 30, var(--dropdown-transparency));
@@ -223,31 +255,41 @@
   --bg-tertiary: #c8c8c8;
   --bg-elevated: #e8e8e8;
   --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-canvas: #f5f5f5;        /* Canvas - lighter than primary */
-  --bg-input: #ffffff;         /* Input background - white for better contrast */
-  
+  --bg-canvas: #f5f5f5;
+  /* Canvas - lighter than primary */
+  --bg-input: #ffffff;
+  /* Input background - white for better contrast */
+
   /* Specific Component Backgrounds - Lightest to Darkest */
-  --bg-editor: #f5f5f5;        /* Editor code - lightest */
-  --bg-file-panel: #dbdbdb;    /* File list - darker than background */
-  --bg-top-bar: #e8e8e8;       /* Top bar - same as file panel */
-  --bg-comments-panel: #d4d4d4; /* Comments panel - darkest */
-  --bg-preview: #dbdbdb;     /* Preview pane background */
-  --bg-typst-doc: #ffffff;    /* Typst document background - white for clarity */
-  
+  --bg-editor: #f5f5f5;
+  /* Editor code - lightest */
+  --bg-file-panel: #dbdbdb;
+  /* File list - darker than background */
+  --bg-top-bar: #e8e8e8;
+  /* Top bar - same as file panel */
+  --bg-comments-panel: #d4d4d4;
+  /* Comments panel - darkest */
+  --bg-preview: #dbdbdb;
+  /* Preview pane background */
+  --bg-typst-doc: #ffffff;
+  /* Typst document background - white for clarity */
+
   /* Surface Colors - Adjusted to match new scheme */
-  --surface-primary: #e8e8e8;  /* Top bar background */
-  --surface-secondary: #d4d4d4; /* Comments section background */
+  --surface-primary: #e8e8e8;
+  /* Top bar background */
+  --surface-secondary: #d4d4d4;
+  /* Comments section background */
   --surface-tertiary: #c8c8c8;
   --surface-hover: #bfbfbf;
   --surface-active: #b0b0b0;
-  
+
   /* Text Colors - Adjusted for light grey backgrounds */
   --text-primary: #1e1e1e;
   --text-secondary: #4a4a4a;
   --text-tertiary: #6e6e6e;
   --text-disabled: #9d9d9d;
   --text-inverse: #f5f5f5;
-  
+
   /* Border Colors - Subtle borders for light theme */
   --border-primary: #d1d1d1;
   --border-secondary: #b8b8b8;
@@ -255,7 +297,7 @@
   --border-hover: #c0c0c0;
   --border-focus: var(--color-primary-500);
   --border-error: var(--color-error);
-  
+
   /* Notification colors for light mode */
   --color-hint-bg: #3177d2;
   --color-hint-text: #1e3a8a;
@@ -265,12 +307,12 @@
   --color-warning-text: #78350f;
   --color-error-bg: #ef4444;
   --color-error-text: #7f1d1d;
-  
+
   /* Scrollbar colors for light mode */
   --scrollbar-track: #d4d4d4;
   --scrollbar-thumb: #b0b0b0;
   --scrollbar-thumb-hover: #9d9d9d;
-  
+
   /* Dialog/Modal Styling - Light Theme */
   --dialog-transparency: 0.7;
   --dialog-bg: rgba(255, 255, 255, var(--dialog-transparency));
@@ -280,12 +322,13 @@
   --dialog-text-secondary: #666;
   --dialog-input-bg: #ffffff;
   --dialog-input-border: #e5e7eb;
-  --dialog-input-border-focus: #5fd6b5;  --dialog-cancel-btn-bg: rgba(180, 180, 180, 0.75);
+  --dialog-input-border-focus: #5fd6b5;
+  --dialog-cancel-btn-bg: rgba(180, 180, 180, 0.75);
   --dialog-cancel-btn-hover: rgba(160, 160, 160, 0.9);
-  
+
   /* Theme Color - for login, register, create project, send invitation */
   --color-theme: #5fd6b5;
-  --color-theme-hover: #23cd9d;  
+  --color-theme-hover: #23cd9d;
   /* Dropdown Menu Styling - Light Theme */
   --dropdown-transparency: 0.3;
   --dropdown-bg: rgba(255, 255, 255, var(--dropdown-transparency));
@@ -309,6 +352,6 @@
 /* Utility Classes */
 .theme-transition {
   transition: background-color var(--transition-base),
-              border-color var(--transition-base),
-              color var(--transition-base);
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
