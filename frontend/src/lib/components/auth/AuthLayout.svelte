@@ -388,26 +388,26 @@
 
     .container[data-theme="light"] .card :global(button[type="submit"]) {
         color: white;
-        background: #5fd6b5;
+        background: var(--color-theme);
     }
 
     .container[data-theme="light"]
         .card
         :global(button[type="submit"]:hover:not(:disabled)) {
-        background: #23cd9d;
+        background: var(--color-theme-hover);
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(36, 196, 151, 0.5);
     }
 
     .container[data-theme="dark"] .card :global(button[type="submit"]) {
         color: black;
-        background: #45ae92;
+        background: var(--color-theme);
     }
 
     .container[data-theme="dark"]
         .card
         :global(button[type="submit"]:hover:not(:disabled)) {
-        background: #40c39e;
+        background: var(--color-theme-hover);
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(13, 161, 121, 0.5);
     }

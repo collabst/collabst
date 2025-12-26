@@ -80,7 +80,9 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: var(--bg-overlay);
+    background: var(--dialog-backdrop);
+    backdrop-filter: blur(var(--dialog-backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--dialog-backdrop-blur));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -99,15 +101,15 @@
   }
   
   .modal {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
+    background: var(--dialog-bg);
+    border: 2px solid var(--dialog-border);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-2xl);
     display: flex;
     flex-direction: column;
     max-height: 90vh;
     width: 100%;
     animation: slideUp var(--transition-base);
-    border: 1px solid var(--border-primary);
   }
   
   @keyframes slideUp {
@@ -152,7 +154,7 @@
   .modal-title {
     font-size: var(--text-xl);
     font-weight: var(--font-semibold);
-    color: var(--text-primary);
+    color: var(--dialog-text);
     margin: 0;
   }
   

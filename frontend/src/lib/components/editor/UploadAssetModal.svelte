@@ -106,26 +106,32 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--dialog-backdrop);
+    backdrop-filter: blur(var(--dialog-backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--dialog-backdrop-blur));
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem;
-    z-index: 1000;
+    z-index: var(--z-modal-backdrop);
   }
 
   .modal-content {
-    background: var(--surface-primary);
+    background: var(--dialog-bg);
+    border: 1px solid var(--dialog-border);
     padding: 2rem;
-    border-radius: 8px;
+    border-radius: var(--radius-xl);
     width: 100%;
     max-width: 500px;
-    color: var(--text-primary);
+    color: var(--dialog-text);
+    box-shadow: var(--shadow-2xl);
   }
 
   h2 {
-    font-size: 20px;
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
     margin: 0 0 1.5rem 0;
+    color: var(--dialog-text);
   }
 
   .drop-zone {
@@ -136,11 +142,16 @@
     min-height: 300px;
     padding: 3rem;
     border: 3px dashed var(--border-primary);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     background: var(--surface-secondary);
     cursor: pointer;
     color: var(--text-secondary);
     gap: 1.5rem;
+  }
+
+  :global([data-theme="light"]) .drop-zone {
+    border-color: var(--border-tertiary);
+    background: rgba(200, 200, 200, 0.5);
   }
 
   .drop-zone:hover {
@@ -156,8 +167,8 @@
   }
 
   .drop-text {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
     text-align: center;
     margin: 0;
     max-width: 300px;
@@ -165,28 +176,29 @@
   }
 
   .file-info {
-    font-size: 14px;
+    font-size: var(--text-sm);
     color: var(--text-secondary);
     margin: 1rem 0 0 0;
     text-align: center;
     padding: 0.75rem;
     background: var(--surface-secondary);
-    border-radius: 4px;
+    border-radius: var(--radius-md);
   }
 
   .modal-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-3);
     margin-top: 1.5rem;
   }
 
   button {
     flex: 1;
-    padding: 0.75rem;
-    border-radius: 4px;
-    font-weight: 600;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-semibold);
     cursor: pointer;
     border: none;
+    transition: all var(--transition-fast);
   }
 
   button:disabled {
@@ -195,12 +207,12 @@
   }
 
   .cancel-btn {
-    background: var(--surface-secondary);
-    color: var(--text-primary);
+    background: var(--dialog-cancel-btn-bg);
+    color: var(--dialog-text);
   }
 
   .cancel-btn:hover {
-    background: var(--surface-hover);
+    background: var(--dialog-cancel-btn-hover);
   }
 
   .submit-btn {

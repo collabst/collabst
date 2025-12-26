@@ -129,6 +129,12 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
+  
+  /* === Dialog/Modal Blur Settings (Common) === */
+  --dialog-backdrop-blur: 10px;
+  
+  /* === Dropdown Menu Blur Settings (Common) === */
+  --dropdown-blur: 14px;
 }
 
 /* === Dark Theme === */
@@ -186,6 +192,27 @@
   --scrollbar-track: #1e1e1e;
   --scrollbar-thumb: #3e3e42;
   --scrollbar-thumb-hover: #4a4a4e;
+  
+  /* Dialog/Modal Styling - Dark Theme */
+  --dialog-transparency: 0.85;
+  --dialog-bg: rgba(30, 30, 30, var(--dialog-transparency));
+  --dialog-border: rgba(255, 255, 255, 0.15);
+  --dialog-backdrop: rgba(0, 0, 0, 0.4);
+  --dialog-text: #e0e0e0;
+  --dialog-text-secondary: #aaa;
+  --dialog-input-bg: #061d1f;
+  --dialog-input-border: #3f524c;
+  --dialog-input-border-focus: #57afd1;  --dialog-cancel-btn-bg: rgba(62, 62, 66, 0.6);
+  --dialog-cancel-btn-hover: rgba(74, 74, 78, 0.8);
+  
+  /* Theme Color - for login, register, create project, send invitation */
+  --color-theme: #45ae92;
+  --color-theme-hover: #40c39e;  
+  /* Dropdown Menu Styling - Dark Theme */
+  --dropdown-transparency: 0.5;
+  --dropdown-bg: rgba(30, 30, 30, var(--dropdown-transparency));
+  --dropdown-border: rgba(255, 255, 255, 0.15);
+  --dropdown-hover-bg: rgba(62, 62, 66, 0.9);
 }
 
 /* === Light Theme === */
@@ -243,6 +270,27 @@
   --scrollbar-track: #d4d4d4;
   --scrollbar-thumb: #b0b0b0;
   --scrollbar-thumb-hover: #9d9d9d;
+  
+  /* Dialog/Modal Styling - Light Theme */
+  --dialog-transparency: 0.7;
+  --dialog-bg: rgba(255, 255, 255, var(--dialog-transparency));
+  --dialog-border: rgba(255, 255, 255, 0.4);
+  --dialog-backdrop: rgba(0, 0, 0, 0.5);
+  --dialog-text: #333;
+  --dialog-text-secondary: #666;
+  --dialog-input-bg: #ffffff;
+  --dialog-input-border: #e5e7eb;
+  --dialog-input-border-focus: #5fd6b5;  --dialog-cancel-btn-bg: rgba(180, 180, 180, 0.75);
+  --dialog-cancel-btn-hover: rgba(160, 160, 160, 0.9);
+  
+  /* Theme Color - for login, register, create project, send invitation */
+  --color-theme: #5fd6b5;
+  --color-theme-hover: #23cd9d;  
+  /* Dropdown Menu Styling - Light Theme */
+  --dropdown-transparency: 0.3;
+  --dropdown-bg: rgba(255, 255, 255, var(--dropdown-transparency));
+  --dropdown-border: rgba(0, 0, 0, 0.15);
+  --dropdown-hover-bg: rgba(191, 191, 191, 0.9);
 }
 
 /* Apply scrollbar colors */
