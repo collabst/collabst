@@ -80,8 +80,10 @@
     position: absolute;
     top: calc(100% + 0.5rem);
     right: 0;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
+    background: var(--dropdown-bg);
+    backdrop-filter: blur(var(--dropdown-blur));
+    -webkit-backdrop-filter: blur(var(--dropdown-blur));
+    border: 1px solid var(--dropdown-border);
     border-radius: 6px;
     min-width: 200px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -132,6 +134,6 @@
   }
   
   .menu-item:hover {
-    background: var(--surface-hover);
+    background: var(--dropdown-hover-bg);
   }
 </style>

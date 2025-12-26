@@ -22,8 +22,10 @@
   let mounted = false
   let showCreateModal = false
   let showInviteModal = false
+  let showDeleteModal = false
   let showSettingsPanel = false
   let selectedProjectId: number | null = null
+  let deleteProjectId: number | null = null
   let newProjectName = ''
   let newProjectDescription = ''
   let inviteEmail = ''
@@ -84,16 +86,24 @@
   }
 
   async function handleDeleteProject(id: number) {
-    if (!confirm('Are you sure you want to delete this project?')) return
+    deleteProjectId = id
+    showDeleteModal = true
+  }
+
+  async function confirmDeleteProject() {
+    if (deleteProjectId === null) return
 
     try {
-      await projectsApi.delete(id)
+      await projectsApi.delete(deleteProjectId)
       loadProjects()
       notifications.show('Project deleted successfully', 'info', 2000)
     } catch (error: any) {
       console.error('Failed to delete project:', error)
       const message = error?.response?.data?.detail || 'Failed to delete project'
       notifications.show(message, 'error', 5000)
+    } finally {
+      showDeleteModal = false
+      deleteProjectId = null
     }
   }
 
@@ -333,6 +343,25 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    {/if}
+
+    {#if showDeleteModal}
+      <div class="modal" on:click={() => { showDeleteModal = false; deleteProjectId = null }} on:keydown={(e) => e.key === 'Escape' && (showDeleteModal = false, deleteProjectId = null)} role="presentation">
+        <div class="modal-content" on:click|stopPropagation>
+          <h2>Delete Project</h2>
+          <p class="delete-message">
+            Are you sure you want to delete this project? This action cannot be undone and all files will be permanently deleted.
+          </p>
+          <div class="modal-actions">
+            <button type="button" on:click={() => { showDeleteModal = false; deleteProjectId = null }} class="cancel-btn">
+              Cancel
+            </button>
+            <button type="button" on:click={confirmDeleteProject} class="delete-btn">
+              Delete Project
+            </button>
+          </div>
         </div>
       </div>
     {/if}
@@ -720,62 +749,63 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--dialog-backdrop);
+    backdrop-filter: blur(var(--dialog-backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--dialog-backdrop-blur));
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem;
-    z-index: 100;
+    z-index: var(--z-modal-backdrop);
   }
 
   .modal-content {
-    background: var(--bg-secondary);
+    background: var(--dialog-bg);
+    border: 2px solid var(--dialog-border);
     padding: 2rem;
-    border-radius: 6px;
-    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
     width: 100%;
     max-width: 500px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-2xl);
   }
 
   .modal-content h2 {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
     margin: 0 0 1.5rem 0;
-    color: var(--text-primary);
+    color: var(--dialog-text);
   }
 
   .field {
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--dialog-text);
   }
 
   input, textarea, select {
-    padding: 0.75rem;
-    border: 1px solid var(--border-primary);
-    border-radius: 4px;
-    font-size: 14px;
-    background: var(--bg-input);
-    color: var(--text-primary);
-    transition: all 0.2s;
+    padding: var(--space-3);
+    border: 2px solid var(--dialog-input-border);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    background: var(--dialog-input-bg);
+    color: var(--dialog-text);
+    transition: all var(--transition-fast);
   }
 
   input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: var(--color-primary);
-    background: var(--bg-secondary);
+    border-color: var(--dialog-input-border-focus);
   }
 
   input::placeholder, textarea::placeholder {
-    color: var(--text-muted);
+    color: var(--text-tertiary);
   }
 
   textarea {
@@ -785,55 +815,72 @@
   }
 
   select option {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--dialog-input-bg);
+    color: var(--dialog-text);
   }
 
   .modal-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-3);
     justify-content: flex-end;
-    margin-top: 1.5rem;
-  }
-
-  .modal-actions {
-    display: flex;
-    gap: 0.75rem;
     margin-top: 1.5rem;
   }
 
   .cancel-btn {
     flex: 1;
-    background: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border-primary);
-    padding: 0.75rem;
-    border-radius: 4px;
-    font-weight: 500;
+    background: var(--dialog-cancel-btn-bg);
+    color: var(--dialog-text);
+    border: none;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-medium);
     cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
+    font-size: var(--text-base);
+    transition: all var(--transition-fast);
   }
 
   .cancel-btn:hover {
-    background: var(--surface-hover);
-    border-color: var(--border-secondary);
+    background: var(--dialog-cancel-btn-hover);
   }
 
   .submit-btn {
     flex: 1;
-    background: var(--color-primary);
+    background: var(--color-theme);
     color: white;
-    border: 1px solid var(--color-primary-hover);
-    padding: 0.75rem;
-    border-radius: 4px;
-    font-weight: 500;
+    border: none;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-medium);
     cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
+    font-size: var(--text-base);
+    transition: all var(--transition-fast);
   }
 
   .submit-btn:hover {
-    background: var(--color-primary-hover);
+    background: var(--color-theme-hover);
+  }
+
+  .delete-message {
+    color: var(--dialog-text);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .delete-btn {
+    flex: 1;
+    background: var(--color-error);
+    color: white;
+    border: 1px solid var(--color-error);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    font-size: var(--text-base);
+    transition: all var(--transition-fast);
+  }
+
+  .delete-btn:hover {
+    background: var(--color-error-dark);
   }
 </style>

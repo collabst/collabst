@@ -104,15 +104,13 @@
   }
   
   .btn-ghost {
-    background: transparent;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-primary);
+    background: var(--dialog-cancel-btn-bg);
+    color: var(--dialog-text);
+    border: none;
   }
   
   .btn-ghost:hover:not(:disabled) {
-    background: var(--surface-hover);
-    color: var(--text-primary);
-    border-color: var(--border-secondary);
+    background: var(--dialog-cancel-btn-hover);
   }
   
   .btn-danger {

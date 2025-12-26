@@ -196,8 +196,10 @@
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
-    background: var(--bg-editor);
-    border: 1px solid var(--border-primary);
+    background: var(--dropdown-bg);
+    backdrop-filter: blur(var(--dropdown-blur));
+    -webkit-backdrop-filter: blur(var(--dropdown-blur));
+    border: 1px solid var(--dropdown-border);
     border-radius: var(--radius-md);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
@@ -222,7 +224,7 @@
   }
   
   .dropdown-item:hover {
-    background: var(--surface-hover);
+    background: var(--dropdown-hover-bg);
   }
   
   .dropdown-item-icon {
