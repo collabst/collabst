@@ -111,6 +111,8 @@
       transparent var(--transparent)
     );
     border-left: 5px solid var(--color);
+    cursor: pointer;
+    transition: all var(--transition-fast);
   }
 
   .issue-severity-error {

@@ -17,30 +17,59 @@
   import Rocket from '@lucide/svelte/icons/rocket'
   import Settings from '@lucide/svelte/icons/settings'
 
-  let projects: Project[] = []
-  let loading = true
-  let mounted = false
-  let showCreateModal = false
-  let showInviteModal = false
-  let showDeleteModal = false
-  let showSettingsPanel = false
-  let selectedProjectId: number | null = null
-  let deleteProjectId: number | null = null
-  let newProjectName = ''
-  let newProjectDescription = ''
-  let inviteEmail = ''
-  let inviteRole = 'editor'
-  let projectNameInput: HTMLInputElement | undefined
-  let inviteEmailInput: HTMLInputElement | undefined
+  let projects = $state<Project[]>([])
+  let loading = $state(true)
+  let mounted = $state(false)
+  let showCreateModal = $state(false)
+  let showInviteModal = $state(false)
+  let showDeleteModal = $state(false)
+  let showSettingsPanel = $state(false)
+  let selectedProjectId = $state<number | null>(null)
+  let deleteProjectId = $state<number | null>(null)
+  let newProjectName = $state('')
+  let newProjectDescription = $state('')
+  let inviteEmail = $state('')
+  let inviteRole = $state('editor')
+  let projectNameInput = $state<HTMLInputElement | undefined>()
+  let inviteEmailInput = $state<HTMLInputElement | undefined>()
 
   // Focus inputs when modals open
-  $: if (showCreateModal && projectNameInput) {
-    setTimeout(() => projectNameInput?.focus(), 0)
-  }
+  $effect(() => {
+    if (showCreateModal && projectNameInput) {
+      setTimeout(() => projectNameInput?.focus(), 0)
+    }
+  })
 
-  $: if (showInviteModal && inviteEmailInput) {
-    setTimeout(() => inviteEmailInput?.focus(), 0)
-  }
+  $effect(() => {
+    if (showInviteModal && inviteEmailInput) {
+      setTimeout(() => inviteEmailInput?.focus(), 0)
+    }
+  })
+
+  // Handle Escape key for invite modal
+  $effect(() => {
+    if (!showInviteModal) return
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        showInviteModal = false
+      }
+    }
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  })
+
+  // Handle Escape key for delete modal
+  $effect(() => {
+    if (!showDeleteModal) return
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        showDeleteModal = false
+        deleteProjectId = null
+      }
+    }
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  })
 
   // Helper to check if current user is a collaborator (not owner)
   function isCollaborator(project: Project): boolean {
@@ -312,7 +341,7 @@
     {/if}
 
     {#if showInviteModal}
-      <div class="modal" on:click={() => showInviteModal = false}>
+      <div class="modal" on:click={() => showInviteModal = false} role="presentation">
         <div class="modal-content" on:click|stopPropagation>
           <h2>Invite Collaborator</h2>
           <form on:submit={handleSendInvite}>
@@ -348,11 +377,11 @@
     {/if}
 
     {#if showDeleteModal}
-      <div class="modal" on:click={() => { showDeleteModal = false; deleteProjectId = null }} on:keydown={(e) => e.key === 'Escape' && (showDeleteModal = false, deleteProjectId = null)} role="presentation">
+      <div class="modal" on:click={() => { showDeleteModal = false; deleteProjectId = null }} role="presentation">
         <div class="modal-content" on:click|stopPropagation>
           <h2>Delete Project</h2>
           <p class="delete-message">
-            Are you sure you want to delete this project? This action cannot be undone and all files will be permanently deleted.
+            Are you sure you want to delete this project?<br>This action cannot be undone and all files will be permanently deleted.
           </p>
           <div class="modal-actions">
             <button type="button" on:click={() => { showDeleteModal = false; deleteProjectId = null }} class="cancel-btn">
@@ -641,7 +670,7 @@
     border: 1px solid var(--border-primary);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
@@ -770,8 +799,8 @@
   }
 
   .modal-content h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
+    font-size: 1.7rem;
+    font-weight: var(--font-bold);
     margin: 0 0 1.5rem 0;
     color: var(--dialog-text);
   }
@@ -784,7 +813,7 @@
   }
 
   label {
-    font-size: var(--text-sm);
+    font-size: var(--text-lg);
     font-weight: var(--font-medium);
     color: var(--dialog-text);
   }
@@ -794,14 +823,14 @@
     border: 2px solid var(--dialog-input-border);
     border-radius: var(--radius-md);
     font-size: var(--text-base);
-    background: var(--dialog-input-bg);
+    background: var(--bg-primary);
     color: var(--dialog-text);
     transition: all var(--transition-fast);
   }
 
   input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: var(--dialog-input-border-focus);
+    border-color: var(--color-theme);
   }
 
   input::placeholder, textarea::placeholder {
@@ -858,11 +887,13 @@
 
   .submit-btn:hover {
     background: var(--color-theme-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 6px var(--color-theme-glow);
   }
 
   .delete-message {
     color: var(--dialog-text);
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
     line-height: 1.5;
     margin: 0;
   }
@@ -882,5 +913,7 @@
 
   .delete-btn:hover {
     background: var(--color-error-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 8px var(--color-error-glow);
   }
 </style>

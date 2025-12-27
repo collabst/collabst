@@ -1225,7 +1225,8 @@
   }
 
   h1:hover {
-    border-color: var(--border);
+    outline: 2px solid var(--color-primary-500);
+    cursor: text;
   }
 
   .project-name-input {
