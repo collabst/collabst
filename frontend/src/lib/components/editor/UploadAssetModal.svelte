@@ -231,7 +231,6 @@
     font-weight: var(--font-semibold);
     cursor: pointer;
     border: none;
-    transition: all var(--transition-fast);
   }
 
   button:disabled {
