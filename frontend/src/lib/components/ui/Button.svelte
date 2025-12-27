@@ -49,6 +49,7 @@
     cursor: pointer;
     white-space: nowrap;
     user-select: none;
+    transition: all var(--transition-fast);
   }
   
   .btn:disabled {
@@ -82,14 +83,13 @@
   }
   
   .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-700);
+    background: var(--color-primary-500-saturated);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 1px 8px var(--color-primary-glow);
   }
   
   .btn-primary:active:not(:disabled) {
     background: var(--color-primary-800);
-    transform: translateY(0);
   }
   
   .btn-secondary {
@@ -121,7 +121,7 @@
   .btn-danger:hover:not(:disabled) {
     background: var(--color-error-dark);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 1px 8px var(--color-error-glow);
   }
   
   .btn-success {

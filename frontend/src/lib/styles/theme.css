@@ -15,6 +15,8 @@
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
 
+  --color-primary-500-saturated: #0062ff;
+
   /* Secondary Colors - Accent */
   --color-secondary-50: #f5f3ff;
   --color-secondary-100: #ede9fe;
@@ -225,10 +227,10 @@
   --scrollbar-thumb-hover: #4a4a4e;
 
   /* Dialog/Modal Styling - Dark Theme */
-  --dialog-transparency: 0.85;
+  --dialog-transparency: 0.9;
   --dialog-bg: rgba(30, 30, 30, var(--dialog-transparency));
   --dialog-border: rgba(255, 255, 255, 0.15);
-  --dialog-backdrop: rgba(0, 0, 0, 0.4);
+  --dialog-backdrop: rgba(0, 0, 0, 0.5);
   --dialog-text: #e0e0e0;
   --dialog-text-secondary: #aaa;
   --dialog-input-bg: #061d1f;
@@ -238,8 +240,17 @@
   --dialog-cancel-btn-hover: rgba(74, 74, 78, 0.8);
 
   /* Theme Color - for login, register, create project, send invitation */
-  --color-theme: #45ae92;
-  --color-theme-hover: #40c39e;
+  --color-theme: #44c09f;
+  --color-theme-hover: #1acc99;
+  --color-theme-glow: rgba(0, 255, 187, 0.7);
+
+  /* Glow Effects - Dark Theme */
+  --color-primary-glow: rgba(22, 112, 255, 0.7);
+  --color-error-glow: rgba(255, 1, 1, 0.8);
+  --color-warning-glow: rgba(251, 191, 36, 0.4);
+  --color-hint-glow: rgba(147, 197, 253, 0.4);
+  --color-info-glow: rgba(147, 197, 253, 0.4);
+
   /* Dropdown Menu Styling - Dark Theme */
   --dropdown-transparency: 0.5;
   --dropdown-bg: rgba(30, 30, 30, var(--dropdown-transparency));
@@ -327,8 +338,17 @@
   --dialog-cancel-btn-hover: rgba(160, 160, 160, 0.9);
 
   /* Theme Color - for login, register, create project, send invitation */
-  --color-theme: #5fd6b5;
-  --color-theme-hover: #23cd9d;
+  --color-theme: #53c5a5;
+  --color-theme-hover: #1fcd9c;
+  --color-theme-glow: rgba(6, 214, 155, 0.7);
+
+  /* Glow Effects - Light Theme */
+  --color-primary-glow: rgba(37, 99, 235, 0.5);
+  --color-error-glow: rgba(255, 56, 56, 0.9);
+  --color-warning-glow: rgba(217, 119, 6, 0.5);
+  --color-hint-glow: rgba(30, 58, 138, 0.4);
+  --color-info-glow: rgba(30, 58, 138, 0.4);
+
   /* Dropdown Menu Styling - Light Theme */
   --dropdown-transparency: 0.3;
   --dropdown-bg: rgba(255, 255, 255, var(--dropdown-transparency));

@@ -72,7 +72,7 @@
   }
   
   .input-label {
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     font-weight: var(--font-medium);
     color: var(--text-secondary);
   }
@@ -87,7 +87,7 @@
     font-size: var(--text-base);
     font-family: var(--font-sans);
     background: var(--surface-primary);
-    border: 1px solid var(--border-primary);
+    border: 2px solid var(--border-primary);
     border-radius: var(--radius-md);
     color: var(--text-primary);
     width: 100%;
@@ -95,8 +95,8 @@
   
   .input:focus {
     outline: none;
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--color-primary-500);
+    /* box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); */
   }
   
   .input:disabled {

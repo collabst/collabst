@@ -367,12 +367,8 @@
         outline: none;
     }
 
-    .container[data-theme="light"] .card :global(input:focus) {
-        border-color: #5fd6b5;
-    }
-
-    .container[data-theme="dark"] .card :global(input:focus) {
-        border-color: #57afd1;
+    .container .card :global(input:focus) {
+        border-color: var(--color-theme);
     }
 
     .card :global(button[type="submit"]) {
@@ -391,25 +387,15 @@
         background: var(--color-theme);
     }
 
-    .container[data-theme="light"]
-        .card
-        :global(button[type="submit"]:hover:not(:disabled)) {
+    .container .card :global(button[type="submit"]:hover:not(:disabled)) {
         background: var(--color-theme-hover);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(36, 196, 151, 0.5);
+        box-shadow: 0 4px 10px var(--color-theme-glow);
     }
 
     .container[data-theme="dark"] .card :global(button[type="submit"]) {
         color: black;
         background: var(--color-theme);
-    }
-
-    .container[data-theme="dark"]
-        .card
-        :global(button[type="submit"]:hover:not(:disabled)) {
-        background: var(--color-theme-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(13, 161, 121, 0.5);
     }
 
     .card :global(button[type="submit"]:disabled) {
