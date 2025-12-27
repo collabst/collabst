@@ -16,6 +16,7 @@
   import CircleHelp from '@lucide/svelte/icons/circle-help'
   import Rocket from '@lucide/svelte/icons/rocket'
   import Settings from '@lucide/svelte/icons/settings'
+  import SendHorizontal from '@lucide/svelte/icons/send-horizontal'
 
   let projects = $state<Project[]>([])
   let loading = $state(true)
@@ -369,6 +370,7 @@
               </button>
               <button type="submit" class="submit-btn">
                 Send Invitation
+                <SendHorizontal size={16} />
               </button>
             </div>
           </form>
@@ -389,6 +391,7 @@
             </button>
             <button type="button" on:click={confirmDeleteProject} class="delete-btn">
               Delete Project
+              <Trash2 size={18} />
             </button>
           </div>
         </div>

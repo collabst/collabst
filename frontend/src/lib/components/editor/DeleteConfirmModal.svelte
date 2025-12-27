@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Modal, Button } from '$lib/components/ui'
+  import Trash2 from '@lucide/svelte/icons/trash-2'
   
   export let show: boolean
   export let title: string = 'Confirm Deletion'
@@ -22,6 +23,7 @@
     </Button>
     <Button variant="danger" onclick={handleConfirm}>
       Delete
+      <Trash2 size={16} />
     </Button>
   {/snippet}
 </Modal>
