@@ -575,7 +575,6 @@
     font-weight: 500;
     cursor: pointer;
     font-size: 14px;
-    transition: all 0.2s;
     margin-bottom: 2rem;
   }
 
@@ -789,6 +788,18 @@
     justify-content: center;
     padding: 2rem;
     z-index: var(--z-modal-backdrop);
+    animation: slideUp var(--transition-fast);
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .modal-content {
@@ -828,7 +839,6 @@
     font-size: var(--text-base);
     background: var(--bg-primary);
     color: var(--dialog-text);
-    transition: all var(--transition-fast);
   }
 
   input:focus, textarea:focus, select:focus {
@@ -868,7 +878,6 @@
     font-weight: var(--font-medium);
     cursor: pointer;
     font-size: var(--text-base);
-    transition: all var(--transition-fast);
   }
 
   .cancel-btn:hover {
@@ -885,7 +894,6 @@
     font-weight: var(--font-medium);
     cursor: pointer;
     font-size: var(--text-base);
-    transition: all var(--transition-fast);
   }
 
   .submit-btn:hover {
@@ -911,7 +919,6 @@
     font-weight: var(--font-medium);
     cursor: pointer;
     font-size: var(--text-base);
-    transition: all var(--transition-fast);
   }
 
   .delete-btn:hover {

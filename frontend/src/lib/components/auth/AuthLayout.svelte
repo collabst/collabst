@@ -348,7 +348,6 @@
         border: 2px solid;
         border-radius: 6px;
         font-size: 14px;
-        transition: all 0.2s ease;
     }
 
     .container[data-theme="light"] .card :global(input) {
@@ -379,7 +378,6 @@
         font-weight: 600;
         cursor: pointer;
         margin-top: 1rem;
-        transition: all 0.2s ease;
     }
 
     .container[data-theme="light"] .card :global(button[type="submit"]) {

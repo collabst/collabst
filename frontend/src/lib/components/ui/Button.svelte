@@ -49,7 +49,6 @@
     cursor: pointer;
     white-space: nowrap;
     user-select: none;
-    transition: all var(--transition-fast);
   }
   
   .btn:disabled {
