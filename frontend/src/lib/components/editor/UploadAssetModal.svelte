@@ -1,63 +1,82 @@
 <script lang="ts">
-  import Hand from '@lucide/svelte/icons/hand'
-  
+  import Hand from "@lucide/svelte/icons/hand";
+
   interface UploadAssetModalProps {
-    show: boolean
-    onClose: () => void
-    onUpload: (file: File) => void
+    show: boolean;
+    onClose: () => void;
+    onUpload: (file: File) => void;
   }
 
-  let { show, onClose, onUpload }: UploadAssetModalProps = $props()
+  let { show, onClose, onUpload }: UploadAssetModalProps = $props();
 
-  let fileInput: HTMLInputElement
-  let selectedFile: File | null = $state(null)
-  let isDragging = $state(false)
+  let fileInput: HTMLInputElement;
+  let selectedFile: File | null = $state(null);
+  let isDragging = $state(false);
+
+  // Handle Escape key when modal is open
+  $effect(() => {
+    if (!show) return;
+
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  });
 
   function handleFileSelect(e: Event) {
-    const target = e.target as HTMLInputElement
-    selectedFile = target.files?.[0] || null
-    console.log('Selected file:', selectedFile)
+    const target = e.target as HTMLInputElement;
+    selectedFile = target.files?.[0] || null;
+    console.log("Selected file:", selectedFile);
   }
 
   function handleDrop(e: DragEvent) {
-    e.preventDefault()
-    isDragging = false
-    const files = e.dataTransfer?.files
+    e.preventDefault();
+    isDragging = false;
+    const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
-      selectedFile = files[0]
+      selectedFile = files[0];
     }
   }
 
   function handleDragOver(e: DragEvent) {
-    e.preventDefault()
-    isDragging = true
+    e.preventDefault();
+    isDragging = true;
   }
 
   function handleDragLeave(e: DragEvent) {
-    e.preventDefault()
-    isDragging = false
+    e.preventDefault();
+    isDragging = false;
   }
 
   function handleSubmit(e: Event) {
-    e.preventDefault()
+    e.preventDefault();
     if (selectedFile) {
-      onUpload(selectedFile)
-      selectedFile = null
-      if (fileInput) fileInput.value = ''
+      onUpload(selectedFile);
+      selectedFile = null;
+      if (fileInput) fileInput.value = "";
     }
   }
 
   function handleBackdropClick() {
-    onClose()
+    onClose();
   }
 
   function openFilePicker() {
-    fileInput?.click()
+    fileInput?.click();
   }
 </script>
 
 {#if show}
-  <div class="modal" on:click={handleBackdropClick} role="dialog" aria-modal="true">
+  <div
+    class="modal"
+    on:click={handleBackdropClick}
+    role="dialog"
+    aria-modal="true"
+  >
     <div class="modal-content" on:click|stopPropagation role="document">
       <h2>Upload Asset</h2>
       <form on:submit={handleSubmit}>
@@ -67,8 +86,8 @@
           on:change={handleFileSelect}
           style="display: none;"
         />
-        
-        <div 
+
+        <div
           class="drop-zone"
           class:dragging={isDragging}
           on:click={openFilePicker}
@@ -79,7 +98,9 @@
           tabindex="0"
         >
           <Hand size={64} strokeWidth={1.5} />
-          <p class="drop-text">Click or drag and drop files here to upload them</p>
+          <p class="drop-text">
+            Click or drag and drop files here to upload them
+          </p>
         </div>
 
         {#if selectedFile}
@@ -118,13 +139,25 @@
 
   .modal-content {
     background: var(--dialog-bg);
-    border: 1px solid var(--dialog-border);
+    border: 2px solid var(--dialog-border);
     padding: 2rem;
     border-radius: var(--radius-xl);
     width: 100%;
     max-width: 500px;
     color: var(--dialog-text);
     box-shadow: var(--shadow-2xl);
+    animation: slideUp var(--transition-base);
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   h2 {
@@ -220,7 +253,9 @@
     color: white;
   }
 
-  .submit-btn:hover:not(:disabled) {
-    background: var(--color-primary-700);
+  .submit-btn:hover {
+    background: var(--color-primary-500-saturated);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 8px var(--color-primary-glow);
   }
 </style>
