@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Modal, Input, Button } from '$lib/components/ui'
+  import CornerDownLeft from '@lucide/svelte/icons/corner-down-left'
   
   interface Props {
     show: boolean
@@ -48,6 +49,7 @@
     </Button>
     <Button variant="primary" onclick={handleSubmit}>
       Create
+      <CornerDownLeft size={16} />
     </Button>
   {/snippet}
 </Modal>
