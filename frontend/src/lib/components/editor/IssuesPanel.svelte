@@ -112,7 +112,6 @@
     );
     border-left: 5px solid var(--color);
     cursor: pointer;
-    transition: all var(--transition-fast);
   }
 
   .issue-severity-error {
@@ -137,7 +136,7 @@
 
   .issue-item:hover {
     --transparent: 50%;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0px 0px 15px color-mix(in srgb, var(--color), transparent 60%);
   }
 
   .issue-item:active {
