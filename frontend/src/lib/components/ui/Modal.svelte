@@ -23,6 +23,20 @@
     footer
   }: ModalProps = $props()
   
+  // Handle Escape key with window-level event listener
+  $effect(() => {
+    if (!open) return
+    
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  })
+  
   function handleClose() {
     open = false
     onClose?.()
@@ -33,19 +47,12 @@
       handleClose()
     }
   }
-  
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      handleClose()
-    }
-  }
 </script>
 
 {#if open}
   <div 
     class="modal-backdrop" 
     onclick={handleBackdropClick}
-    onkeydown={handleKeydown}
     role="presentation"
   >
     <div class="modal modal-{size}" role="dialog" aria-modal="true" aria-labelledby="modal-title">
