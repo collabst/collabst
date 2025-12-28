@@ -15,6 +15,8 @@
   import { theme as themeStore } from '$lib/stores/theme';
   import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
   import JSZip from 'jszip';
+  import { setupTypstWindow, type TypstWindowElement } from '$lib/utils/typstWindow';
+
   // Will be set dynamically in browser only
   let TypstSvgDocument: any = null;
 
@@ -304,15 +306,11 @@
 
       status = 'Creating TypstDocument...';
 
-      (previewContainer as any).initTypstSvg = () => {};
-      (previewContainer as any).currentPosition = () => undefined;
-      (previewContainer as any).handleTypstLocation = () => {};
-      (previewContainer as any).documents = [];
-      (previewContainer as any).typstWebsocket = { send: async () => {} };
-
+      // Setup typst window methods for navigation
+      const windowElem = setupTypstWindow(previewContainer);
 
       typstDoc = new TypstSvgDocument({
-        windowElem: previewContainer,
+        windowElem,
         hookedElem: docContainer,
         kModule: renderSession,
         renderMode: 'svg',
@@ -327,6 +325,9 @@
       });
 
       patchTypstDocForToolbarZoom(typstDoc);
+
+      // Add typstDoc to documents array so handleTypstLocation can scroll it
+      windowElem.documents.push(typstDoc);
 
       typstDoc.setPartialRendering(true);
       previewContainer.addEventListener('scroll', handleScroll);
@@ -727,4 +728,10 @@
   :global(.negative-filter .typst-doc) {
     filter: invert(1);
   }
+
+  :global(.pseudo-link) {
+  fill: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
 </style>
