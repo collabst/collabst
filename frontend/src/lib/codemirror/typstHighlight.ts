@@ -8,7 +8,7 @@ const darkColors = {
     blue: '#8ab7ffff',
     purple: '#ce91f7ff',
     bordeaux: '#ff86aaff',
-    green: '#88e295ff',
+    green: '#91e79dff',
     turquoise: '#79d3c8ff',
     grey: '#949494ff',
     normal: '#cccccc',
