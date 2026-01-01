@@ -9,6 +9,7 @@
   import List from '@lucide/svelte/icons/list'
   import ListOrdered from '@lucide/svelte/icons/list-ordered'
   import Sigma from '@lucide/svelte/icons/sigma'
+  import Columns2 from "@lucide/svelte/icons/columns-2";
   import Code from '@lucide/svelte/icons/code'
   import Redo from '@lucide/svelte/icons/redo'
   import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line'
@@ -39,6 +40,8 @@
     diagnostics?: Diagnostic[]
     wrapLines?: boolean
     showToolbar?: boolean
+    separateWindow?: Window | null
+    closeSeparatePreview?: () => void
   }
 
   let {
@@ -56,7 +59,9 @@
     currentUserColor,
     diagnostics = [],
     wrapLines = true,
-    showToolbar = true
+    showToolbar = true,
+    separateWindow = null,
+    closeSeparatePreview = () => {},
   }: EditorPaneProps = $props()
 
   // Simple blob URL cache - keyed by asset ID
@@ -147,8 +152,6 @@
   let toolbarElement = $state<HTMLElement | null>(null)
   // Overflow buttons always have onclick defined (filtered in checkToolbarOverflow)
   let overflowButtons = $state<Array<{ label: string; icon?: Component; onclick: () => void }>>([])
-  let visibleButtonsCount = $state(0)
-  let showRightButton = $state(false)
 
   // Export editor action methods
   export function undo() {
@@ -522,14 +525,32 @@
     ]
   ]
   
-  // Right-side button (scroll preview) - separate from left buttons
-  const typstRightButton: ToolbarButton | null = {
-    id: 'scrollPreview',
-    label: 'Scroll preview to cursor',
-    icon: Redo,
-    onclick: handleScrollPreview,
-    position: 'standalone'
-  }
+  // Right-side buttons (scroll preview, close separate preview)
+  let rightButtons = $derived.by(() => {
+    const buttons: ToolbarButton[] = []
+    
+    if (separateWindow) {
+      buttons.push({
+        id: 'closeSeparatePreview',
+        label: 'Close separate preview',
+        icon: Columns2,
+        onclick: closeSeparatePreview,
+        position: 'middle'
+      })
+    }
+    
+    if (isTypstFile) {
+      buttons.push({
+        id: 'scrollPreview',
+        label: 'Scroll preview to cursor',
+        icon: Redo,
+        onclick: handleScrollPreview,
+        position: 'middle'
+      })
+    }
+    
+    return buttons
+  })
   
   const assetToolbarButtons: ToolbarButton[][] = [
     [
@@ -568,40 +589,76 @@
     isTextEditable ? nonTypstWithCommentButtons : nonTypstToolbarButtons
   )
   
-  // Get right button based on file type
-  let currentRightButton = $derived<ToolbarButton | null>(
-    isTypstFile ? typstRightButton : null
-  )
-  
-  // Flattened list of all buttons with group info
+  // Flattened list of all buttons (left + right) with group info
   interface FlatButton extends ToolbarButton {
+    section: 'left' | 'right'
     groupIndex: number
     buttonIndex: number
     originalPosition: 'first' | 'middle' | 'last' | 'standalone'
   }
   
-  let flatButtons = $derived<FlatButton[]>(
-    currentToolbarButtons.flatMap((group, groupIndex) =>
+  let flatButtons = $derived.by(() => {
+    const leftButtons = currentToolbarButtons.flatMap((group, groupIndex) =>
       group.map((button, buttonIndex) => ({
         ...button,
+        section: 'left' as const,
         groupIndex,
         buttonIndex,
         originalPosition: button.position || 'standalone'
       }))
     )
-  )
+    
+    const rightButtonsFlat = rightButtons.map((button, buttonIndex) => ({
+      ...button,
+      section: 'right' as const,
+      groupIndex: currentToolbarButtons.length,
+      buttonIndex,
+      originalPosition: button.position || 'standalone'
+    }))
+    
+    return [...leftButtons, ...rightButtonsFlat]
+  })
   
   // Track which buttons are visible (by index in flatButtons)
   let visibleButtonIndices = $state<number[]>([])
   
   // Computed visible buttons for the toolbar with adjusted positions
   let visibleLeftButtons = $derived.by(() => {
-    const leftButtons = flatButtons.filter((btn, index) => 
-      visibleButtonIndices.includes(index)
-    )
+    const leftButtons = flatButtons
+      .filter((btn, index) => btn.section === 'left' && visibleButtonIndices.includes(index))
     
     // Adjust positions based on visibility
     return leftButtons.map((btn, index, arr) => {
+      const prevBtn = index > 0 ? arr[index - 1] : null
+      const nextBtn = index < arr.length - 1 ? arr[index + 1] : null
+      
+      const isStartOfGroup = !prevBtn || prevBtn.groupIndex !== btn.groupIndex
+      const isEndOfGroup = !nextBtn || nextBtn.groupIndex !== btn.groupIndex
+      
+      let position: 'first' | 'middle' | 'last' | 'standalone'
+      if (btn.originalPosition === 'standalone') {
+        position = 'standalone'
+      } else if (isStartOfGroup && isEndOfGroup) {
+        position = 'standalone'
+      } else if (isStartOfGroup) {
+        position = 'first'
+      } else if (isEndOfGroup) {
+        position = 'last'
+      } else {
+        position = 'middle'
+      }
+      
+      return { ...btn, position }
+    })
+  })
+
+  // Computed visible right buttons for the toolbar
+  let visibleRightButtons = $derived.by(() => {
+    const rightBtns = flatButtons
+      .filter((btn, index) => btn.section === 'right' && visibleButtonIndices.includes(index))
+    
+    // Adjust positions based on visibility
+    return rightBtns.map((btn, index, arr) => {
       const prevBtn = index > 0 ? arr[index - 1] : null
       const nextBtn = index < arr.length - 1 ? arr[index + 1] : null
       
@@ -669,15 +726,14 @@
     const moreButtonWidth = measuredMoreButtonWidth || 40
     const buttonWidth = measuredButtonWidth || 38
     const gapWidth = measuredGapWidth || 8
-    const rightButtonWidth = currentRightButton ? buttonWidth : 0
     
     // Calculate how many buttons we can fit
     const totalButtons = flatButtons.length
     
-    // Calculate available space (with reduced safety margin for more generosity)
-    const availableWidthForLeft = toolbarWidth - rightButtonWidth - (currentRightButton ? gapWidth : 0) - 10 // Only 10px margin
+    // Calculate available space
+    const availableWidth = toolbarWidth - moreButtonWidth - gapWidth - 10 // 10px safety margin
     
-    // Estimate total width needed for all left buttons
+    // Estimate total width needed for all buttons
     let estimatedWidth = 0
     let lastGroupIndex = -1
     
@@ -690,34 +746,16 @@
       lastGroupIndex = btn.groupIndex
     }
     
-    // If everything fits comfortably, show all left buttons
-    if (estimatedWidth <= availableWidthForLeft) {
+    // If everything fits, show all buttons
+    if (estimatedWidth <= availableWidth) {
       visibleButtonIndices = Array.from({ length: totalButtons }, (_, i) => i)
       overflowButtons = []
-      visibleButtonsCount = totalButtons
-      showRightButton = currentRightButton !== null
       return
     }
     
-    // Check if we can fit all left buttons by hiding the right button (scroll preview)
-    const availableWithoutRightButton = toolbarWidth - moreButtonWidth - gapWidth - 10
-    if (estimatedWidth + moreButtonWidth <= availableWithoutRightButton && currentRightButton) {
-      // Hide right button, show all left buttons, More button contains right button
-      visibleButtonIndices = Array.from({ length: totalButtons }, (_, i) => i)
-      overflowButtons = [{
-        label: currentRightButton.label,
-        icon: currentRightButton.icon,
-        onclick: currentRightButton.onclick
-      }]
-      visibleButtonsCount = totalButtons
-      showRightButton = false
-      return
-    }
-    
-    // Otherwise, calculate how many left buttons we can fit with the More button
-    // Right button is already hidden at this point
+    // Calculate how many buttons we can fit with the More button
     let visibleCount = 0
-    let currentWidth = moreButtonWidth + gapWidth // Start with More button space
+    let currentWidth = moreButtonWidth + gapWidth
     lastGroupIndex = -1
     
     for (let i = 0; i < totalButtons; i++) {
@@ -725,7 +763,7 @@
       const groupGap = (btn.groupIndex !== lastGroupIndex && i > 0) ? gapWidth : 0
       const buttonSpace = buttonWidth + groupGap
       
-      if (currentWidth + buttonSpace <= availableWithoutRightButton) {
+      if (currentWidth + buttonSpace <= availableWidth) {
         currentWidth += buttonSpace
         visibleCount = i + 1
         lastGroupIndex = btn.groupIndex
@@ -742,10 +780,9 @@
     
     visibleButtonIndices = newVisibleIndices
     
-    // Build overflow menu items (hidden left buttons + right button if exists)
+    // Build overflow menu items (hidden buttons)
     const newOverflow: Array<{ label: string; icon?: Component; onclick: () => void }> = []
     
-    // Add hidden left buttons
     for (let i = visibleCount; i < totalButtons; i++) {
       const btn = flatButtons[i]
       newOverflow.push({
@@ -755,18 +792,7 @@
       })
     }
     
-    // Add right button to overflow if it exists
-    if (currentRightButton) {
-      newOverflow.push({
-        label: currentRightButton.label,
-        icon: currentRightButton.icon,
-        onclick: currentRightButton.onclick
-      })
-    }
-    
     overflowButtons = newOverflow
-    visibleButtonsCount = newVisibleIndices.length
-    showRightButton = false
   }
   
   // Set up ResizeObserver for toolbar with debouncing
@@ -814,15 +840,15 @@
     <div class="action-toolbar" class:has-more={overflowButtons.length > 0} bind:this={toolbarElement}>
       <div class="toolbar-left">
         {#each Object.entries(
-          visibleLeftButtons.reduce((groups, button) => {
+          visibleLeftButtons.reduce((groups: Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>, button: FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' }) => {
             const key = button.groupIndex
             if (!groups[key]) groups[key] = []
             groups[key].push(button)
             return groups
-          }, {} as Record<number, typeof visibleLeftButtons>)
+          }, {} as Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>)
         ) as [groupIndex, groupButtons]}
           <div class="tool-group">
-            {#each groupButtons as button}
+            {#each groupButtons as button (button.id)}
               <Tooltip text={button.label} position="bottom" shortcut={button.shortcut}>
                 <ToolButton 
                   icon={button.icon} 
@@ -837,18 +863,27 @@
       </div>
       
       <div class="toolbar-right">
-        {#if showRightButton && currentRightButton}
+        {#each Object.entries(
+          visibleRightButtons.reduce((groups: Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>, button: FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' }) => {
+            const key = button.groupIndex
+            if (!groups[key]) groups[key] = []
+            groups[key].push(button)
+            return groups
+          }, {} as Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>)
+        ) as [groupIndex, groupButtons]}
           <div class="tool-group">
-            <Tooltip text={currentRightButton.label} position="bottom">
-              <ToolButton 
-                icon={currentRightButton.icon} 
-                onclick={currentRightButton.onclick} 
-                position={currentRightButton.position}
-                strokeWidth={currentRightButton.strokeWidth}
-              />
-            </Tooltip>
+            {#each groupButtons as button (button.id)}
+              <Tooltip text={button.label} position="bottom" shortcut={button.shortcut}>
+                <ToolButton 
+                  icon={button.icon} 
+                  onclick={button.onclick} 
+                  position={button.position}
+                  strokeWidth={button.strokeWidth}
+                />
+              </Tooltip>
+            {/each}
           </div>
-        {/if}
+        {/each}
         
         {#if overflowButtons.length > 0}
           <div class="more-button">
