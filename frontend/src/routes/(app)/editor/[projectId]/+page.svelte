@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { mount, onMount, onDestroy } from 'svelte'
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
   import { browser } from '$app/environment'
@@ -37,6 +37,7 @@
     createBlobUrl,
     revokeBlobUrl
   } from '$lib/utils/assetCache';
+  import SeparatePreview from '$lib/components/editor/SeparatePreview.svelte';
 
   let projectId = $derived($page.params.projectId)
 
@@ -56,7 +57,8 @@
   let isEditingProjectName = $state(false)
   let editingProjectName = $state('')
   let projectNameInput = $state<HTMLInputElement | undefined>()
-  
+  let renderSession: any = $state(null);
+
   // Load toggle states from localStorage with defaults
   let wrapLines = $state(
     browser && localStorage.getItem('editor.wrapLines') !== null
@@ -944,6 +946,47 @@
       editorView.dispatch(transaction)
     }
   }
+
+  // Preview in separated window
+  let separateWindow = $state<Window | null>(null);
+
+  function openSeparatePreview() {
+    if (separateWindow && !separateWindow.closed) {
+      separateWindow.focus();
+      return;
+    }
+
+    separateWindow = window.open('', '', 'width=900,height=700');
+    if (!separateWindow) return;
+
+    // Copy all stylesheets from parent to new window
+    const stylesheets = document.querySelectorAll('link[rel="stylesheet"], style');
+    stylesheets.forEach(sheet => {
+      const clone = sheet.cloneNode(true);
+      separateWindow!.document.head.appendChild(clone);
+    });
+
+    // Mount SeparatePreview component in new window
+    let separateProps = {
+      separateWindow,
+      renderSession,
+    }
+    let container = separateWindow.document.createElement('div')
+    separateWindow.document.body.appendChild(container)
+    mount(SeparatePreview, {
+      target: container,
+      props: separateProps,
+    })
+
+    separateWindow.addEventListener('beforeunload', closeSeparatePreview);
+  }
+
+  function closeSeparatePreview() {
+    if (separateWindow && !separateWindow.closed) {
+      separateWindow.close();
+    }
+    separateWindow = null;
+  }
 </script>
 
 <svelte:head>
@@ -1021,7 +1064,7 @@
     </header>
     <div class="main">
       <ActivityBar {activePanel} onActivityClick={handleActivityClick} {diagnostics} />
-      
+
       {#if activePanel === 'files'}
         <div 
           style="width: {leftPanelWidth}px;" 
@@ -1094,13 +1137,15 @@
         {diagnostics}
         {wrapLines}
         {showToolbar}
+        {separateWindow}
+        {closeSeparatePreview}
       />
 
-      <div class="resize-handle" onmousedown={handleRightResizeStart}>
+      <div class="resize-handle" onmousedown={handleRightResizeStart} style={separateWindow ? 'visibility: hidden; position: absolute;' : ''}>
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
       </div>
 
-      <div style="width: {previewPanelWidth}px; flex: 0 0 auto;">
+      <div style="width: {previewPanelWidth}px; flex: 0 0 auto; {separateWindow ? 'visibility: hidden; position: absolute;' : ''}">
         <PreviewPane
           files={filesWithContent}
           {assets}
@@ -1108,7 +1153,10 @@
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
           {negativePreview}
+          bind:renderSession={renderSession}
           {showToolbar}
+          {separateWindow}
+          {openSeparatePreview}
         />
       </div>
     </div>

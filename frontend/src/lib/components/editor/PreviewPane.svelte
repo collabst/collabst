@@ -6,6 +6,7 @@
   import MoveHorizontal from "@lucide/svelte/icons/move-horizontal";
   import MoveVertical from "@lucide/svelte/icons/move-vertical";
   import File from "@lucide/svelte/icons/file";
+  import PictureInPicture from "@lucide/svelte/icons/picture-in-picture";
   import Download from "@lucide/svelte/icons/download";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { browser } from '$app/environment';
@@ -28,6 +29,9 @@
     projectName?: string;
     negativePreview?: boolean;
     showToolbar?: boolean;
+    renderSession?: any;
+    separateWindow?: Window | null;
+    openSeparatePreview?: () => void;
   }
 
   let {
@@ -37,7 +41,10 @@
     onDiagnostics,
     projectName,
     negativePreview = false,
-    showToolbar = true
+    showToolbar = true,
+    renderSession = $bindable(null),
+    separateWindow = null,
+    openSeparatePreview = () => {},
   }: Props = $props();
 
   let previewContainer: HTMLDivElement | undefined;
@@ -236,7 +243,6 @@
   let status = $state('Initializing...');
   let worker: Worker | undefined;
   let typstDoc: any | undefined;
-  let renderSession: any | undefined;
   let initialized = false;
   let workerReady = false;
   let latestMainFilePath: string | null = null;
@@ -529,10 +535,14 @@
           try {
             status = 'Rendering...';
 
-            if (isFirstCompile) {
-              typstDoc.addChangement(['new', vectorData]);
+            if (separateWindow) {
+              sendVectorDataToWindow(separateWindow, vectorData, isFirstCompile);
             } else {
-              typstDoc.addChangement(['diff-v1', vectorData]);
+              if (isFirstCompile) {
+                typstDoc.addChangement(['new', vectorData]);
+              } else {
+                typstDoc.addChangement(['diff-v1', vectorData]);
+              }
             }
 
             status = `Ready (${compileTime}ms)`;
@@ -548,7 +558,7 @@
             onDiagnostics(diagnostics);
           }
           status = `Compile error: ${e.data.error}`;
-          console.error('Compilation error:', e.data.error);
+          console.error('Compilation error:', e.data);
           break;
 
         case 'pdf':
@@ -610,6 +620,32 @@
       worker.terminate();
     }
   });
+
+  function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, isFirstCompile: boolean) {
+    targetWindow.postMessage(
+      {
+        type: 'typst-vector-data',
+        data: vectorData,
+        isFirstCompile: isFirstCompile,
+      },
+      '*'
+    );
+  }
+
+  function forceRecompile() {
+    if (worker && workerReady) {
+      worker.postMessage({ type: 'reset' });
+    }
+  }
+
+  // Watch for changes in separateWindow to recompile and send data
+  $effect(() => {
+    void separateWindow;
+
+    if (workerReady && initialized) {
+      forceRecompile();
+    }
+  });
 </script>
 
 <div class="preview-wrapper">
@@ -632,6 +668,12 @@
       <Tooltip text="Zoom in" shortcut="Ctrl +" position="bottom">
         <ToolButton icon={Plus} onclick={zoomIn} position="last" />
       </Tooltip>
+    </div>
+    <div class="separate-preview-control">
+      <Tooltip text="Show preview in popup" position="bottom">
+        <ToolButton icon={PictureInPicture} onclick={openSeparatePreview} position="standalone" />
+      </Tooltip>
+      <button onclick={forceRecompile}>Force Recompile</button>
     </div>
     <div class="download-controls">
       <Tooltip text="Export PDF" position="bottom">
