@@ -32,6 +32,16 @@
     });
   });
 
+  function handleScroll() {
+    if (!typstDoc || !initialized || !previewContainer) return;
+    if ((previewContainer as any)._scrollTimeout) {
+      clearTimeout((previewContainer as any)._scrollTimeout);
+    }
+    (previewContainer as any)._scrollTimeout = setTimeout(() => {
+      typstDoc.addViewportChange();
+    }, 200);
+  }
+
   async function createTypstDocument() {
     if (!docContainer || !previewContainer) return;
 
@@ -78,6 +88,7 @@
       });
 
       typstDoc.setPartialRendering(true);
+      previewContainer.addEventListener('scroll', handleScroll);
 
       initialized = true;
     } catch (error: any) {
