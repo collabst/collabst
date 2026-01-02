@@ -146,14 +146,17 @@ function initOrPatchSvgHeader(svg: SVGElement) {
     throw new Error("no initial svg found");
   }
 
-  const prevResourceHeader = document.getElementById("typst-svg-resources");
+  // Use svg.ownerDocument to support rendering in separate windows
+  const doc = svg.ownerDocument;
+
+  const prevResourceHeader = doc.getElementById("typst-svg-resources");
   if (prevResourceHeader) {
     patchSvgHeader(prevResourceHeader as unknown as SVGElement, svg);
     return;
   }
 
   /// Create a global resource header
-  const resourceHeader = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const resourceHeader = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
   resourceHeader.id = "typst-svg-resources";
   // set viewbox, width, and height
   resourceHeader.setAttribute("viewBox", "0 0 0 0");
@@ -169,7 +172,7 @@ function initOrPatchSvgHeader(svg: SVGElement) {
   }
 
   /// Insert resource header to somewhere visible to the svg element.
-  document.body.prepend(resourceHeader);
+  doc.body.prepend(resourceHeader);
 }
 
 function patchSvgHeader(prev: SVGElement, next: SVGElement) {
