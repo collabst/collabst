@@ -19,6 +19,7 @@
     buttonWidth?: string  // Custom button width
     buttonBackground?: string  // Custom button background color
     allowIconOverflow?: boolean  // Allow icon to overflow button boundaries
+    stick?: 'left' | 'middle' | 'right'  // Stick the dropdown menu to the edge of the button
   }
   
   let {
@@ -31,7 +32,8 @@
     strokeWidth = 2,
     buttonWidth = '30px',
     buttonBackground = undefined,
-    allowIconOverflow = true
+    allowIconOverflow = true,
+    stick = 'right',
   }: DropdownToolButtonProps = $props()
 
   let isOpen = $state(false)
@@ -89,7 +91,7 @@
   
   {#if isOpen}
     <div 
-      class="dropdown-menu"
+      class="dropdown-menu dropdown-menu-stick-{stick}"
       role="menu"
       tabindex="-1"
     >
@@ -195,7 +197,6 @@
   .dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
-    right: 0;
     background: var(--dropdown-bg);
     backdrop-filter: blur(var(--dropdown-blur));
     -webkit-backdrop-filter: blur(var(--dropdown-blur));
@@ -208,7 +209,20 @@
     width: max-content;
     min-width: 140px;
   }
-  
+
+  .dropdown-menu-stick-left {
+    left: 0;
+  }
+
+  .dropdown-menu-stick-middle {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .dropdown-menu-stick-right {
+    right: 0;
+  }
+
   .dropdown-item {
     display: flex;
     align-items: center;

@@ -32,6 +32,10 @@
     renderSession?: any;
     separateWindow?: Window | null;
     openSeparatePreview?: () => void;
+    exportAsPDF?: () => void;
+    exportAsPNG?: () => void;
+    exportAsSVG?: () => void;
+    exportSourcesAsZip?: () => void;
   }
 
   let {
@@ -45,6 +49,10 @@
     renderSession = $bindable(null),
     separateWindow = null,
     openSeparatePreview = () => {},
+    exportAsPDF = $bindable(() => {}),
+    exportAsPNG = $bindable(() => {}),
+    exportAsSVG = $bindable(() => {}),
+    exportSourcesAsZip = $bindable(() => {}),
   }: Props = $props();
 
   let previewContainer: HTMLDivElement | undefined;
@@ -180,20 +188,19 @@
       { label: "300%", onclick: () => setZoom(3, 'custom') },
     ];
 
-    function exportAsPDF() {
+    exportAsPDF = () => {
       worker?.postMessage({ type: 'exportPDF', payload: { mainFilePath } });
-      
     }
 
-    function exportAsPNG() {
+    exportAsPNG = () => {
       alert("Export as PNG not implemented yet");
     }
 
-    function exportAsSVG() {
+    exportAsSVG = () => {
       alert("Export as SVG not implemented yet");
     }
 
-    async function exportSourcesAsZip() {
+    exportSourcesAsZip = async () => {
       try {
         const zip = new JSZip();
 
@@ -644,6 +651,7 @@
 
     if (workerReady && initialized) {
       forceRecompile();
+      syncFilesAndAssets();
     }
   });
 </script>
@@ -663,6 +671,7 @@
           buttonWidth="45px"
           buttonBackground="var(--bg-top-bar)"
           allowIconOverflow={false}
+          stick="left"
         />
       </Tooltip>
       <Tooltip text="Zoom in" shortcut="Ctrl +" position="bottom">
@@ -673,7 +682,6 @@
       <Tooltip text="Show preview in popup" position="bottom">
         <ToolButton icon={PictureInPicture} onclick={openSeparatePreview} position="standalone" />
       </Tooltip>
-      <button onclick={forceRecompile}>Force Recompile</button>
     </div>
     <div class="download-controls">
       <Tooltip text="Export PDF" position="bottom">
