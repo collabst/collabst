@@ -58,6 +58,10 @@
   let editingProjectName = $state('')
   let projectNameInput = $state<HTMLInputElement | undefined>()
   let renderSession: any = $state(null);
+  let exportAsPDF = $state<() => void>(() => {});
+  let exportAsPNG = $state<() => void>(() => {});
+  let exportAsSVG = $state<() => void>(() => {});
+  let exportSourcesAsZip = $state<() => void>(() => {});
 
   // Load toggle states from localStorage with defaults
   let wrapLines = $state(
@@ -959,6 +963,10 @@
     separateWindow = window.open('', '', 'width=900,height=700');
     if (!separateWindow) return;
 
+    // Apply the current theme to the new window
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    separateWindow.document.documentElement.setAttribute('data-theme', currentTheme);
+
     // Copy all stylesheets from parent to new window
     const stylesheets = document.querySelectorAll('link[rel="stylesheet"], style');
     stylesheets.forEach(sheet => {
@@ -970,6 +978,12 @@
     let separateProps = {
       separateWindow,
       renderSession,
+      projectName: project?.name ?? '',
+      onCloseSeparatePreview: closeSeparatePreview,
+      onExportPDF: exportAsPDF,
+      onExportPNG: exportAsPNG,
+      onExportSVG: exportAsSVG,
+      onExportSourcesAsZip: exportSourcesAsZip
     }
     let container = separateWindow.document.createElement('div')
     separateWindow.document.body.appendChild(container)
@@ -1157,6 +1171,10 @@
           {showToolbar}
           {separateWindow}
           {openSeparatePreview}
+          bind:exportAsPDF={exportAsPDF}
+          bind:exportAsPNG={exportAsPNG}
+          bind:exportAsSVG={exportAsSVG}
+          bind:exportSourcesAsZip={exportSourcesAsZip}
         />
       </div>
     </div>

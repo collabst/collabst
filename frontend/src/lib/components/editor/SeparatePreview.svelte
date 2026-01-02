@@ -1,18 +1,164 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { ToolButton, DropdownToolButton, Tooltip } from "$lib/components/ui";
+  import Plus from "@lucide/svelte/icons/plus";
+  import Minus from "@lucide/svelte/icons/minus";
+  import MoveHorizontal from "@lucide/svelte/icons/move-horizontal";
+  import MoveVertical from "@lucide/svelte/icons/move-vertical";
+  import File from "@lucide/svelte/icons/file";
+  import Columns2 from "@lucide/svelte/icons/columns-2";
+  import Download from "@lucide/svelte/icons/download";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
+  import { browser } from '$app/environment';
 
   interface Props {
     separateWindow: Window;
     renderSession: any;
+    projectName?: string;
+    onCloseSeparatePreview?: () => void;
+    onExportPDF?: () => void;
+    onExportPNG?: () => void;
+    onExportSVG?: () => void;
+    onExportSourcesAsZip?: () => void;
   }
 
-  let { separateWindow, renderSession }: Props = $props();
+  let { 
+    separateWindow, 
+    renderSession,
+    projectName = 'document',
+    onCloseSeparatePreview = () => {},
+    onExportPDF = () => {},
+    onExportPNG = () => { alert("Export as PNG not implemented yet"); },
+    onExportSVG = () => { alert("Export as SVG not implemented yet"); },
+    onExportSourcesAsZip = () => {},
+  }: Props = $props();
 
   let previewContainer: HTMLDivElement | undefined;
   let docContainer: HTMLDivElement | undefined;
   let TypstSvgDocument: any = null;
   let typstDoc: any | undefined;
   let initialized: boolean = false;
+
+  // Load zoom state from localStorage
+  const savedLayout = browser ? loadLayoutState() : null;
+  let currentZoomScale = $state(savedLayout?.zoomScale ?? 1);
+  let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>(savedLayout?.zoomMode ?? 'custom');
+
+  // Save zoom state to localStorage when it changes
+  $effect(() => {
+    if (browser && currentZoomMode && currentZoomScale) {
+      saveLayoutState({
+        zoomMode: currentZoomMode,
+        zoomScale: currentZoomScale,
+      });
+    }
+  });
+
+  // --- Zoom Logic ---
+  function updateZoomStateFromTypst() {
+    if (typstDoc && typstDoc.impl) {
+      currentZoomScale = typstDoc.impl.currentScaleRatio;
+      currentZoomMode = 'custom';
+    }
+  }
+
+  function zoomIn() {
+    if (typstDoc && typstDoc.impl) {
+      typstDoc.impl.__doRescaleFromToolbar?.(-1);
+      updateZoomStateFromTypst();
+    }
+  }
+
+  function zoomOut() {
+    if (typstDoc && typstDoc.impl) {
+      typstDoc.impl.__doRescaleFromToolbar?.(1);
+      updateZoomStateFromTypst();
+    }
+  }
+
+  function setZoom(scale: number, mode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom' = 'custom') {
+    if (typstDoc && typstDoc.impl) {
+      typstDoc.impl.currentScaleRatio = scale;
+      typstDoc.impl.r.rescale();
+      currentZoomScale = scale;
+      currentZoomMode = mode;
+    }
+  }
+
+  function fitToWidth() {
+    if (previewContainer && docContainer && typstDoc && typstDoc.impl) {
+      const containerWidth = previewContainer.clientWidth;
+      const docWidth = docContainer.scrollWidth;
+      const scale = (containerWidth - 40) / docWidth;
+      setZoom(scale, 'fit-width');
+    }
+  }
+
+  function fitToHeight() {
+    if (previewContainer && docContainer && typstDoc && typstDoc.impl) {
+      const containerHeight = previewContainer.clientHeight;
+      const docHeight = docContainer.scrollHeight;
+      const scale = (containerHeight - 40) / docHeight;
+      setZoom(scale, 'fit-height');
+    }
+  }
+
+  function fitToPage() {
+    if (previewContainer && docContainer && typstDoc && typstDoc.impl) {
+      const containerWidth = previewContainer.clientWidth;
+      const containerHeight = previewContainer.clientHeight;
+      const docWidth = docContainer.scrollWidth;
+      const docHeight = docContainer.scrollHeight;
+      const scaleWidth = (containerWidth - 40) / docWidth;
+      const scaleHeight = (containerHeight - 40) / docHeight;
+      const scale = Math.min(scaleWidth, scaleHeight);
+      setZoom(scale, 'fit-page');
+    }
+  }
+
+  // Patch TypstDocumentContext to expose doRescale for toolbar
+  function patchTypstDocForToolbarZoom(typstDoc: any) {
+    if (!typstDoc || !typstDoc.impl) return;
+    if (typeof typstDoc.impl.__doRescaleFromToolbar === 'function') return;
+    typstDoc.impl.__doRescaleFromToolbar = function(direction: number) {
+      const factors = [
+        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.4, 2.7, 3,
+        3.3, 3.7, 4.1, 4.6, 5.1, 5.7, 6.3, 7, 7.7, 8.5, 9.4, 10,
+      ];
+      const prevScaleRatio = this.currentScaleRatio;
+      if (direction === -1) {
+        if (this.currentScaleRatio >= factors.at(-1)!) return;
+        this.currentScaleRatio = factors.filter((x) => x > this.currentScaleRatio).at(0)!;
+      } else if (direction === 1) {
+        if (this.currentScaleRatio <= factors.at(0)!) return;
+        this.currentScaleRatio = factors.filter((x) => x < this.currentScaleRatio).at(-1)!;
+      } else {
+        return;
+      }
+      this.r.rescale();
+      this.addViewportChange();
+    };
+  }
+
+  const zoomItems = [
+    { label: "Fit to width", icon: MoveHorizontal, onclick: fitToWidth },
+    { label: "Fit to height", icon: MoveVertical, onclick: fitToHeight },
+    { label: "Fit to page", icon: File, onclick: fitToPage, separator: true },
+    { label: "25%", onclick: () => setZoom(0.25, 'custom') },
+    { label: "50%", onclick: () => setZoom(0.5, 'custom') },
+    { label: "75%", onclick: () => setZoom(0.75, 'custom') },
+    { label: "100%", onclick: () => setZoom(1, 'custom') },
+    { label: "200%", onclick: () => setZoom(2, 'custom') },
+    { label: "300%", onclick: () => setZoom(3, 'custom') },
+  ];
+
+  const exportItems = [
+    { label: "Export as PDF", onclick: () => onExportPDF() },
+    { label: "Export as PNG", onclick: () => onExportPNG() },
+    { label: "Export as SVG", onclick: () => onExportSVG(), separator: true },
+    { label: "Export sources as ZIP", onclick: () => onExportSourcesAsZip() },
+  ];
 
   onMount(async () => {
     await createTypstDocument();
@@ -87,10 +233,26 @@
         }),
       });
 
+      patchTypstDocForToolbarZoom(typstDoc);
       typstDoc.setPartialRendering(true);
       previewContainer.addEventListener('scroll', handleScroll);
 
       initialized = true;
+
+      // Restore saved zoom state after initialization
+      if (savedLayout && typstDoc && typstDoc.impl) {
+        setTimeout(() => {
+          if (savedLayout.zoomMode === 'custom') {
+            setZoom(savedLayout.zoomScale, 'custom');
+          } else if (savedLayout.zoomMode === 'fit-width') {
+            fitToWidth();
+          } else if (savedLayout.zoomMode === 'fit-height') {
+            fitToHeight();
+          } else if (savedLayout.zoomMode === 'fit-page') {
+            fitToPage();
+          }
+        }, 100);
+      }
     } catch (error: any) {
       console.error("TypstDocument creation error:", error);
     }
@@ -98,6 +260,45 @@
 </script>
 
 <div class="preview-wrapper">
+  <div class="preview-toolbar">
+    <div class="zoom-controls">
+      <Tooltip text="Zoom out" shortcut="Ctrl -" position="bottom">
+        <ToolButton icon={Minus} onclick={zoomOut} position="first" />
+      </Tooltip>
+      <Tooltip text="Zoom options" position="bottom">
+        <DropdownToolButton 
+          icon={currentZoomMode === 'fit-width' ? MoveHorizontal : currentZoomMode === 'fit-height' ? MoveVertical : currentZoomMode === 'fit-page' ? File : `${Math.round(currentZoomScale * 100)}%`} 
+          items={zoomItems} 
+          position="middle"
+          buttonWidth="45px"
+          buttonBackground="var(--bg-top-bar)"
+          allowIconOverflow={false}
+          stick="left"
+        />
+      </Tooltip>
+      <Tooltip text="Zoom in" shortcut="Ctrl +" position="bottom">
+        <ToolButton icon={Plus} onclick={zoomIn} position="last" />
+      </Tooltip>
+    </div>
+    <div class="split-view-control">
+      <Tooltip text="Back to split view" position="bottom">
+        <ToolButton icon={Columns2} onclick={onCloseSeparatePreview} position="standalone" />
+      </Tooltip>
+    </div>
+    <div class="download-controls">
+      <Tooltip text="Export PDF" position="bottom">
+        <ToolButton icon={Download} onclick={onExportPDF} position="first"/>
+      </Tooltip>
+      <Tooltip text="Export..." position="bottom">
+        <DropdownToolButton 
+          icon={ChevronDown} 
+          items={exportItems} 
+          position="last"
+          buttonWidth="20px"
+        />
+      </Tooltip>
+    </div>
+  </div>
   <div class="preview-container" bind:this={previewContainer}>
     <div class="doc-container" bind:this={docContainer}></div>
   </div>
@@ -110,6 +311,32 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    padding: var(--space-1);
+  }
+
+  .preview-toolbar {
+    height: 40px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px var(--space-2) 8px;
+    overflow: visible;
+    background: var(--bg-top-bar);
+  }
+
+  .zoom-controls {
+    display: flex;
+    overflow: visible;
+  }
+
+  .split-view-control {
+    display: flex;
+  }
+
+  .download-controls {
+    margin-left: auto;
+    display: flex;
   }
 
   .preview-container {
@@ -125,7 +352,5 @@
   .doc-container {
     width: 100%;
     height: 100%;
-    /* overflow: overlay; */
-    /* transition: transform 0.2s; */
   }
 </style>
