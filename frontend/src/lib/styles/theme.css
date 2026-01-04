@@ -193,8 +193,8 @@
   --surface-primary: #252526;
   --surface-secondary: #2d2d30;
   --surface-tertiary: #323233;
-  --surface-hover: #3e3e42;
-  --surface-active: #4a4a4e;
+  --surface-hover: rgba(116, 116, 116, 0.25);
+  --surface-active: #4b4b4b;
 
   /* Text Colors */
   --text-primary: #cccccc;
@@ -255,7 +255,8 @@
   --dropdown-transparency: 0.5;
   --dropdown-bg: rgba(30, 30, 30, var(--dropdown-transparency));
   --dropdown-border: rgba(255, 255, 255, 0.15);
-  --dropdown-hover-bg: rgba(62, 62, 66, 0.9);
+  --dropdown-hover-bg: rgba(62, 62, 66, 0.7);
+  --opaque-dropdown: #242424;
 }
 
 /* === Light Theme === */
@@ -291,7 +292,7 @@
   --surface-secondary: #d4d4d4;
   /* Comments section background */
   --surface-tertiary: #c8c8c8;
-  --surface-hover: #bfbfbf;
+  --surface-hover: rgba(129, 129, 129, 0.2);
   --surface-active: #b0b0b0;
 
   /* Text Colors - Adjusted for light grey backgrounds */
@@ -353,7 +354,8 @@
   --dropdown-transparency: 0.3;
   --dropdown-bg: rgba(255, 255, 255, var(--dropdown-transparency));
   --dropdown-border: rgba(0, 0, 0, 0.15);
-  --dropdown-hover-bg: rgba(191, 191, 191, 0.9);
+  --dropdown-hover-bg: rgba(191, 191, 191, 0.5);
+  --opaque-dropdown: #f3f3f3;
 }
 
 /* Apply scrollbar colors */
