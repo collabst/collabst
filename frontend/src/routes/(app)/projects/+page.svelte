@@ -569,7 +569,7 @@
 
   header {
     background: var(--bg-top-bar);
-    padding: 0.4rem 1rem;
+    padding: 0.25rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;

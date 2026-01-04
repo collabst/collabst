@@ -35,7 +35,7 @@
 <div class="profile-menu-container">
   <Tooltip text="Profile menu" position="bottom">
     <button class="profile-btn" onclick={toggleMenu}>
-      <User size={18} />
+      <User size={16} />
     </button>
   </Tooltip>
   
@@ -63,12 +63,14 @@
     background: transparent;
     border: 1px solid var(--border-primary);
     color: var(--text-primary);
-    padding: 0.5rem;
+    padding: 0.375rem;
     border-radius: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 32px;
+    height: 32px;
   }
   
   .profile-btn:hover {

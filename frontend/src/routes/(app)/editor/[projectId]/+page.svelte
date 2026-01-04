@@ -1150,7 +1150,7 @@
 
   header {
     background: var(--bg-top-bar);
-    padding: 0.3rem 1rem;
+    padding: 0.25rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1211,7 +1211,7 @@
     font-weight: 600;
     margin: 0;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 2px 8px;
     border-radius: 4px;
     border: 1px solid transparent;
     max-width: 180px;
@@ -1236,7 +1236,7 @@
     background: var(--surface-hover);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 4px 8px;
+    padding: 2px 8px;
     font-family: inherit;
     min-width: 100px;
     max-width: 180px;

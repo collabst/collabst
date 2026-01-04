@@ -9,7 +9,7 @@
     | "danger"
     | "success"
     | "flat";
-  type ButtonSize = "sm" | "md" | "lg";
+  type ButtonSize = "sm" | "md" | "lg" | "top-bar";
 
   interface IconButtonProps {
     icon: Component;
@@ -39,6 +39,7 @@
     sm: 16,
     md: 20,
     lg: 24,
+    "top-bar": 18,
   };
 </script>
 
@@ -85,6 +86,11 @@
   .icon-btn-lg {
     width: 48px;
     height: 48px;
+  }
+
+  .icon-btn-top-bar {
+    width: 32px;
+    height: 32px;
   }
 
   /* Variants */

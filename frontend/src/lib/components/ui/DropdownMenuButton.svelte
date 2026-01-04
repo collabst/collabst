@@ -232,7 +232,7 @@
   }
 
   .menu-button {
-    padding: 6px 12px;
+    padding: 4px 10px;
     background: transparent;
     border: 1px solid transparent;
     color: var(--text-primary);
