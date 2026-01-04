@@ -33,20 +33,32 @@
 <style>
   .theme-btn {
     background: transparent;
-    border: 1px solid var(--border-primary);
+    /* border: 1px solid var(--border-primary); */
+    border: none;
     color: var(--text-primary);
     padding: 0.375rem;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 32px;
     height: 32px;
+    transition: all 0.2s ease;
+    margin-left: 0.75rem;
   }
 
-  .theme-btn:hover {
-    background: var(--surface-hover);
-    border-color: var(--border-secondary);
+  /* Light theme - show dark theme preview on hover */
+  :global([data-theme="light"]) .theme-btn:hover {
+    background: #2a2a2a;
+    color: #cccccc;
+    border-color: #4a4a4e;
+  }
+
+  /* Dark theme - show light theme preview on hover */
+  :global([data-theme="dark"]) .theme-btn:hover {
+    background: #e8e8e8;
+    color: #1e1e1e;
+    border-color: #b8b8b8;
   }
 </style>

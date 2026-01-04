@@ -45,8 +45,7 @@
       {#each users as [clientId, state], index}
         <div
           class="avatar"
-          style="background: {state.user?.color || '#999'}; z-index: {100 - index}"
-          title={state.user?.name || `User ${clientId}`}
+          style="background: {state.user?.color || '#999'}; z-index: {100 - index}; --avatar-glow: {state.user?.color || '#999'}70"
         >
           <span class="avatar-initial">
             {(state.user?.name || 'U')[0].toUpperCase()}
@@ -57,7 +56,7 @@
         </div>
       {/each}
       {#if totalUsers > 10}
-        <div class="avatar more" title="{totalUsers - 10} more users" style="z-index: 0">
+        <div class="avatar more" style="z-index: 0">
           <span class="avatar-initial">+{totalUsers - 10}</span>
           <div class="tooltip">
             +{totalUsers - 10} more
@@ -100,7 +99,7 @@
   .avatar:hover {
     transform: scale(1.2);
     z-index: 200 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 12px var(--avatar-glow);
   }
 
   .avatar-initial {
@@ -133,7 +132,6 @@
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-primary);
   }
 
@@ -149,5 +147,6 @@
 
   .avatar:hover .tooltip {
     opacity: 1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 </style>
