@@ -1,169 +1,179 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { goto } from '$app/navigation'
-  import { auth } from '$lib/stores/auth'
-  import { notifications } from '$lib/stores/notifications'
-  import { projectsApi, invitationsApi } from '$lib/services/api'
-  import { ThemeToggle, ProfileMenu, Tooltip } from '$lib/components/ui'
-  import InvitationsPanel from '$lib/components/InvitationsPanel.svelte'
-  import PlaceholderPanel from '$lib/components/editor/PlaceholderPanel.svelte'
-  import type { Project } from '$lib/types'
-  import collabstLogo from '../../../assets/collabst-text-vertical.svg'
-  import fileIcon from '../../../assets/collabst-file.svg'
-  import Play from '@lucide/svelte/icons/play'
-  import Trash2 from '@lucide/svelte/icons/trash-2'
-  import UserPlus from '@lucide/svelte/icons/user-plus'
-  import CircleHelp from '@lucide/svelte/icons/circle-help'
-  import Rocket from '@lucide/svelte/icons/rocket'
-  import Settings from '@lucide/svelte/icons/settings'
-  import SendHorizontal from '@lucide/svelte/icons/send-horizontal'
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import { auth } from "$lib/stores/auth";
+  import { notifications } from "$lib/stores/notifications";
+  import { projectsApi, invitationsApi } from "$lib/services/api";
+  import { ThemeToggle, ProfileMenu, Tooltip } from "$lib/components/ui";
+  import InvitationsPanel from "$lib/components/InvitationsPanel.svelte";
+  import PlaceholderPanel from "$lib/components/editor/PlaceholderPanel.svelte";
+  import type { Project } from "$lib/types";
+  import collabstLogo from "../../../assets/collabst-text-vertical.svg";
+  import fileIcon from "../../../assets/collabst-file.svg";
+  import Play from "@lucide/svelte/icons/play";
+  import Trash2 from "@lucide/svelte/icons/trash-2";
+  import UserPlus from "@lucide/svelte/icons/user-plus";
+  import CircleHelp from "@lucide/svelte/icons/circle-help";
+  import Rocket from "@lucide/svelte/icons/rocket";
+  import Settings from "@lucide/svelte/icons/settings";
+  import SendHorizontal from "@lucide/svelte/icons/send-horizontal";
 
-  let projects = $state<Project[]>([])
-  let loading = $state(true)
-  let mounted = $state(false)
-  let showCreateModal = $state(false)
-  let showInviteModal = $state(false)
-  let showDeleteModal = $state(false)
-  let showSettingsPanel = $state(false)
-  let selectedProjectId = $state<number | null>(null)
-  let deleteProjectId = $state<number | null>(null)
-  let newProjectName = $state('')
-  let newProjectDescription = $state('')
-  let inviteEmail = $state('')
-  let inviteRole = $state('editor')
-  let projectNameInput = $state<HTMLInputElement | undefined>()
-  let inviteEmailInput = $state<HTMLInputElement | undefined>()
+  let projects = $state<Project[]>([]);
+  let loading = $state(true);
+  let mounted = $state(false);
+  let showCreateModal = $state(false);
+  let showInviteModal = $state(false);
+  let showDeleteModal = $state(false);
+  let showSettingsPanel = $state(false);
+  let selectedProjectId = $state<number | null>(null);
+  let deleteProjectId = $state<number | null>(null);
+  let newProjectName = $state("");
+  let newProjectDescription = $state("");
+  let inviteEmail = $state("");
+  let inviteRole = $state("editor");
+  let projectNameInput = $state<HTMLInputElement | undefined>();
+  let inviteEmailInput = $state<HTMLInputElement | undefined>();
 
   // Focus inputs when modals open
   $effect(() => {
     if (showCreateModal && projectNameInput) {
-      setTimeout(() => projectNameInput?.focus(), 0)
+      setTimeout(() => projectNameInput?.focus(), 0);
     }
-  })
+  });
 
   $effect(() => {
     if (showInviteModal && inviteEmailInput) {
-      setTimeout(() => inviteEmailInput?.focus(), 0)
+      setTimeout(() => inviteEmailInput?.focus(), 0);
     }
-  })
+  });
 
   // Handle Escape key for invite modal
   $effect(() => {
-    if (!showInviteModal) return
+    if (!showInviteModal) return;
     const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        showInviteModal = false
+      if (e.key === "Escape") {
+        showInviteModal = false;
       }
-    }
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
-  })
+    };
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  });
 
   // Handle Escape key for delete modal
   $effect(() => {
-    if (!showDeleteModal) return
+    if (!showDeleteModal) return;
     const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        showDeleteModal = false
-        deleteProjectId = null
+      if (e.key === "Escape") {
+        showDeleteModal = false;
+        deleteProjectId = null;
       }
-    }
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
-  })
+    };
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  });
 
   // Helper to check if current user is a collaborator (not owner)
   function isCollaborator(project: Project): boolean {
-    return project.current_user_role !== 'owner'
+    return project.current_user_role !== "owner";
   }
 
   // Helper to get role badge color
   function getRoleBadgeClass(role: string): string {
     switch (role) {
-      case 'admin': return 'role-admin'
-      case 'editor': return 'role-editor'
-      case 'reader': return 'role-reader'
-      default: return 'role-owner'
+      case "admin":
+        return "role-admin";
+      case "editor":
+        return "role-editor";
+      case "reader":
+        return "role-reader";
+      default:
+        return "role-owner";
     }
   }
 
   async function loadProjects() {
     try {
-      projects = await projectsApi.list()
+      projects = await projectsApi.list();
     } catch (error) {
-      console.error('Failed to load projects:', error)
+      console.error("Failed to load projects:", error);
     } finally {
-      loading = false
+      loading = false;
     }
   }
 
   async function handleCreateProject(e: Event) {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      const newProject = await projectsApi.create(newProjectName, newProjectDescription)
-      showCreateModal = false
-      newProjectName = ''
-      newProjectDescription = ''
-      
-      notifications.show('Project created successfully!', 'info', 2000)
+      const newProject = await projectsApi.create(
+        newProjectName,
+        newProjectDescription,
+      );
+      showCreateModal = false;
+      newProjectName = "";
+      newProjectDescription = "";
+
+      notifications.show("Project created successfully!", "info", 2000);
       // Navigate to the editor - it will handle creating the initial file
-      goto(`/editor/${newProject.id}`)
+      goto(`/editor/${newProject.id}`);
     } catch (error: any) {
-      console.error('Failed to create project:', error)
-      const message = error?.response?.data?.detail || 'Failed to create project'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to create project:", error);
+      const message =
+        error?.response?.data?.detail || "Failed to create project";
+      notifications.show(message, "error", 5000);
     }
   }
 
   async function handleDeleteProject(id: number) {
-    deleteProjectId = id
-    showDeleteModal = true
+    deleteProjectId = id;
+    showDeleteModal = true;
   }
 
   async function confirmDeleteProject() {
-    if (deleteProjectId === null) return
+    if (deleteProjectId === null) return;
 
     try {
-      await projectsApi.delete(deleteProjectId)
-      loadProjects()
-      notifications.show('Project deleted successfully', 'info', 2000)
+      await projectsApi.delete(deleteProjectId);
+      loadProjects();
+      notifications.show("Project deleted successfully", "info", 2000);
     } catch (error: any) {
-      console.error('Failed to delete project:', error)
-      const message = error?.response?.data?.detail || 'Failed to delete project'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to delete project:", error);
+      const message =
+        error?.response?.data?.detail || "Failed to delete project";
+      notifications.show(message, "error", 5000);
     } finally {
-      showDeleteModal = false
-      deleteProjectId = null
+      showDeleteModal = false;
+      deleteProjectId = null;
     }
   }
 
   function handleOpenInviteModal(projectId: number) {
-    selectedProjectId = projectId
-    showInviteModal = true
+    selectedProjectId = projectId;
+    showInviteModal = true;
   }
 
   async function handleSendInvite(e: Event) {
-    e.preventDefault()
-    if (!selectedProjectId) return
+    e.preventDefault();
+    if (!selectedProjectId) return;
 
     try {
-      await invitationsApi.send(selectedProjectId, inviteEmail, inviteRole)
-      showInviteModal = false
-      inviteEmail = ''
-      inviteRole = 'editor'
-      notifications.show('Invitation sent successfully!', 'info', 3000)
+      await invitationsApi.send(selectedProjectId, inviteEmail, inviteRole);
+      showInviteModal = false;
+      inviteEmail = "";
+      inviteRole = "editor";
+      notifications.show("Invitation sent successfully!", "info", 3000);
     } catch (error: any) {
-      console.error('Failed to send invitation:', error)
-      const message = error?.response?.data?.detail || 'Failed to send invitation'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to send invitation:", error);
+      const message =
+        error?.response?.data?.detail || "Failed to send invitation";
+      notifications.show(message, "error", 5000);
     }
   }
 
   onMount(() => {
-    loadProjects()
+    loadProjects();
     // Set mounted immediately to prevent layout shift
-    mounted = true
-  })
+    mounted = true;
+  });
 </script>
 
 <svelte:head>
@@ -173,10 +183,9 @@
 {#if loading}
   <div class="loading">Loading projects...</div>
 {:else}
-  <div class="container" class:mounted={mounted}>
+  <div class="container" class:mounted>
     <header>
-      <div class="header-left">
-      </div>
+      <div class="header-left"></div>
       <div class="header-right">
         <ThemeToggle />
         <ProfileMenu />
@@ -192,7 +201,7 @@
             <button
               class="activity-btn"
               class:active={showSettingsPanel}
-              on:click={() => showSettingsPanel = !showSettingsPanel}
+              on:click={() => (showSettingsPanel = !showSettingsPanel)}
               aria-label="Settings"
             >
               <Settings size={24} />
@@ -220,7 +229,7 @@
               <CircleHelp size={24} />
             </a>
           </Tooltip>
-          
+
           <div class="logo-container">
             <img src={collabstLogo} alt="collabst" class="collabst-logo" />
           </div>
@@ -240,74 +249,91 @@
 
         <div class="content">
           <h1 class="page-title">Dashboard</h1>
-          <button on:click={() => showCreateModal = true} class="create-btn">
+          <button on:click={() => (showCreateModal = true)} class="create-btn">
             + New Project
           </button>
 
-      <div class="projects-grid">
-        {#if projects.length === 0}
-          <div class="empty">
-            <h2>No projects yet</h2>
-            <p>Create your first project to get started!</p>
-          </div>
-        {:else}
-          {#each projects as project (project.id)}
-            <div class="project-card" on:click={() => goto(`/editor/${project.id}`)}>
-              <div class="file-icon-container">
-                <img src={fileIcon} alt="Project file" class="file-icon" />
-                
-                <div class="action-buttons">
-                  <button
-                    on:click|stopPropagation={() => goto(`/editor/${project.id}`)}
-                    class="action-btn open-action"
-                    title="Open"
-                  >
-                    <Play size={16} />
-                    <span class="action-label">Open</span>
-                  </button>
-                  
-                  {#if project.current_user_role === 'owner' || project.current_user_role === 'admin'}
-                    <button
-                      on:click|stopPropagation={() => handleOpenInviteModal(project.id)}
-                      class="action-btn invite-action"
-                      title="Invite"
-                    >
-                      <UserPlus size={16} />
-                      <span class="action-label">Invite</span>
-                    </button>
-                  {/if}
-                  
-                  {#if project.current_user_role === 'owner'}
-                    <button
-                      on:click|stopPropagation={() => handleDeleteProject(project.id)}
-                      class="action-btn delete-action"
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                      <span class="action-label">Delete</span>
-                    </button>
-                  {/if}
-                </div>
+          <div class="projects-grid">
+            {#if projects.length === 0}
+              <div class="empty">
+                <h2>No projects yet</h2>
+                <p>Create your first project to get started!</p>
               </div>
+            {:else}
+              {#each projects as project (project.id)}
+                <div class="project-card">
+                  <a
+                    href="/editor/{project.id}"
+                    class="card-link"
+                    aria-label="Open {project.name}"
+                  ></a>
 
-              <div class="project-info">
-                <h3>{project.name}</h3>
-                {#if project.current_user_role}
-                  <span class="role-badge {getRoleBadgeClass(project.current_user_role)}">
-                    {project.current_user_role}
-                  </span>
-                {/if}
-              </div>
-            </div>
-          {/each}
-        {/if}
-      </div>
-    </div>
+                  <div class="file-icon-container">
+                    <img src={fileIcon} alt="Project file" class="file-icon" />
+
+                    <div class="action-buttons">
+                      <a
+                        href="/editor/{project.id}"
+                        class="action-btn open-action"
+                        title="Open"
+                      >
+                        <Play size={16} />
+                        <span class="action-label">Open</span>
+                      </a>
+
+                      {#if project.current_user_role === "owner" || project.current_user_role === "admin"}
+                        <button
+                          on:click|stopPropagation={() =>
+                            handleOpenInviteModal(project.id)}
+                          class="action-btn invite-action"
+                          title="Invite"
+                        >
+                          <UserPlus size={16} />
+                          <span class="action-label">Invite</span>
+                        </button>
+                      {/if}
+
+                      {#if project.current_user_role === "owner"}
+                        <button
+                          on:click|stopPropagation={() =>
+                            handleDeleteProject(project.id)}
+                          class="action-btn delete-action"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                          <span class="action-label">Delete</span>
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+
+                  <div class="project-info">
+                    <h3>{project.name}</h3>
+                    {#if project.current_user_role}
+                      <span
+                        class="role-badge {getRoleBadgeClass(
+                          project.current_user_role,
+                        )}"
+                      >
+                        {project.current_user_role}
+                      </span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            {/if}
+          </div>
+        </div>
       </div>
     </div>
 
     {#if showCreateModal}
-      <div class="modal" on:click={() => showCreateModal = false} on:keydown={(e) => e.key === 'Escape' && (showCreateModal = false)} role="presentation">
+      <div
+        class="modal"
+        on:click={() => (showCreateModal = false)}
+        on:keydown={(e) => e.key === "Escape" && (showCreateModal = false)}
+        role="presentation"
+      >
         <div class="modal-content" on:click|stopPropagation>
           <h2>Create New Project</h2>
           <form on:submit={handleCreateProject}>
@@ -329,12 +355,14 @@
               />
             </div>
             <div class="modal-actions">
-              <button type="button" on:click={() => showCreateModal = false} class="cancel-btn">
+              <button
+                type="button"
+                on:click={() => (showCreateModal = false)}
+                class="cancel-btn"
+              >
                 Cancel
               </button>
-              <button type="submit" class="submit-btn">
-                Create Project
-              </button>
+              <button type="submit" class="submit-btn"> Create Project </button>
             </div>
           </form>
         </div>
@@ -342,7 +370,11 @@
     {/if}
 
     {#if showInviteModal}
-      <div class="modal" on:click={() => showInviteModal = false} role="presentation">
+      <div
+        class="modal"
+        on:click={() => (showInviteModal = false)}
+        role="presentation"
+      >
         <div class="modal-content" on:click|stopPropagation>
           <h2>Invite Collaborator</h2>
           <form on:submit={handleSendInvite}>
@@ -365,7 +397,11 @@
               </select>
             </div>
             <div class="modal-actions">
-              <button type="button" on:click={() => showInviteModal = false} class="cancel-btn">
+              <button
+                type="button"
+                on:click={() => (showInviteModal = false)}
+                class="cancel-btn"
+              >
                 Cancel
               </button>
               <button type="submit" class="submit-btn">
@@ -379,17 +415,36 @@
     {/if}
 
     {#if showDeleteModal}
-      <div class="modal" on:click={() => { showDeleteModal = false; deleteProjectId = null }} role="presentation">
+      <div
+        class="modal"
+        on:click={() => {
+          showDeleteModal = false;
+          deleteProjectId = null;
+        }}
+        role="presentation"
+      >
         <div class="modal-content" on:click|stopPropagation>
           <h2>Delete Project</h2>
           <p class="delete-message">
-            Are you sure you want to delete this project?<br>This action cannot be undone and all files will be permanently deleted.
+            Are you sure you want to delete this project?<br />This action
+            cannot be undone and all files will be permanently deleted.
           </p>
           <div class="modal-actions">
-            <button type="button" on:click={() => { showDeleteModal = false; deleteProjectId = null }} class="cancel-btn">
+            <button
+              type="button"
+              on:click={() => {
+                showDeleteModal = false;
+                deleteProjectId = null;
+              }}
+              class="cancel-btn"
+            >
               Cancel
             </button>
-            <button type="button" on:click={confirmDeleteProject} class="delete-btn">
+            <button
+              type="button"
+              on:click={confirmDeleteProject}
+              class="delete-btn"
+            >
               Delete Project
               <Trash2 size={18} />
             </button>
@@ -490,13 +545,15 @@
   .collabst-logo {
     width: auto;
     height: 110px;
-    filter: brightness(0) saturate(100%) invert(60%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(90%);
+    filter: brightness(0) saturate(100%) invert(60%) sepia(0%) saturate(0%)
+      hue-rotate(0deg) brightness(95%) contrast(90%);
     pointer-events: none;
     user-select: none;
   }
 
   :global([data-theme="light"]) .collabst-logo {
-    filter: brightness(0) saturate(100%) invert(40%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(90%) contrast(85%);
+    filter: brightness(0) saturate(100%) invert(40%) sepia(0%) saturate(0%)
+      hue-rotate(0deg) brightness(90%) contrast(85%);
   }
 
   .content-wrapper {
@@ -562,7 +619,7 @@
     margin: 0 0 2rem 0;
     color: var(--text-primary);
     text-align: left;
-    font-family: 'DM Serif Display', Georgia, serif;
+    font-family: "DM Serif Display", Georgia, serif;
     letter-spacing: -0.02em;
   }
 
@@ -608,10 +665,17 @@
     align-items: center;
     cursor: pointer;
     transition: transform 0.2s;
+    position: relative;
   }
 
   .project-card:hover {
     transform: translateY(-4px);
+  }
+
+  .card-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
   }
 
   .file-icon-container {
@@ -622,6 +686,8 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 0.75rem;
+    z-index: 2;
+    pointer-events: none;
   }
 
   .file-icon {
@@ -639,17 +705,17 @@
     display: flex;
     gap: 0.5rem;
     opacity: 0;
-    transition: opacity 0.2s;
     pointer-events: none;
+    z-index: 10;
   }
 
-  .file-icon-container:hover .action-buttons {
+  .project-card:hover .action-buttons {
     opacity: 1;
     pointer-events: auto;
   }
 
   .action-btn {
-    background: var(--bg-secondary);
+    background: #233133;
     border: 1px solid var(--border-primary);
     color: var(--text-primary);
     padding: 0.5rem;
@@ -661,6 +727,12 @@
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     position: relative;
+    text-decoration: none;
+    pointer-events: auto;
+  }
+
+  :global([data-theme="light"]) .action-btn {
+    background: #d1e6e8;
   }
 
   .action-btn .action-label {
@@ -668,7 +740,7 @@
     top: -2rem;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--bg-secondary);
+    background: #233133;
     border: 1px solid var(--border-primary);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
@@ -680,12 +752,15 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
+  :global([data-theme="light"]) .action-btn .action-label {
+    background: #d1e6e8;
+  }
+
   .action-btn:hover .action-label {
     opacity: 1;
   }
 
   .action-btn:hover {
-    background: var(--surface-hover);
     transform: scale(1.1);
   }
 
@@ -695,25 +770,25 @@
   }
 
   .invite-action:hover {
-    border-color: #81c784;
-    color: #81c784;
+    border-color: #8ad48e;
+    color: #8ad48e;
   }
 
   /* Light theme: darker green for better contrast */
   :global([data-theme="light"]) .invite-action:hover {
-    border-color: #4caf50;
-    color: #4caf50;
+    border-color: #1ea622;
+    color: #1ea622;
   }
-
+  
   .delete-action:hover {
-    border-color: #e57373;
-    color: #e57373;
+    border-color: #ef7474;
+    color: #ef7474;
   }
 
   /* Light theme: darker red for better contrast */
   :global([data-theme="light"]) .delete-action:hover {
-    border-color: #d32f2f;
-    color: #d32f2f;
+    border-color: #c52525;
+    color: #c52525;
   }
 
   .project-info {
@@ -723,6 +798,9 @@
     align-items: center;
     gap: 0.5rem;
     width: 100%;
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
   }
 
   .project-card h3 {
@@ -790,7 +868,7 @@
     z-index: var(--z-modal-backdrop);
     animation: slideUp var(--transition-fast);
   }
-  
+
   @keyframes slideUp {
     from {
       opacity: 0;
@@ -832,7 +910,9 @@
     color: var(--dialog-text);
   }
 
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     padding: var(--space-3);
     border: 2px solid var(--dialog-input-border);
     border-radius: var(--radius-md);
@@ -841,12 +921,15 @@
     color: var(--dialog-text);
   }
 
-  input:focus, textarea:focus, select:focus {
+  input:focus,
+  textarea:focus,
+  select:focus {
     outline: none;
     border-color: var(--color-theme);
   }
 
-  input::placeholder, textarea::placeholder {
+  input::placeholder,
+  textarea::placeholder {
     color: var(--text-tertiary);
   }
 
