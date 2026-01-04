@@ -89,7 +89,6 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    border: 2px solid #252526;
     position: relative;
     margin-left: -8px;
   }
