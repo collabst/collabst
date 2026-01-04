@@ -569,7 +569,7 @@
 
   header {
     background: var(--bg-top-bar);
-    padding: 0.25rem 1rem;
+    padding: 0.25rem 0.25rem 0.25rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -585,7 +585,7 @@
   .header-right {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     margin-left: auto;
   }
 
