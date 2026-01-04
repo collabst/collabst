@@ -957,9 +957,9 @@
     <header>
       <div class="header-left">
         <Tooltip text="Back to dashboard" position="bottom">
-          <button onclick={() => goto('/projects')} class="home-btn">
+          <a href="/projects" class="home-btn">
             <Home size={20} />
-          </button>
+          </a>
         </Tooltip>
         {#if isEditingProjectName}
           <input
