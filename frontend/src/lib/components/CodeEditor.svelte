@@ -5,7 +5,14 @@
   import { lintGutter, setDiagnostics } from "@codemirror/lint";
   import { lineNumbers } from "@codemirror/view";
   import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
-  import { greyDark, greyLight } from "$lib/codemirror/greyTheme";
+  import {
+    greyDark,
+    greyLight,
+    greyDarkTheme,
+    greyLightTheme,
+    greyDarkSyntax,
+    greyLightSyntax,
+  } from "$lib/codemirror/greyTheme";
   import { keymap } from "@codemirror/view";
   import { openSearchPanel, search } from "@codemirror/search";
   import * as Y from "yjs";
@@ -39,6 +46,7 @@
   let commentTracker: CommentRangeTracker | null = null;
   let currentTheme: "light" | "dark" = $themeStore;
   const themeCompartment = new Compartment();
+  const syntaxCompartment = new Compartment();
   const lineWrappingCompartment = new Compartment();
   const languageCompartment = new Compartment();
 
@@ -53,9 +61,27 @@
     updateLineWrapping();
   }
 
-  // Get theme extensions based on current theme
+  // Get theme extensions based on current theme (theme only, no syntax highlighting)
   function getThemeExtensions() {
-    return currentTheme === "light" ? [greyLight] : [greyDark];
+    return currentTheme === "light" ? [greyLightTheme] : [greyDarkTheme];
+  }
+
+  // Get syntax highlighting extensions based on current theme and file type
+  async function getSyntaxHighlighting() {
+    const extension = fileName.split(".").pop()?.toLowerCase();
+
+    // For Typst files, use custom Typst highlighting
+    if (extension === "typ") {
+      if (typeof window !== "undefined") {
+        const { typstDark, typstLight } = await import(
+          "$lib/codemirror/typstHighlight"
+        );
+        return currentTheme === "light" ? typstLight : typstDark;
+      }
+    }
+
+    // For other files, use default theme syntax highlighting
+    return currentTheme === "light" ? greyLightSyntax : greyDarkSyntax;
   }
 
   // Get line wrapping extensions based on wrapLines prop
@@ -63,7 +89,7 @@
     return wrapLines ? [EditorView.lineWrapping] : [];
   }
 
-  // Get language extensions based on file name
+  // Get language extensions based on file name (language support only, no syntax highlighting)
   async function getLanguageExtensions() {
     const extension = fileName.split(".").pop()?.toLowerCase();
 
@@ -78,11 +104,18 @@
   }
 
   // Update editor theme when theme changes
-  function updateEditorTheme() {
+  async function updateEditorTheme() {
     if (!view) return;
 
+    // Reconfigure the main theme
     view.dispatch({
       effects: themeCompartment.reconfigure(getThemeExtensions()),
+    });
+
+    // Reconfigure syntax highlighting (includes Typst-specific highlighting if applicable)
+    const syntaxHighlighting = await getSyntaxHighlighting();
+    view.dispatch({
+      effects: syntaxCompartment.reconfigure(syntaxHighlighting),
     });
   }
 
@@ -96,11 +129,18 @@
   }
 
   // Update language when fileName changes
-  function updateLanguage() {
+  async function updateLanguage() {
     if (!view) return;
 
+    const languageExtensions = await getLanguageExtensions();
     view.dispatch({
-      effects: languageCompartment.reconfigure(getLanguageExtensions()),
+      effects: languageCompartment.reconfigure(languageExtensions),
+    });
+
+    // Also update syntax highlighting for the new file type
+    const syntaxHighlighting = await getSyntaxHighlighting();
+    view.dispatch({
+      effects: syntaxCompartment.reconfigure(syntaxHighlighting),
     });
   }
 
@@ -375,8 +415,9 @@
     console.log("[CodeEditor] Initializing editor for file", fileId);
     currentFileId = fileId;
 
-    // Load language extensions if needed
+    // Load language extensions and syntax highlighting
     const languageExtensions = await getLanguageExtensions();
+    const syntaxHighlighting = await getSyntaxHighlighting();
 
     undoManager = new Y.UndoManager(ytext);
 
@@ -388,7 +429,8 @@
         basicSetup,
         search(),
         themeCompartment.of(getThemeExtensions()),
-        languageExtensions,
+        syntaxCompartment.of(syntaxHighlighting),
+        languageCompartment.of(languageExtensions),
         bracketMatching(),
         indentOnInput(),
         yCollab(ytext, provider.awareness, { undoManager }),
@@ -427,8 +469,9 @@
       fileId,
     );
 
-    // Load language extensions if needed
+    // Load language extensions and syntax highlighting
     const languageExtensions = await getLanguageExtensions();
+    const syntaxHighlighting = await getSyntaxHighlighting();
 
     // Save current cursor position as relative position before switching
     if (currentFileId !== null) {
@@ -462,7 +505,8 @@
           foldGutter(),
           search(),
           themeCompartment.of(getThemeExtensions()),
-          languageExtensions,
+          syntaxCompartment.of(syntaxHighlighting),
+          languageCompartment.of(languageExtensions),
           bracketMatching(),
           indentOnInput(),
           yCollab(ytext, provider.awareness, { undoManager }),

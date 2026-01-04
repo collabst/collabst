@@ -45,12 +45,12 @@ export const greyDarkTheme = EditorView.theme({
     caretColor: darkCursor
   },
 
-  '.cm-cursor, .cm-dropCursor': {borderLeftColor: darkCursor},
-  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {backgroundColor: darkSelection},
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: darkCursor },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': { backgroundColor: darkSelection },
 
-  '.cm-panels': {backgroundColor: darkBackground, color: darkText},
-  '.cm-panels.cm-panels-top': {borderBottom: `1px solid ${darkBorder}`},
-  '.cm-panels.cm-panels-bottom': {borderTop: `1px solid ${darkBorder}`},
+  '.cm-panels': { backgroundColor: darkBackground, color: darkText },
+  '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${darkBorder}` },
+  '.cm-panels.cm-panels-bottom': { borderTop: `1px solid ${darkBorder}` },
 
   '.cm-searchMatch': {
     backgroundColor: darkSearchMatch,
@@ -60,8 +60,8 @@ export const greyDarkTheme = EditorView.theme({
     backgroundColor: darkSelectionAlt
   },
 
-  '.cm-activeLine': {backgroundColor: "#6699ff0b"},
-  '.cm-selectionMatch': {backgroundColor: "#aafe661a"},
+  '.cm-activeLine': { backgroundColor: "#6699ff0b" },
+  '.cm-selectionMatch': { backgroundColor: "#aafe661a" },
 
   '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
     backgroundColor: darkSelectionAlt
@@ -101,14 +101,17 @@ export const greyDarkTheme = EditorView.theme({
       color: darkText
     }
   }
-}, {dark: true})
+}, { dark: true })
 
 /// The highlighting style for code in the Grey Dark theme.
 export const greyDarkHighlightStyle = oneDarkHighlightStyle
 
+/// The syntax highlighting extension for the Grey Dark theme.
+export const greyDarkSyntax: Extension = syntaxHighlighting(greyDarkHighlightStyle)
+
 /// Extension to enable the Grey Dark theme (both the editor theme and
 /// the highlight style).
-export const greyDark: Extension = [greyDarkTheme, syntaxHighlighting(greyDarkHighlightStyle)]
+export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax]
 
 // Light theme colors
 const lightText = "#1e1e1e",
@@ -151,12 +154,12 @@ export const greyLightTheme = EditorView.theme({
     caretColor: lightCursor
   },
 
-  '.cm-cursor, .cm-dropCursor': {borderLeftColor: lightCursor},
-  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {backgroundColor: lightSelection},
+  '.cm-cursor, .cm-dropCursor': { borderLeftColor: lightCursor },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': { backgroundColor: lightSelection },
 
-  '.cm-panels': {backgroundColor: lightBackgroundHighlight, color: lightText},
-  '.cm-panels.cm-panels-top': {borderBottom: `1px solid ${lightBorder}`},
-  '.cm-panels.cm-panels-bottom': {borderTop: `1px solid ${lightBorder}`},
+  '.cm-panels': { backgroundColor: lightBackgroundHighlight, color: lightText },
+  '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${lightBorder}` },
+  '.cm-panels.cm-panels-bottom': { borderTop: `1px solid ${lightBorder}` },
 
   '.cm-searchMatch': {
     backgroundColor: lightSearchMatch,
@@ -166,8 +169,8 @@ export const greyLightTheme = EditorView.theme({
     backgroundColor: lightSelection
   },
 
-  '.cm-activeLine': {backgroundColor: "#6699ff0b"},
-  '.cm-selectionMatch': {backgroundColor: "#aafe661a"},
+  '.cm-activeLine': { backgroundColor: "#6699ff0b" },
+  '.cm-selectionMatch': { backgroundColor: "#aafe661a" },
 
   '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
     backgroundColor: lightSelection
@@ -207,46 +210,81 @@ export const greyLightTheme = EditorView.theme({
       color: lightText
     }
   }
-}, {dark: false})
+}, { dark: false })
 
 /// The highlighting style for code in the Grey Light theme.
 export const greyLightHighlightStyle = HighlightStyle.define([
-  {tag: t.keyword,
-   color: '#0066cc'},
-  {tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName],
-   color: lightTextSecondary},
-  {tag: [t.function(t.variableName), t.labelName],
-   color: '#6f42c1'},
-  {tag: [t.color, t.constant(t.name), t.standard(t.name)],
-   color: '#005cc5'},
-  {tag: [t.definition(t.name), t.separator],
-   color: lightText},
-  {tag: [t.typeName, t.className, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace],
-   color: '#d73a49'},
-  {tag: [t.operator, t.operatorKeyword, t.url, t.escape, t.regexp, t.link, t.special(t.string)],
-   color: '#d73a49'},
-  {tag: [t.meta, t.comment],
-   color: '#6a737d'},
-  {tag: t.strong,
-   fontWeight: 'bold'},
-  {tag: t.emphasis,
-   fontStyle: 'italic'},
-  {tag: t.strikethrough,
-   textDecoration: 'line-through'},
-  {tag: t.link,
-   color: '#0366d6',
-   textDecoration: 'underline'},
-  {tag: t.heading,
-   fontWeight: 'bold',
-   color: lightText},
-  {tag: [t.atom, t.bool, t.special(t.variableName)],
-   color: '#e36209'},
-  {tag: [t.processingInstruction, t.string, t.inserted],
-   color: '#22863a'},
-  {tag: t.invalid,
-   color: lightInvalid},
+  {
+    tag: t.keyword,
+    color: '#0066cc'
+  },
+  {
+    tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName],
+    color: lightTextSecondary
+  },
+  {
+    tag: [t.function(t.variableName), t.labelName],
+    color: '#6f42c1'
+  },
+  {
+    tag: [t.color, t.constant(t.name), t.standard(t.name)],
+    color: '#005cc5'
+  },
+  {
+    tag: [t.definition(t.name), t.separator],
+    color: lightText
+  },
+  {
+    tag: [t.typeName, t.className, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace],
+    color: '#d73a49'
+  },
+  {
+    tag: [t.operator, t.operatorKeyword, t.url, t.escape, t.regexp, t.link, t.special(t.string)],
+    color: '#d73a49'
+  },
+  {
+    tag: [t.meta, t.comment],
+    color: '#6a737d'
+  },
+  {
+    tag: t.strong,
+    fontWeight: 'bold'
+  },
+  {
+    tag: t.emphasis,
+    fontStyle: 'italic'
+  },
+  {
+    tag: t.strikethrough,
+    textDecoration: 'line-through'
+  },
+  {
+    tag: t.link,
+    color: '#0366d6',
+    textDecoration: 'underline'
+  },
+  {
+    tag: t.heading,
+    fontWeight: 'bold',
+    color: lightText
+  },
+  {
+    tag: [t.atom, t.bool, t.special(t.variableName)],
+    color: '#e36209'
+  },
+  {
+    tag: [t.processingInstruction, t.string, t.inserted],
+    color: '#22863a'
+  },
+  {
+    tag: t.invalid,
+    color: lightInvalid
+  },
 ])
+
+/// The syntax highlighting extension for the Grey Light theme.
+export const greyLightSyntax: Extension = syntaxHighlighting(greyLightHighlightStyle)
 
 /// Extension to enable the Grey Light theme (both the editor theme and
 /// the highlight style).
-export const greyLight: Extension = [greyLightTheme, syntaxHighlighting(greyLightHighlightStyle)]
+export const greyLight: Extension = [greyLightTheme, greyLightSyntax]
