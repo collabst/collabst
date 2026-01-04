@@ -380,9 +380,7 @@
     position: absolute;
     left: 100%;
     top: -5px;
-    background: var(--dropdown-bg);
-    backdrop-filter: blur(var(--dropdown-blur));
-    -webkit-backdrop-filter: blur(var(--dropdown-blur));
+    background: var(--opaque-dropdown);
     border: 1px solid var(--dropdown-border);
     border-radius: var(--radius-md);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
