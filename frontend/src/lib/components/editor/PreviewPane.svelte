@@ -744,10 +744,9 @@
   }
 
   .doc-container {
-    width: 100%;
+    width: fit-content;
     height: 100%;
-    /* overflow: overlay; */
-    /* transition: transform 0.2s; */
+    padding: var(--space-4);
   }
 
   /* Typst text selection and positioning */
