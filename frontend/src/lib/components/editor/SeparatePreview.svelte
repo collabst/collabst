@@ -360,7 +360,7 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    padding: var(--space-1);
+    padding: var(--space-2);
   }
 
   .preview-toolbar {
@@ -369,7 +369,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 8px var(--space-2) 8px;
+    padding-bottom: var(--space-2);
     overflow: visible;
     background: var(--bg-top-bar);
   }
