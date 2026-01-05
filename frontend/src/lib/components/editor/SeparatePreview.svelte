@@ -14,7 +14,6 @@
 
   interface Props {
     separateWindow: Window;
-    renderSession: any;
     projectName?: string;
     onCloseSeparatePreview?: () => void;
     onExportPDF?: () => void;
@@ -23,9 +22,8 @@
     onExportSourcesAsZip?: () => void;
   }
 
-  let { 
-    separateWindow, 
-    renderSession,
+  let {
+    separateWindow,
     projectName = 'document',
     onCloseSeparatePreview = () => {},
     onExportPDF = () => {},
@@ -34,11 +32,17 @@
     onExportSourcesAsZip = () => {},
   }: Props = $props();
 
+  // Own render session for separate preview
+  let renderSession: any = null;
+
   let previewContainer: HTMLDivElement | undefined;
   let docContainer: HTMLDivElement | undefined;
   let TypstSvgDocument: any = null;
   let typstDoc: any | undefined;
   let initialized: boolean = false;
+
+  // Queue for messages that arrive before initialization
+  let messageQueue: Array<{ data: any; isFirstCompile: boolean }> = [];
 
   // Load zoom state from localStorage
   const savedLayout = browser ? loadLayoutState() : null;
@@ -161,21 +165,29 @@
   ];
 
   onMount(async () => {
-    await createTypstDocument();
-
+    // Set up message listener first to queue messages
     separateWindow.addEventListener("message", (event) => {
       if (event.data.type === "typst-vector-data") {
         let vectorDataEvent = event.data;
         let data = vectorDataEvent.data;
         let isFirstCompile = vectorDataEvent.isFirstCompile;
 
-        if (isFirstCompile) {
-          typstDoc.addChangement(["new", data]);
+        if (initialized && typstDoc) {
+          // Process immediately if initialized
+          if (isFirstCompile) {
+            typstDoc.addChangement(["new", data]);
+          } else {
+            typstDoc.addChangement(["diff-v1", data]);
+          }
         } else {
-          typstDoc.addChangement(["diff-v1", data]);
+          // Queue message for later processing
+          messageQueue.push({ data, isFirstCompile });
         }
       }
     });
+
+    // Now create the document (will process queued messages when done)
+    await createTypstDocument();
   });
 
   function handleScroll() {
@@ -192,69 +204,106 @@
     if (!docContainer || !previewContainer) return;
 
     try {
-      // Dynamically import typst-dom modules (browser-only)
-      const [typstDocModule, svgDocModule, canvasDocModule] = await Promise.all(
-        [
-          import("$lib/typst-dom/src/typst-doc.mts"),
-          import("$lib/typst-dom/src/typst-doc.svg.mts"),
-          import("$lib/typst-dom/src/typst-doc.canvas.mts"),
-        ]
+      // Dynamically import typst modules and create own render session
+      const typstModule = await import(
+        'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts/dist/esm/contrib/all-in-one-lite.bundle.js'
       );
+      const typst = typstModule.$typst;
 
-      // Create SVG-only document class
-      TypstSvgDocument = class extends (
-        typstDocModule.provideDoc(
-          typstDocModule.composeDoc(
-            typstDocModule.TypstDocumentContext,
-            svgDocModule.provideSvgDoc,
-            canvasDocModule.provideCanvasDoc
-          )
-        )
-      ) {};
-
-      (previewContainer as any).initTypstSvg = () => {};
-      (previewContainer as any).currentPosition = () => undefined;
-      (previewContainer as any).handleTypstLocation = () => {};
-      (previewContainer as any).documents = [];
-      (previewContainer as any).typstWebsocket = { send: async () => {} };
-
-      typstDoc = new TypstSvgDocument({
-        windowElem: previewContainer,
-        hookedElem: docContainer,
-        kModule: renderSession,
-        renderMode: "svg",
-        previewMode: 0,
-        isContentPreview: false,
-        sourceMapping: false,
-        retrieveDOMState: () => ({
-          width: previewContainer!.clientWidth,
-          height: previewContainer!.clientHeight,
-          boundingRect: previewContainer!.getBoundingClientRect(),
-        }),
-      });
-
-      patchTypstDocForToolbarZoom(typstDoc);
-      typstDoc.setPartialRendering(true);
-      previewContainer.addEventListener('scroll', handleScroll);
-
-      initialized = true;
-
-      // Restore saved zoom state after initialization
-      if (savedLayout && typstDoc && typstDoc.impl) {
-        setTimeout(() => {
-          if (savedLayout.zoomMode === 'custom') {
-            setZoom(savedLayout.zoomScale, 'custom');
-          } else if (savedLayout.zoomMode === 'fit-width') {
-            fitToWidth();
-          } else if (savedLayout.zoomMode === 'fit-height') {
-            fitToHeight();
-          } else if (savedLayout.zoomMode === 'fit-page') {
-            fitToPage();
-          }
-        }, 100);
+      // Renderer is a singleton - it may already be initialized by PreviewPane
+      try {
+        typst.setRendererInitOptions({
+          getModule: () =>
+            'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm',
+        });
+      } catch (e) {
+        // Renderer already initialized, that's fine - we'll reuse it
+        console.log('SeparatePreview: Renderer already initialized, reusing');
       }
+
+      const renderer = await typst.getRenderer();
+
+      // Create our own render session
+      renderer.runWithSession(async (session: any) => {
+        renderSession = session;
+
+        // Dynamically import typst-dom modules (browser-only)
+        const [typstDocModule, svgDocModule, canvasDocModule] = await Promise.all(
+          [
+            import("$lib/typst-dom/src/typst-doc.mts"),
+            import("$lib/typst-dom/src/typst-doc.svg.mts"),
+            import("$lib/typst-dom/src/typst-doc.canvas.mts"),
+          ]
+        );
+
+        // Create SVG-only document class
+        TypstSvgDocument = class extends (
+          typstDocModule.provideDoc(
+            typstDocModule.composeDoc(
+              typstDocModule.TypstDocumentContext,
+              svgDocModule.provideSvgDoc,
+              canvasDocModule.provideCanvasDoc
+            )
+          )
+        ) {};
+
+        (previewContainer as any).initTypstSvg = () => {};
+        (previewContainer as any).currentPosition = () => undefined;
+        (previewContainer as any).handleTypstLocation = () => {};
+        (previewContainer as any).documents = [];
+        (previewContainer as any).typstWebsocket = { send: async () => {} };
+
+        typstDoc = new TypstSvgDocument({
+          windowElem: previewContainer,
+          hookedElem: docContainer,
+          kModule: renderSession,
+          renderMode: "svg",
+          previewMode: 0,
+          isContentPreview: false,
+          sourceMapping: false,
+          retrieveDOMState: () => ({
+            width: previewContainer!.clientWidth,
+            height: previewContainer!.clientHeight,
+            boundingRect: previewContainer!.getBoundingClientRect(),
+          }),
+        });
+
+        patchTypstDocForToolbarZoom(typstDoc);
+        typstDoc.setPartialRendering(true);
+        previewContainer!.addEventListener('scroll', handleScroll);
+
+        initialized = true;
+
+        // Process any queued messages
+        for (const msg of messageQueue) {
+          if (msg.isFirstCompile) {
+            typstDoc.addChangement(["new", msg.data]);
+          } else {
+            typstDoc.addChangement(["diff-v1", msg.data]);
+          }
+        }
+        messageQueue = [];
+
+        // Restore saved zoom state after initialization
+        if (savedLayout && typstDoc && typstDoc.impl) {
+          setTimeout(() => {
+            if (savedLayout.zoomMode === 'custom') {
+              setZoom(savedLayout.zoomScale, 'custom');
+            } else if (savedLayout.zoomMode === 'fit-width') {
+              fitToWidth();
+            } else if (savedLayout.zoomMode === 'fit-height') {
+              fitToHeight();
+            } else if (savedLayout.zoomMode === 'fit-page') {
+              fitToPage();
+            }
+          }, 100);
+        }
+
+        // Keep the session alive - return a Promise that never resolves
+        return new Promise(() => {});
+      });
     } catch (error: any) {
-      console.error("TypstDocument creation error:", error);
+      console.error("SeparatePreview: TypstDocument creation error:", error);
     }
   }
 </script>

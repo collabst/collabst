@@ -977,7 +977,6 @@
     // Mount SeparatePreview component in new window
     let separateProps = {
       separateWindow,
-      renderSession,
       projectName: project?.name ?? '',
       onCloseSeparatePreview: closeSeparatePreview,
       onExportPDF: exportAsPDF,
