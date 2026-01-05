@@ -14,6 +14,7 @@
   import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
   import FileTree from '$lib/components/editor/FileTree.svelte'
   import PlaceholderPanel from '$lib/components/editor/PlaceholderPanel.svelte'
+  import SettingsPanel from '$lib/components/editor/SettingsPanel.svelte'
   import EditorPane from '$lib/components/editor/EditorPane.svelte'
   import CreateFileModal from '$lib/components/editor/CreateFileModal.svelte'
   import CreateFolderModal from '$lib/components/editor/CreateFolderModal.svelte'
@@ -1123,7 +1124,7 @@
         </div>
       {:else if activePanel === 'settings'}
         <div style="width: {leftPanelWidth}px;">
-          <PlaceholderPanel title="Settings" />
+          <SettingsPanel />
         </div>
       {/if}
 

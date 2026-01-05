@@ -22,6 +22,7 @@
     CommentRangeTracker,
   } from "$lib/codemirror/comments";
   import { theme as themeStore } from "$lib/stores/theme";
+  import { editorSettings } from "$lib/stores/editorSettings";
   import type { Diagnostic } from "$lib/types";
   import {
     bracketMatching,
@@ -49,11 +50,17 @@
   const syntaxCompartment = new Compartment();
   const lineWrappingCompartment = new Compartment();
   const languageCompartment = new Compartment();
+  const editorStyleCompartment = new Compartment();
 
   // Subscribe to theme changes
   $: currentTheme = $themeStore;
   $: if (view && currentTheme) {
     updateEditorTheme();
+  }
+
+  // Subscribe to editor settings changes
+  $: if (view && $editorSettings) {
+    updateEditorStyles();
   }
 
   // Update line wrapping when prop changes
@@ -87,6 +94,32 @@
   // Get line wrapping extensions based on wrapLines prop
   function getLineWrappingExtensions() {
     return wrapLines ? [EditorView.lineWrapping] : [];
+  }
+
+  // Get editor style extensions based on settings
+  function getEditorStyleExtensions() {
+    return EditorView.theme({
+      "&": {
+        fontSize: `${$editorSettings.fontSize}px`,
+        fontFamily: $editorSettings.fontFamily,
+      },
+      ".cm-content": {
+        fontSize: `${$editorSettings.fontSize}px`,
+        fontFamily: $editorSettings.fontFamily,
+      },
+      ".cm-gutters": {
+        fontSize: `${$editorSettings.fontSize}px`,
+      }
+    });
+  }
+
+  // Update editor styles when settings change
+  function updateEditorStyles() {
+    if (!view) return;
+
+    view.dispatch({
+      effects: editorStyleCompartment.reconfigure(getEditorStyleExtensions()),
+    });
   }
 
   // Get language extensions based on file name (language support only, no syntax highlighting)
@@ -431,6 +464,7 @@
         themeCompartment.of(getThemeExtensions()),
         syntaxCompartment.of(syntaxHighlighting),
         languageCompartment.of(languageExtensions),
+        editorStyleCompartment.of(getEditorStyleExtensions()),
         bracketMatching(),
         indentOnInput(),
         yCollab(ytext, provider.awareness, { undoManager }),
@@ -507,6 +541,7 @@
           themeCompartment.of(getThemeExtensions()),
           syntaxCompartment.of(syntaxHighlighting),
           languageCompartment.of(languageExtensions),
+          editorStyleCompartment.of(getEditorStyleExtensions()),
           bracketMatching(),
           indentOnInput(),
           yCollab(ytext, provider.awareness, { undoManager }),
