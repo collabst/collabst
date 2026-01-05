@@ -76,18 +76,17 @@
   .user-avatars {
     display: flex;
     align-items: center;
-    padding-left: 4px;
   }
 
   .avatar {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     position: relative;
     margin-left: -8px;
   }
@@ -97,9 +96,10 @@
   }
 
   .avatar:hover {
-    transform: scale(1.2);
+    transform: scale(1.2) translateY(+5%);
     z-index: 200 !important;
     box-shadow: 0 1px 12px var(--avatar-glow);
+    filter: saturate(1.7);
   }
 
   .avatar-initial {
@@ -124,14 +124,15 @@
     transform: translateX(-50%);
     margin-top: 8px;
     padding: 4px 8px;
-    background: var(--surface-primary);
+    background: var(--bg-editor);
     color: var(--text-primary);
     font-size: 12px;
+    font-weight: bold;
     white-space: nowrap;
     border-radius: 4px;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.15s ease;
     border: 1px solid var(--border-primary);
   }
 
@@ -142,11 +143,11 @@
     left: 50%;
     transform: translateX(-50%);
     border: 4px solid transparent;
-    border-top-color: var(--border-primary);
+    border-top-color: var(--avatar-glow);
   }
 
   .avatar:hover .tooltip {
     opacity: 1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-lg);
   }
 </style>

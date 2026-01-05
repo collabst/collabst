@@ -61,7 +61,6 @@
   
   .profile-btn {
     background: transparent;
-    /* border: 1px solid var(--border-primary); */
     border: none;
     color: var(--text-primary);
     padding: 0.375rem;
@@ -88,7 +87,7 @@
     -webkit-backdrop-filter: blur(var(--dropdown-blur));
     border: 1px solid var(--dropdown-border);
     border-radius: 6px;
-    min-width: 200px;
+    min-width: 150px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     overflow: hidden;
