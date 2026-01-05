@@ -22,7 +22,7 @@
       startLine: number,
       startChar: number,
       endLine?: number,
-      endChar?: number
+      endChar?: number,
     ) => void;
   }
 
@@ -50,14 +50,14 @@
   });
 
   function handleSearchKeydown(e: KeyboardEvent) {
-    if (e.key === 'Tab' && !e.shiftKey) {
+    if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
       replaceInput?.focus();
     }
   }
 
   function handleReplaceKeydown(e: KeyboardEvent) {
-    if (e.key === 'Tab' && e.shiftKey) {
+    if (e.key === "Tab" && e.shiftKey) {
       e.preventDefault();
       searchInput?.focus();
     }
@@ -95,7 +95,7 @@
 
   function updateSearch() {
     const searchInput = document.getElementById(
-      "search-input"
+      "search-input",
     ) as HTMLInputElement;
     const query = searchInput.value;
     search(query);
@@ -120,8 +120,8 @@
             : wholeWord
               ? `\\b${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`
               : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          caseSensitive ? "g" : "gi"
-        )
+          caseSensitive ? "g" : "gi",
+        ),
       );
 
       matches.forEach((matche) => {
@@ -177,10 +177,10 @@
     if (!ydoc) return;
 
     const searchInput = document.getElementById(
-      "search-input"
+      "search-input",
     ) as HTMLInputElement;
     const replaceInput = document.getElementById(
-      "replace-input"
+      "replace-input",
     ) as HTMLInputElement;
     const query = searchInput.value;
     const replaceText = replaceInput.value;
@@ -193,9 +193,9 @@
           : wholeWord
             ? `\\b${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`
             : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        caseSensitive ? "g" : "gi"
+        caseSensitive ? "g" : "gi",
       ),
-      replaceText
+      replaceText,
     );
     const ytext = ydoc.getText(`file-${file.id}`);
     ytext.delete(0, ytext.length);
@@ -217,10 +217,10 @@
     if (!ydoc) return;
 
     const searchInput = document.getElementById(
-      "search-input"
+      "search-input",
     ) as HTMLInputElement;
     const replaceInput = document.getElementById(
-      "replace-input"
+      "replace-input",
     ) as HTMLInputElement;
     const query = searchInput.value;
     const replaceText = replaceInput.value;
@@ -234,9 +234,9 @@
             : wholeWord
               ? `\\b${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`
               : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          caseSensitive ? "g" : "gi"
-        )
-      )
+          caseSensitive ? "g" : "gi",
+        ),
+      ),
     );
 
     if (matchIndex < 0 || matchIndex >= matches.length) return;
@@ -253,7 +253,7 @@
     gotoMatch?.(
       filePath,
       text.substring(0, newEndIndex).split("\n").length - 1,
-      text.substring(0, newEndIndex).split("\n").pop()?.length || 0
+      text.substring(0, newEndIndex).split("\n").pop()?.length || 0,
     );
 
     updateSearch();
@@ -343,7 +343,7 @@
                 result.startLine,
                 result.startChar,
                 result.endLine,
-                result.endChar
+                result.endChar,
               )}
           >
             <div>
@@ -356,6 +356,7 @@
               </div>
             </div>
             <IconButton
+              class="btn"
               variant="flat"
               icon={Replace}
               size="sm"
@@ -428,7 +429,7 @@
   .replace-input {
     flex: 1;
     padding: var(--space-2);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--text-primary);
     background: var(--bg-editor);
     min-width: 0;
@@ -441,6 +442,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 var(--space-2);
+    font-size: var(--text-sm);
     font-weight: var(--font-semibold);
     color: var(--text-primary);
   }
@@ -464,6 +466,8 @@
     padding: var(--space-2);
     border-radius: var(--radius-md);
     background: var(--bg-secondary);
+    font-size: var(--text-xs);
+    font-weight: 500;
   }
 
   .result-item:hover {
@@ -475,7 +479,7 @@
   }
 
   .line-number {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--text-secondary);
     margin-top: var(--space-1);
   }
