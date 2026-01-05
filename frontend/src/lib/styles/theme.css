@@ -202,6 +202,7 @@
   --text-tertiary: #6e6e6e;
   --text-disabled: #5a5a5a;
   --text-inverse: #1e1e1e;
+  --text-active: #ffffff;
 
   /* Border Colors */
   --border-primary: #3e3e42;
@@ -301,6 +302,7 @@
   --text-tertiary: #6e6e6e;
   --text-disabled: #9d9d9d;
   --text-inverse: #f5f5f5;
+  --text-active: #000000;
 
   /* Border Colors - Subtle borders for light theme */
   --border-primary: #d1d1d1;

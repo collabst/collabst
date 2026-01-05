@@ -227,7 +227,7 @@
   }
 
   .font-size-input {
-    width: 45px;
+    width: 40px;
     padding: var(--space-2) var(--space-2);
     text-align: right;
     
@@ -252,7 +252,7 @@
     height: 15px;
     background: var(--bg-editor);
     border: 1px solid var(--border);
-    color: var(--text-secondary);
+    color: var(--color-primary-500);
     cursor: pointer;
     padding: 0;
   }
@@ -268,7 +268,6 @@
 
   .increment-btn:hover {
     background: var(--surface-hover);
-    color: var(--text-primary);
   }
 
   .increment-btn:active {
@@ -296,6 +295,7 @@
   }
 
   .reset-btn:active {
-    background: var(--surface-active);
+    color: var(--text-active);
+    transform: scale(0.9);
   }
 </style>
