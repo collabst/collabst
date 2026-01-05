@@ -33,7 +33,6 @@
 <style>
   .theme-btn {
     background: transparent;
-    /* border: 1px solid var(--border-primary); */
     border: none;
     color: var(--text-primary);
     padding: 0.375rem;
@@ -44,7 +43,6 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    transition: all 0.2s ease;
     margin-left: 0.75rem;
   }
 

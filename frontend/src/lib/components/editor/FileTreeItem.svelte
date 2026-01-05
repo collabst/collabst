@@ -456,7 +456,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border-radius: var(--radius-sm);
+    border-radius: 50px;
   }
 
   .preview-btn:hover {
