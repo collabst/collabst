@@ -34,9 +34,9 @@
   .theme-btn {
     background: transparent;
     border: none;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     padding: 0.375rem;
-    border-radius: 8px;
+    border-radius: 50px;
     cursor: pointer;
     display: flex;
     align-items: center;

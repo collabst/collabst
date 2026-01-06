@@ -90,7 +90,11 @@
             on:click={() => handleClick(activity)}
             aria-label={activity.label}
           >
-            <Notifiable hasNotification={issueNotification} color="var(--color-{issueSeverity}-text)" count={diagnostics.length}>
+            <Notifiable
+              hasNotification={issueNotification}
+              color="var(--color-{issueSeverity}-text)"
+              count={diagnostics.length}
+            >
               <svelte:component this={activity.icon} size={24} />
             </Notifiable>
           </button>
@@ -181,6 +185,10 @@
   .activity-btn:hover {
     color: var(--text-primary);
     background: var(--surface-hover);
+  }
+
+  .activity-btn:active {
+    transform: scale(0.9);
   }
 
   .activity-btn.active {
