@@ -533,6 +533,10 @@
     background: var(--surface-hover);
   }
 
+  .activity-btn:active {
+    transform: scale(0.9);
+  }
+
   .logo-container {
     width: 100%;
     display: flex;
@@ -638,6 +642,11 @@
   .create-btn:hover {
     background: var(--surface-hover);
     border-color: var(--border-secondary);
+  }
+
+  .create-btn:active {
+    background: var(--surface-active);
+    transform: scale(0.98);
   }
 
   .projects-grid {
@@ -779,7 +788,7 @@
     border-color: #1ea622;
     color: #1ea622;
   }
-  
+
   .delete-action:hover {
     border-color: #ef7474;
     color: #ef7474;

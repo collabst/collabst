@@ -101,7 +101,6 @@
 
   .icon-btn-primary:hover:not(:disabled) {
     background: var(--color-primary-700);
-    transform: scale(1.05);
   }
 
   .icon-btn-secondary {
@@ -111,20 +110,27 @@
 
   .icon-btn-secondary:hover:not(:disabled) {
     background: var(--color-secondary-700);
-    transform: scale(1.05);
   }
 
   .icon-btn-ghost {
-    background: transparent;
+    background: var(--bg-top-bar);
     color: var(--text-secondary);
     border: 1px solid var(--border-primary);
   }
 
   .icon-btn-ghost:hover:not(:disabled) {
-    background: var(--surface-hover);
+    background: var(--bg-editor);
     color: var(--text-primary);
     border-color: var(--border-secondary);
-    transform: scale(1.05);
+    border-bottom: 4px solid var(--border-secondary);
+  }
+
+  .icon-btn-ghost:active:not(:disabled) {
+    background: var(--border-secondary);
+    color: var(--color-primary-500);
+    border: 1px solid var(--surface-active);
+    border-top: 2px solid var(--surface-active);
+    transform: scaleY(0.94) translateY(1px);
   }
 
   .icon-btn-danger {
@@ -134,7 +140,6 @@
 
   .icon-btn-danger:hover:not(:disabled) {
     background: var(--color-error-dark);
-    transform: scale(1.05);
   }
 
   .icon-btn-success {
@@ -144,7 +149,6 @@
 
   .icon-btn-success:hover:not(:disabled) {
     background: var(--color-success-dark);
-    transform: scale(1.05);
   }
 
   .icon-btn-flat {
@@ -155,7 +159,6 @@
   .icon-btn-flat:hover:not(:disabled) {
     background: var(--surface-hover);
     color: var(--text-primary);
-    transform: scale(1.05);
   }
 
   .icon-btn-flat:active:not(:disabled) {

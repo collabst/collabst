@@ -1,126 +1,126 @@
 <script lang="ts" module>
-  import type { Component } from 'svelte'
-  
+  import type { Component } from "svelte";
+
   export interface DropdownMenuItem {
-    label: string
-    icon?: Component
-    onclick?: () => void
-    separator?: boolean  // Show separator AFTER this item
-    submenu?: DropdownMenuItem[]  // For nested menus
-    shortcut?: string  // Keyboard shortcut display
-    checked?: boolean  // For toggle items
-    isToggle?: boolean  // Whether this is a toggle item (doesn't close menu)
-    disabled?: boolean  // Whether this item is disabled
+    label: string;
+    icon?: Component;
+    onclick?: () => void;
+    separator?: boolean; // Show separator AFTER this item
+    submenu?: DropdownMenuItem[]; // For nested menus
+    shortcut?: string; // Keyboard shortcut display
+    checked?: boolean; // For toggle items
+    isToggle?: boolean; // Whether this is a toggle item (doesn't close menu)
+    disabled?: boolean; // Whether this item is disabled
   }
 </script>
 
 <script lang="ts">
-  import ChevronRight from '@lucide/svelte/icons/chevron-right'
-  import Check from '@lucide/svelte/icons/check'
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import Check from "@lucide/svelte/icons/check";
 
   interface DropdownMenuButtonProps {
-    label: string
-    items: DropdownMenuItem[]
-    disabled?: boolean
-    isOpen?: boolean
-    onToggle?: (open: boolean) => void
-    onHover?: () => void
+    label: string;
+    items: DropdownMenuItem[];
+    disabled?: boolean;
+    isOpen?: boolean;
+    onToggle?: (open: boolean) => void;
+    onHover?: () => void;
   }
-  
+
   let {
     label,
     items,
     disabled = false,
     isOpen: externalIsOpen = $bindable(false),
     onToggle,
-    onHover
-  }: DropdownMenuButtonProps = $props()
+    onHover,
+  }: DropdownMenuButtonProps = $props();
 
-  let buttonRef: HTMLButtonElement | undefined = $state()
-  let openSubmenu: number | null = $state(null)
-  let submenuTimeoutId: number | null = null
-  
+  let buttonRef: HTMLButtonElement | undefined = $state();
+  let openSubmenu: number | null = $state(null);
+  let submenuTimeoutId: number | null = null;
+
   // Sync external and internal state
   $effect(() => {
     if (externalIsOpen === false) {
-      openSubmenu = null
+      openSubmenu = null;
     }
-  })
-  
+  });
+
   function toggleDropdown() {
-    if (disabled) return
-    const newState = !externalIsOpen
-    externalIsOpen = newState
-    if (onToggle) onToggle(newState)
+    if (disabled) return;
+    const newState = !externalIsOpen;
+    externalIsOpen = newState;
+    if (onToggle) onToggle(newState);
     if (!newState) {
-      openSubmenu = null
+      openSubmenu = null;
     }
   }
-  
+
   function closeDropdown() {
-    externalIsOpen = false
-    if (onToggle) onToggle(false)
-    openSubmenu = null
+    externalIsOpen = false;
+    if (onToggle) onToggle(false);
+    openSubmenu = null;
   }
-  
+
   function handleMouseEnter() {
-    if (onHover) onHover()
+    if (onHover) onHover();
   }
-  
+
   function handleItemClick(item: DropdownMenuItem) {
-    if (item.submenu) return  // Don't close for submenu items
+    if (item.submenu) return; // Don't close for submenu items
     if (item.onclick) {
-      item.onclick()
+      item.onclick();
     }
     // Don't close if it's a toggle item
     if (!item.isToggle) {
-      closeDropdown()
+      closeDropdown();
     }
   }
-  
+
   function handleSubmenuEnter(index: number) {
     if (submenuTimeoutId) {
-      clearTimeout(submenuTimeoutId)
-      submenuTimeoutId = null
+      clearTimeout(submenuTimeoutId);
+      submenuTimeoutId = null;
     }
-    openSubmenu = index
+    openSubmenu = index;
   }
-  
+
   function handleSubmenuLeave() {
     submenuTimeoutId = window.setTimeout(() => {
-      openSubmenu = null
-    }, 300)
+      openSubmenu = null;
+    }, 300);
   }
-  
+
   function handleSubmenuItemClick(item: DropdownMenuItem) {
     if (item.onclick) {
-      item.onclick()
+      item.onclick();
     }
     // Don't close if it's a toggle item
     if (!item.isToggle) {
-      closeDropdown()
+      closeDropdown();
     }
   }
-  
+
   // Close dropdown when clicking outside
   function handleClickOutside(event: MouseEvent) {
     if (buttonRef && !buttonRef.contains(event.target as Node)) {
       // Check if click is not in any dropdown menu
-      const target = event.target as HTMLElement
-      if (!target.closest('.dropdown-menu')) {
-        closeDropdown()
+      const target = event.target as HTMLElement;
+      if (!target.closest(".dropdown-menu")) {
+        closeDropdown();
       }
     }
   }
-  
+
   $effect(() => {
     if (externalIsOpen) {
-      document.addEventListener('click', handleClickOutside)
+      document.addEventListener("click", handleClickOutside);
       return () => {
-        document.removeEventListener('click', handleClickOutside)
-      }
+        document.removeEventListener("click", handleClickOutside);
+      };
     }
-  })
+  });
 </script>
 
 <div class="dropdown-menu-button">
@@ -135,15 +135,11 @@
   >
     {label}
   </button>
-  
+
   {#if externalIsOpen}
-    <div 
-      class="dropdown-menu"
-      role="menu"
-      tabindex="-1"
-    >
+    <div class="dropdown-menu" role="menu" tabindex="-1">
       {#each items as item, index}
-        <div 
+        <div
           class="dropdown-item-container"
           role="presentation"
           onmouseenter={() => item.submenu && handleSubmenuEnter(index)}
@@ -178,13 +174,14 @@
               </span>
             {/if}
           </button>
-          
+
           {#if item.submenu && openSubmenu === index}
-            <div 
+            <div
               class="dropdown-submenu"
               role="menu"
               tabindex="-1"
-              onmouseenter={() => submenuTimeoutId && clearTimeout(submenuTimeoutId)}
+              onmouseenter={() =>
+                submenuTimeoutId && clearTimeout(submenuTimeoutId)}
               onmouseleave={handleSubmenuLeave}
             >
               {#each item.submenu as subItem}
@@ -206,7 +203,9 @@
                     </span>
                   {/if}
                   {#if subItem.shortcut}
-                    <span class="dropdown-item-shortcut">{subItem.shortcut}</span>
+                    <span class="dropdown-item-shortcut"
+                      >{subItem.shortcut}</span
+                    >
                   {/if}
                 </button>
                 {#if subItem.separator}
@@ -216,7 +215,7 @@
             </div>
           {/if}
         </div>
-        
+
         {#if item.separator}
           <div class="dropdown-separator"></div>
         {/if}
@@ -243,11 +242,11 @@
     border-radius: var(--radius-sm);
     position: relative;
   }
-  
+
   .menu-button:hover:not(:disabled):not(.active) {
     background: var(--surface-hover);
   }
-  
+
   .menu-button.active {
     background: var(--dropdown-bg);
     backdrop-filter: blur(var(--dropdown-blur));
@@ -257,9 +256,16 @@
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
-  
+
+  .menu-button:active:not(:disabled) {
+    background: var(--dropdown-bg);
+    border: 1px solid var(--dropdown-border);
+    color: var(--text-active);
+    transform: scale(0.95);
+  }
+
   .menu-button.active::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: -1px;
     left: 0;
@@ -268,12 +274,12 @@
     background: var(--dropdown-bg);
     z-index: 1001;
   }
-  
+
   .menu-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  
+
   /* Dropdown menu */
   .dropdown-menu {
     position: absolute;
@@ -291,11 +297,11 @@
     padding: 4px 0;
     min-width: 220px;
   }
-  
+
   .dropdown-item-container {
     position: relative;
   }
-  
+
   .dropdown-item {
     display: flex;
     align-items: center;
@@ -310,7 +316,7 @@
     font-size: 13px;
     position: relative;
   }
-  
+
   .dropdown-item:hover {
     background: var(--dropdown-hover-bg);
   }
@@ -323,11 +329,11 @@
   .dropdown-item.disabled:hover {
     background: transparent;
   }
-  
+
   .dropdown-item.has-submenu {
     padding-right: 8px;
   }
-  
+
   .dropdown-item-icon {
     display: flex;
     align-items: center;
@@ -335,17 +341,17 @@
     color: var(--text-secondary);
     min-width: 14px;
   }
-  
+
   .dropdown-item-label {
     flex: 1;
   }
-  
+
   .dropdown-item-shortcut {
     font-size: 11px;
     color: var(--text-secondary);
     margin-left: auto;
   }
-  
+
   .dropdown-item-check {
     display: flex;
     align-items: center;
@@ -354,7 +360,7 @@
     min-width: 14px;
     margin-left: 8px;
   }
-  
+
   .dropdown-item-arrow {
     display: flex;
     align-items: center;
@@ -362,7 +368,7 @@
     color: var(--text-secondary);
     margin-left: 8px;
   }
-  
+
   .dropdown-separator {
     height: 0;
     min-height: 0;
@@ -374,7 +380,7 @@
     outline: none;
     flex-shrink: 0;
   }
-  
+
   /* Submenu */
   .dropdown-submenu {
     position: absolute;

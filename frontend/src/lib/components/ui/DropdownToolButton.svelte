@@ -1,76 +1,78 @@
 <script lang="ts">
-  import type { Component } from 'svelte'
-  
+  import type { Component } from "svelte";
+
   interface DropdownItem {
-    label: string
-    icon?: Component
-    onclick: () => void
-    separator?: boolean  // Show separator AFTER this item
+    label: string;
+    icon?: Component;
+    onclick: () => void;
+    separator?: boolean; // Show separator AFTER this item
   }
 
   interface DropdownToolButtonProps {
-    icon?: Component | string  // Can be Component or text like "50%"
-    items: DropdownItem[]
-    disabled?: boolean
-    active?: boolean
-    class?: string
-    position?: 'standalone' | 'first' | 'middle' | 'last'
-    strokeWidth?: number
-    buttonWidth?: string  // Custom button width
-    buttonBackground?: string  // Custom button background color
-    allowIconOverflow?: boolean  // Allow icon to overflow button boundaries
-    stick?: 'left' | 'middle' | 'right'  // Stick the dropdown menu to the edge of the button
+    icon?: Component | string; // Can be Component or text like "50%"
+    items: DropdownItem[];
+    disabled?: boolean;
+    active?: boolean;
+    class?: string;
+    position?: "standalone" | "first" | "middle" | "last";
+    strokeWidth?: number;
+    buttonWidth?: string; // Custom button width
+    buttonBackground?: string; // Custom button background color
+    allowIconOverflow?: boolean; // Allow icon to overflow button boundaries
+    stick?: "left" | "middle" | "right"; // Stick the dropdown menu to the edge of the button
   }
-  
+
   let {
     icon,
     items,
     disabled = false,
     active = false,
-    class: className = '',
-    position = 'standalone',
+    class: className = "",
+    position = "standalone",
     strokeWidth = 2,
-    buttonWidth = '30px',
+    buttonWidth = "30px",
     buttonBackground = undefined,
     allowIconOverflow = true,
-    stick = 'right',
-  }: DropdownToolButtonProps = $props()
+    stick = "right",
+  }: DropdownToolButtonProps = $props();
 
-  let isOpen = $state(false)
-  let buttonRef: HTMLButtonElement | undefined = $state()
-  
-  const iconIsComponent = $derived(typeof icon !== 'string' && icon !== undefined)
-  const iconIsText = $derived(typeof icon === 'string')
-  const Icon = $derived(iconIsComponent ? icon as Component : null);
-  
+  let isOpen = $state(false);
+  let buttonRef: HTMLButtonElement | undefined = $state();
+
+  const iconIsComponent = $derived(
+    typeof icon !== "string" && icon !== undefined,
+  );
+  const iconIsText = $derived(typeof icon === "string");
+  const Icon = $derived(iconIsComponent ? (icon as Component) : null);
+
   function toggleDropdown() {
-    isOpen = !isOpen
+    isOpen = !isOpen;
   }
-  
+
   function closeDropdown() {
-    isOpen = false
+    isOpen = false;
   }
-  
+
   function handleItemClick(item: DropdownItem) {
-    item.onclick()
-    closeDropdown()
+    item.onclick();
+    closeDropdown();
   }
-  
+
   // Close dropdown when clicking outside
   function handleClickOutside(event: MouseEvent) {
     if (buttonRef && !buttonRef.contains(event.target as Node)) {
-      closeDropdown()
+      closeDropdown();
     }
   }
-  
+
   $effect(() => {
     if (isOpen) {
-      document.addEventListener('click', handleClickOutside)
+      document.addEventListener("click", handleClickOutside);
       return () => {
-        document.removeEventListener('click', handleClickOutside)
-      }
+        document.removeEventListener("click", handleClickOutside);
+      };
     }
-  })
+  });
 </script>
 
 <div class="dropdown-container">
@@ -78,19 +80,23 @@
     bind:this={buttonRef}
     type="button"
     {disabled}
-    class="tool-btn tool-btn-{position} {active ? 'tool-btn-active' : ''} {allowIconOverflow ? '' : 'no-icon-overflow'} {className}"
+    class="tool-btn tool-btn-{position} {active
+      ? 'tool-btn-active'
+      : ''} {allowIconOverflow ? '' : 'no-icon-overflow'} {className}"
     onclick={toggleDropdown}
-    style="{buttonBackground ? `background: ${buttonBackground};` : ''} {buttonWidth ? `width: ${buttonWidth};` : ''}"
+    style="{buttonBackground
+      ? `background: ${buttonBackground};`
+      : ''} {buttonWidth ? `width: ${buttonWidth};` : ''}"
   >
     {#if iconIsComponent && Icon}
-      <Icon size={16} strokeWidth={strokeWidth} />
+      <Icon size={16} {strokeWidth} />
     {:else if iconIsText}
       <span class="button-text">{icon}</span>
     {/if}
   </button>
-  
+
   {#if isOpen}
-    <div 
+    <div
       class="dropdown-menu dropdown-menu-stick-{stick}"
       role="menu"
       tabindex="-1"
@@ -136,7 +142,7 @@
     height: 30px;
     overflow: visible;
   }
-  
+
   .tool-btn :global(svg) {
     transform: scale(1.8);
   }
@@ -148,29 +154,35 @@
   .tool-btn.no-icon-overflow :global(svg) {
     transform: scale(1);
   }
-  
+
   .tool-btn:hover:not(:disabled) {
     background: var(--surface-hover);
     color: var(--text-primary);
     border-color: var(--border-secondary);
   }
-  
+
   .tool-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  
+
   .tool-btn-active {
     background: var(--surface-hover);
     color: var(--text-primary);
     border-color: var(--border-secondary);
   }
-  
+
+  .tool-btn:active:not(:disabled) {
+    background: var(--surface-active);
+    color: var(--text-active);
+    transform: scaleY(0.92) scaleX(0.95) translateY(1px);
+  }
+
   /* Position variants - handle border radius and margins */
   .tool-btn-standalone {
     border-radius: var(--radius-md);
   }
-  
+
   .tool-btn-first {
     border-top-left-radius: var(--radius-md);
     border-bottom-left-radius: var(--radius-md);
@@ -178,13 +190,13 @@
     border-bottom-right-radius: 0;
     border-right: none;
   }
-  
+
   .tool-btn-middle {
     border-radius: 0;
     border-left: none;
     border-right: none;
   }
-  
+
   .tool-btn-last {
     border-top-right-radius: var(--radius-md);
     border-bottom-right-radius: var(--radius-md);
@@ -192,7 +204,7 @@
     border-bottom-left-radius: 0;
     border-left: none;
   }
-  
+
   /* Dropdown menu */
   .dropdown-menu {
     position: absolute;
@@ -236,28 +248,28 @@
     text-align: left;
     font-size: 13px;
   }
-  
+
   .dropdown-item:hover {
     background: var(--dropdown-hover-bg);
   }
-  
+
   .dropdown-item-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-secondary);
+    color: var(--text-primary);
   }
-  
+
   .dropdown-item-label {
     flex: 1;
   }
-  
+
   .dropdown-separator {
     height: 1px;
     background: var(--border-primary);
     margin: 4px 0;
   }
-  
+
   .button-text {
     font-size: 11px;
     font-weight: 500;

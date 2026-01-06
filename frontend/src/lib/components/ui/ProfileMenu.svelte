@@ -1,35 +1,35 @@
 <script lang="ts">
-  import { auth } from '$lib/stores/auth'
-  import { Tooltip } from '$lib/components/ui'
-  import User from '@lucide/svelte/icons/user'
-  import LogOut from '@lucide/svelte/icons/log-out'
-  
-  let showMenu = $state(false)
-  
+  import { auth } from "$lib/stores/auth";
+  import { Tooltip } from "$lib/components/ui";
+  import User from "@lucide/svelte/icons/user";
+  import LogOut from "@lucide/svelte/icons/log-out";
+
+  let showMenu = $state(false);
+
   function toggleMenu() {
-    showMenu = !showMenu
+    showMenu = !showMenu;
   }
-  
+
   function handleLogout() {
-    showMenu = false
-    auth.logout()
+    showMenu = false;
+    auth.logout();
   }
-  
+
   function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement
-    if (!target.closest('.profile-menu-container')) {
-      showMenu = false
+    const target = event.target as HTMLElement;
+    if (!target.closest(".profile-menu-container")) {
+      showMenu = false;
     }
   }
-  
+
   $effect(() => {
     if (showMenu) {
-      document.addEventListener('click', handleClickOutside)
+      document.addEventListener("click", handleClickOutside);
       return () => {
-        document.removeEventListener('click', handleClickOutside)
-      }
+        document.removeEventListener("click", handleClickOutside);
+      };
     }
-  })
+  });
 </script>
 
 <div class="profile-menu-container">
@@ -38,12 +38,12 @@
       <User size={16} />
     </button>
   </Tooltip>
-  
+
   {#if showMenu}
     <div class="profile-dropdown">
       <div class="profile-info">
         <User size={16} />
-        <span>{$auth.user?.username || 'User'}</span>
+        <span>{$auth.user?.username || "User"}</span>
       </div>
       <div class="divider"></div>
       <button class="menu-item" onclick={handleLogout}>
@@ -58,11 +58,11 @@
   .profile-menu-container {
     position: relative;
   }
-  
+
   .profile-btn {
     background: transparent;
     border: none;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     padding: 0.375rem;
     border-radius: 50px;
     cursor: pointer;
@@ -72,12 +72,16 @@
     width: 32px;
     height: 32px;
   }
-  
+
   .profile-btn:hover {
-    background: var(--surface-hover);
-    border-color: var(--border-secondary);
+    color: var(--text-primary);
   }
-  
+
+  .profile-btn:active {
+    color: var(--text-active);
+    transform: scale(0.95);
+  }
+
   .profile-dropdown {
     position: absolute;
     top: calc(100% + 0.5rem);
@@ -93,7 +97,7 @@
     overflow: hidden;
     animation: slideDown 0.2s ease;
   }
-  
+
   @keyframes slideDown {
     from {
       opacity: 0;
@@ -104,7 +108,7 @@
       transform: translateY(0);
     }
   }
-  
+
   .profile-info {
     display: flex;
     align-items: center;
@@ -114,13 +118,13 @@
     font-size: 14px;
     font-weight: 500;
   }
-  
+
   .divider {
     height: 1px;
     background: var(--border-primary);
     margin: 0;
   }
-  
+
   .menu-item {
     width: 100%;
     display: flex;
@@ -134,7 +138,7 @@
     cursor: pointer;
     text-align: left;
   }
-  
+
   .menu-item:hover {
     background: var(--dropdown-hover-bg);
   }

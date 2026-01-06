@@ -354,14 +354,6 @@
     align-items: center;
   }
 
-  .tree-header :global(.icon-btn-ghost) {
-    background: var(--bg-top-bar) !important;
-  }
-
-  .tree-header :global(.icon-btn-ghost:hover) {
-    background: var(--surface-hover) !important;
-  }
-
   h3 {
     margin: 0;
     font-size: var(--text-base);
