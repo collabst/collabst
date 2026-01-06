@@ -387,8 +387,11 @@
 
     .container .card :global(button[type="submit"]:hover:not(:disabled)) {
         background: var(--color-theme-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px var(--color-theme-glow);
+        box-shadow: 0 1px 10px var(--color-theme-glow);
+    }
+
+    .container .card :global(button[type="submit"]:active:not(:disabled)) {
+        box-shadow: 0 1px 20px var(--color-theme-glow);
     }
 
     .container[data-theme="dark"] .card :global(button[type="submit"]) {

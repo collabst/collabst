@@ -89,12 +89,11 @@
 
   .btn-primary:hover:not(:disabled) {
     background: var(--color-primary-500-saturated);
-    transform: translateY(-1px);
     box-shadow: 0 1px 8px var(--color-primary-glow);
   }
 
   .btn-primary:active:not(:disabled) {
-    background: var(--color-primary-800);
+    box-shadow: 0 1px 16px var(--color-primary-glow);
   }
 
   .btn-secondary {
@@ -104,7 +103,6 @@
 
   .btn-secondary:hover:not(:disabled) {
     background: var(--color-secondary-700);
-    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
   }
 
@@ -118,6 +116,10 @@
     background: var(--dialog-cancel-btn-hover);
   }
 
+  .btn-ghost:active:not(:disabled) {
+    background: var(--dialog-cancel-btn-active);
+  }
+
   .btn-danger {
     background: var(--color-error);
     color: white;
@@ -125,8 +127,11 @@
 
   .btn-danger:hover:not(:disabled) {
     background: var(--color-error-dark);
-    transform: translateY(-1px);
     box-shadow: 0 1px 8px var(--color-error-glow);
+  }
+
+  .btn-danger:active:not(:disabled) {
+    box-shadow: 0 1px 16px var(--color-error-glow);
   }
 
   .btn-success {
@@ -136,7 +141,6 @@
 
   .btn-success:hover:not(:disabled) {
     background: var(--color-success-dark);
-    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
   }
 

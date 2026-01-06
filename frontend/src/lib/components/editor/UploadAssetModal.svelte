@@ -247,6 +247,10 @@
     background: var(--dialog-cancel-btn-hover);
   }
 
+  .cancel-btn:active {
+    background: var(--dialog-cancel-btn-active);
+  }
+
   .submit-btn {
     background: var(--color-primary-600);
     color: white;
@@ -254,7 +258,10 @@
 
   .submit-btn:hover {
     background: var(--color-primary-500-saturated);
-    transform: translateY(-1px);
     box-shadow: 0 1px 8px var(--color-primary-glow);
+  }
+
+  .submit-btn:active {
+    box-shadow: 0 1px 16px var(--color-primary-glow);
   }
 </style>

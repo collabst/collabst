@@ -239,6 +239,7 @@
   --dialog-input-border-focus: #57afd1;
   --dialog-cancel-btn-bg: rgba(62, 62, 66, 0.6);
   --dialog-cancel-btn-hover: rgba(74, 74, 78, 0.8);
+  --dialog-cancel-btn-active: rgba(90, 90, 90, 0.8);
 
   /* Theme Color - for login, register, create project, send invitation */
   --color-theme: #3fb092;
@@ -339,6 +340,7 @@
   --dialog-input-border-focus: #5fd6b5;
   --dialog-cancel-btn-bg: rgba(180, 180, 180, 0.75);
   --dialog-cancel-btn-hover: rgba(160, 160, 160, 0.9);
+  --dialog-cancel-btn-active: rgba(140, 140, 140, 0.9);
 
   /* Theme Color - for login, register, create project, send invitation */
   --color-theme: #53c5a5;
