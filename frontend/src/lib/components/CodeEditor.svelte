@@ -87,6 +87,16 @@
       }
     }
 
+    // For BibTeX files, use custom BibTeX highlighting
+    if (extension === "bib") {
+      if (typeof window !== "undefined") {
+        const { bibtexDark, bibtexLight } = await import(
+          "$lib/codemirror/bibtexHighlight"
+        );
+        return currentTheme === "light" ? bibtexLight : bibtexDark;
+      }
+    }
+
     // For other files, use default theme syntax highlighting
     return currentTheme === "light" ? greyLightSyntax : greyDarkSyntax;
   }
@@ -130,6 +140,18 @@
       if (typeof window !== "undefined") {
         const { typst } = await import("codemirror-lang-typst");
         return [typst()];
+      }
+    }
+
+    if (extension === "bib") {
+      if (typeof window !== "undefined") {
+        const { bibtex } = await import("codemirror-lang-bib");
+        return [bibtex({
+          enableLinting: false,
+          enableTooltips: true,
+          enableAutocomplete: true,
+          autoCloseBrackets: false
+        })];
       }
     }
 
