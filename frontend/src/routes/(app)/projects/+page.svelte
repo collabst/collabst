@@ -976,6 +976,10 @@
     background: var(--dialog-cancel-btn-hover);
   }
 
+  .cancel-btn:active {
+    background: var(--dialog-cancel-btn-active);
+  }
+
   .submit-btn {
     flex: 1;
     background: var(--color-theme);
@@ -990,8 +994,11 @@
 
   .submit-btn:hover {
     background: var(--color-theme-hover);
-    transform: translateY(-1px);
     box-shadow: 0 1px 6px var(--color-theme-glow);
+  }
+
+  .submit-btn:active {
+    box-shadow: 0 1px 12px var(--color-theme-glow);
   }
 
   .delete-message {
@@ -1015,7 +1022,10 @@
 
   .delete-btn:hover {
     background: var(--color-error-dark);
-    transform: translateY(-1px);
     box-shadow: 0 1px 8px var(--color-error-glow);
+  }
+
+  .delete-btn:active {
+    box-shadow: 0 1px 16px var(--color-error-glow);
   }
 </style>
