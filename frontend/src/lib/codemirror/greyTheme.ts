@@ -3,19 +3,20 @@ import type { Extension } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
+import { customGutter } from './customGutter'
 
 // Dark theme colors
 const darkText = "#cccccc",
-  darkTextSecondary = "#b8b8b8",
-  darkTextTertiary = "#6e6e6e",
+  darkTextSecondary = "#bebebeff",
+  darkTextTertiary = "#949494ff",
   darkBackground = "#252526",
-  darkBackgroundHighlight = "#2d2d30",
-  darkSelection = "#3e3e42",
+  darkBackgroundHighlight = "#b0bac71a",
+  darkSelection = "#264f78",
   darkSelectionAlt = "#4a4a4e",
   darkBorder = "#3e3e42",
   darkSearchMatch = "#5a5a5a",
   darkSearchBorder = "#6e6e6e",
-  darkCursor = "#cccccc",
+  darkCursor = "var(--color-primary-500)",
   darkInvalid = "#ff0000"
 
 /// The colors used in the dark theme, as CSS color strings.
@@ -45,8 +46,33 @@ export const greyDarkTheme = EditorView.theme({
     caretColor: darkCursor
   },
 
-  '.cm-cursor, .cm-dropCursor': { borderLeftColor: darkCursor },
+  '.cm-cursor, .cm-dropCursor': {
+    borderLeftColor: darkCursor,
+    borderLeftWidth: '2px'
+  },
   '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': { backgroundColor: darkSelection },
+
+  // Rounded corners for first selection background in a group
+  '.cm-selectionBackground:first-child': {
+    borderTopLeftRadius: '5px',
+    borderTopRightRadius: '5px',
+  },
+  // Remove round corner radius for intermediary (middle) selection backgrounds
+  '.cm-selectionBackground + .cm-selectionBackground': {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  // Restore bottom border radius for the last selection background in a group
+  '.cm-selectionBackground:last-child': {
+    borderBottomLeftRadius: '5px',
+    borderBottomRightRadius: '5px',
+  },
+
+  '.cm-selectionBackground:nth-last-child(2)': {
+    borderBottomRightRadius: '5px'
+  },
 
   '.cm-panels': { backgroundColor: darkBackground, color: darkText },
   '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${darkBorder}` },
@@ -60,8 +86,8 @@ export const greyDarkTheme = EditorView.theme({
     backgroundColor: darkSelectionAlt
   },
 
-  '.cm-activeLine': { backgroundColor: "#6699ff0b" },
-  '.cm-selectionMatch': { backgroundColor: "#aafe661a" },
+  '.cm-activeLine': { backgroundColor: darkBackgroundHighlight },
+  '.cm-selectionMatch': { backgroundColor: "#52ff6324" },
 
   '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
     backgroundColor: darkSelectionAlt
@@ -74,7 +100,8 @@ export const greyDarkTheme = EditorView.theme({
   },
 
   '.cm-activeLineGutter': {
-    backgroundColor: darkBackgroundHighlight
+    backgroundColor: darkBackgroundHighlight,
+    color: darkTextSecondary
   },
 
   '.cm-foldPlaceholder': {
@@ -111,20 +138,20 @@ export const greyDarkSyntax: Extension = syntaxHighlighting(greyDarkHighlightSty
 
 /// Extension to enable the Grey Dark theme (both the editor theme and
 /// the highlight style).
-export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax]
+export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax, customGutter]
 
 // Light theme colors
 const lightText = "#1e1e1e",
-  lightTextSecondary = "#2e2e2e",
-  lightTextTertiary = "#6e6e6e",
+  lightTextSecondary = "#474747ff",
+  lightTextTertiary = "#838383ff",
   lightBackground = "#f5f5f5",
-  lightBackgroundHighlight = "#ebebeb",
-  lightSelection = "#d4d4d4",
+  lightBackgroundHighlight = "#06162f0b",
+  lightSelection = "#bbd6f2ff",
   lightSelectionAlt = "#e0e0e0",
   lightBorder = "#d1d1d1",
   lightSearchMatch = "#e0e0e0",
   lightSearchBorder = "#c8c8c8",
-  lightCursor = "#1e1e1e",
+  lightCursor = "var(--color-primary-500)",
   lightInvalid = "#ff0000"
 
 /// The colors used in the light theme, as CSS color strings.
@@ -154,8 +181,33 @@ export const greyLightTheme = EditorView.theme({
     caretColor: lightCursor
   },
 
-  '.cm-cursor, .cm-dropCursor': { borderLeftColor: lightCursor },
+  '.cm-cursor, .cm-dropCursor': {
+    borderLeftColor: lightCursor,
+    borderLeftWidth: '2px'
+  },
   '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': { backgroundColor: lightSelection },
+
+  // Rounded corners for first selection background in a group
+  '.cm-selectionBackground:first-child': {
+    borderTopLeftRadius: '5px',
+    borderTopRightRadius: '5px',
+  },
+  // Remove round corner radius for intermediary (middle) selection backgrounds
+  '.cm-selectionBackground + .cm-selectionBackground': {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  // Restore bottom border radius for the last selection background in a group
+  '.cm-selectionBackground:last-child': {
+    borderBottomLeftRadius: '5px',
+    borderBottomRightRadius: '5px',
+  },
+
+  '.cm-selectionBackground:nth-last-child(2)': {
+    borderBottomRightRadius: '5px'
+  },
 
   '.cm-panels': { backgroundColor: lightBackgroundHighlight, color: lightText },
   '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${lightBorder}` },
@@ -169,7 +221,7 @@ export const greyLightTheme = EditorView.theme({
     backgroundColor: lightSelection
   },
 
-  '.cm-activeLine': { backgroundColor: "#6699ff0b" },
+  '.cm-activeLine': { backgroundColor: lightBackgroundHighlight },
   '.cm-selectionMatch': { backgroundColor: "#aafe661a" },
 
   '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
@@ -183,7 +235,8 @@ export const greyLightTheme = EditorView.theme({
   },
 
   '.cm-activeLineGutter': {
-    backgroundColor: lightBackgroundHighlight
+    backgroundColor: lightBackgroundHighlight,
+    color: lightTextSecondary
   },
 
   '.cm-foldPlaceholder': {
@@ -287,4 +340,4 @@ export const greyLightSyntax: Extension = syntaxHighlighting(greyLightHighlightS
 
 /// Extension to enable the Grey Light theme (both the editor theme and
 /// the highlight style).
-export const greyLight: Extension = [greyLightTheme, greyLightSyntax]
+export const greyLight: Extension = [greyLightTheme, greyLightSyntax, customGutter]

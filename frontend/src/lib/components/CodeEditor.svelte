@@ -1,10 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { EditorView, basicSetup } from "codemirror";
-  import { EditorState, Compartment, Transaction } from "@codemirror/state";
-  import { lintGutter, setDiagnostics } from "@codemirror/lint";
-  import { lineNumbers } from "@codemirror/view";
-  import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
+  import { EditorState, Compartment } from "@codemirror/state";
+  import { yCollab } from "y-codemirror.next";
   import {
     greyDark,
     greyLight,
@@ -492,8 +490,6 @@
         yCollab(ytext, provider.awareness, { undoManager }),
         createUndoRedoKeymap(),
         commentsExtension(),
-        lineNumbers(),
-        lintGutter(),
       ],
     });
 
@@ -569,8 +565,6 @@
           yCollab(ytext, provider.awareness, { undoManager }),
           createUndoRedoKeymap(),
           commentsExtension(),
-          lineNumbers(),
-          lintGutter(),
         ],
       }),
     );
