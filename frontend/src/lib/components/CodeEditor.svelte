@@ -4,8 +4,6 @@
   import { EditorState, Compartment } from "@codemirror/state";
   import { yCollab } from "y-codemirror.next";
   import {
-    greyDark,
-    greyLight,
     greyDarkTheme,
     greyLightTheme,
     greyDarkSyntax,
@@ -34,7 +32,6 @@
   import { ViewPlugin } from "@codemirror/view";
   import type { ViewUpdate } from "@codemirror/view";
 
-
   export let ytext: Y.Text;
   export let provider: WebsocketProvider;
   export let fileId: number;
@@ -57,7 +54,7 @@
   const languageCompartment = new Compartment();
   const editorStyleCompartment = new Compartment();
   const lineNumbersCompartment = new Compartment();
-  
+
   // Track which lines have errors
   let errorLines = new Set<number>();
 
@@ -126,13 +123,13 @@
       formatNumber: (lineNo) => {
         // Show × symbol instead of line number for lines with errors
         if (errorLines.has(lineNo)) {
-          return '×';
+          return "×";
         }
         return String(lineNo);
       },
       domEventHandlers: {
         // Add data-error attribute to gutter elements with errors
-      }
+      },
     });
   }
 
@@ -149,7 +146,7 @@
       },
       ".cm-gutters": {
         fontSize: `${$editorSettings.fontSize}px`,
-      }
+      },
     });
   }
 
@@ -176,12 +173,14 @@
     if (extension === "bib") {
       if (typeof window !== "undefined") {
         const { bibtex } = await import("codemirror-lang-bib");
-        return [bibtex({
-          enableLinting: false,
-          enableTooltips: true,
-          enableAutocomplete: true,
-          autoCloseBrackets: false
-        })];
+        return [
+          bibtex({
+            enableLinting: false,
+            enableTooltips: true,
+            enableAutocomplete: true,
+            autoCloseBrackets: false,
+          }),
+        ];
       }
     }
 
@@ -220,7 +219,7 @@
     // Update error lines set from diagnostics
     errorLines.clear();
     if (diagnostics && diagnostics.length > 0) {
-      diagnostics.forEach(d => {
+      diagnostics.forEach((d) => {
         if (d.range) {
           const lineNo = d.range.start.line + 1;
           errorLines.add(lineNo);
@@ -240,14 +239,16 @@
   // Add error icon class to × symbols in the gutter
   function styleErrorIcons() {
     if (!view) return;
-    
-    const gutterElements = view.dom.querySelectorAll('.cm-lineNumbers .cm-gutterElement');
+
+    const gutterElements = view.dom.querySelectorAll(
+      ".cm-lineNumbers .cm-gutterElement",
+    );
     gutterElements.forEach((el) => {
       const text = el.textContent?.trim();
-      if (text === '×') {
-        (el as HTMLElement).classList.add('cm-error-icon');
+      if (text === "×") {
+        (el as HTMLElement).classList.add("cm-error-icon");
       } else {
-        (el as HTMLElement).classList.remove('cm-error-icon');
+        (el as HTMLElement).classList.remove("cm-error-icon");
       }
     });
   }
@@ -261,28 +262,33 @@
         }
 
         update(update: ViewUpdate) {
-          if (update.docChanged || update.viewportChanged || update.selectionSet) {
+          if (
+            update.docChanged ||
+            update.viewportChanged ||
+            update.selectionSet
+          ) {
             this.applyClasses(update.view);
           }
         }
 
         applyClasses(view: EditorView) {
           setTimeout(() => {
-            const gutterElements = view.dom.querySelectorAll('.cm-lineNumbers .cm-gutterElement');
+            const gutterElements = view.dom.querySelectorAll(
+              ".cm-lineNumbers .cm-gutterElement",
+            );
             gutterElements.forEach((el) => {
               const text = el.textContent?.trim();
-              if (text === '×') {
-                (el as HTMLElement).classList.add('cm-error-icon');
+              if (text === "×") {
+                (el as HTMLElement).classList.add("cm-error-icon");
               } else {
-                (el as HTMLElement).classList.remove('cm-error-icon');
+                (el as HTMLElement).classList.remove("cm-error-icon");
               }
             });
           }, 0);
         }
-      }
+      },
     );
   }
-
 
   // Update language when fileName changes
   async function updateLanguage() {
@@ -818,5 +824,4 @@
     box-shadow: var(--shadow-lg);
     padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
   }
-
 </style>
