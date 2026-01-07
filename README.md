@@ -36,35 +36,35 @@ Self-host a collaborative workspace for Typst.
 
 *Collabst was created by*
 
-  <table>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/gdamms">
-          <img src="https://avatars.githubusercontent.com/u/79591579?v=4" width="40" height="40" style="border-radius:50%;" alt="Damien Guillotin"/><br/>
-          <strong>Damien Guillotin</strong>
-        </a>
-        <br/>Front & Backend
-      </td>
-      <td align="center">
-        <a href="https://github.com/edgaremy">
-          <img src="https://avatars.githubusercontent.com/u/83783043?v=4" width="40" height="40" style="border-radius:50%;" alt="Edgar Remy"/><br/>
-          <strong>Edgar Remy</strong>
-        </a>
-        <br/>UX Design, Visuals &amp; Frontend
-      </td>
-      <td align="center">
-        <a href="https://github.com/maxime-vaillant">
-          <img src="https://avatars.githubusercontent.com/u/65608587?v=4" width="40" height="40" style="border-radius:50%;" alt="Maxime Vaillant"/><br/>
-          <strong>Maxime Vaillant</strong>
-        </a>
-        <br/>CI/CD Setup
-      </td>
-      <td align="center">
-        <a href="https://github.com/travisseng">
-          <img src="https://avatars.githubusercontent.com/u/84069858?v=4" width="40" height="40" style="border-radius:50%;" alt="Travis Seng"/><br/>
-          <strong>Travis Seng</strong>
-        </a>
-        <br/>Optimizations, Front &amp; Backend
-      </td>
-    </tr>
-  </table>
+<table>
+  <tr>
+    <td align="center" valign="top">
+      <a href="https://github.com/gdamms">
+      <img src="//wsrv.nl/?url=https://github.com/gdamms.png&w=50&h=50&fit=cover&mask=circle" alt="Damien Guillotin"><br/>
+        <strong>Damien Guillotin</strong>
+      </a>
+      <br/>Front & Backend
+    </td>
+    <td align="center" valign="top">
+      <a href="https://github.com/edgaremy">
+        <img src="//wsrv.nl/?url=https://github.com/edgaremy.png&w=50&h=50&fit=cover&mask=circle" alt="Edgar Remy"/><br/>
+        <strong>Edgar Remy</strong>
+      </a>
+      <br/>UX Design, Visuals &amp; Frontend
+    </td>
+    <td align="center" valign="top">
+      <a href="https://github.com/maxime-vaillant">
+        <img src="//wsrv.nl/?url=https://github.com/maxime-vaillant.png&w=50&h=50&fit=cover&mask=circle" alt="Maxime Vaillant"/><br/>
+        <strong>Maxime Vaillant</strong>
+      </a>
+      <br/>CI/CD Setup
+    </td>
+    <td align="center" valign="top">
+      <a href="https://github.com/travisseng">
+        <img src="//wsrv.nl/?url=https://github.com/travisseng.png&w=50&h=50&fit=cover&mask=circle" alt="Travis Seng"/><br/>
+        <strong>Travis Seng</strong>
+      </a>
+      <br/>Optimizations, Front &amp; Backend
+    </td>
+  </tr>
+</table>
