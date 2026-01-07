@@ -13,6 +13,8 @@
   } from "$lib/codemirror/greyTheme";
   import { keymap } from "@codemirror/view";
   import { openSearchPanel, search } from "@codemirror/search";
+  import { indentMore, indentLess } from "@codemirror/commands";
+  import { closeBrackets } from "@codemirror/autocomplete";
   import * as Y from "yjs";
   import type { WebsocketProvider } from "y-websocket";
   import {
@@ -26,6 +28,7 @@
     bracketMatching,
     foldGutter,
     indentOnInput,
+    indentUnit,
   } from "@codemirror/language";
   import { lineNumbers } from "@codemirror/view";
   import { ViewPlugin } from "@codemirror/view";
@@ -559,6 +562,18 @@
           return true;
         },
       },
+      {
+        key: "Tab",
+        run: (view) => {
+          return indentMore(view);
+        },
+      },
+      {
+        key: "Shift-Tab",
+        run: (view) => {
+          return indentLess(view);
+        },
+      },
     ]);
   }
 
@@ -588,7 +603,9 @@
         editorStyleCompartment.of(getEditorStyleExtensions()),
         createErrorIconPlugin(),
         bracketMatching(),
+        closeBrackets(),
         indentOnInput(),
+        indentUnit.of("  "), // Set indentation to 2 spaces
         yCollab(ytext, provider.awareness, { undoManager }),
         createUndoRedoKeymap(),
         commentsExtension(),
@@ -665,7 +682,9 @@
           editorStyleCompartment.of(getEditorStyleExtensions()),
           createErrorIconPlugin(),
           bracketMatching(),
+          closeBrackets(),
           indentOnInput(),
+          indentUnit.of("  "), // Set indentation to 2 spaces
           yCollab(ytext, provider.awareness, { undoManager }),
           createUndoRedoKeymap(),
           commentsExtension(),
