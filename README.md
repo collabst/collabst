@@ -22,12 +22,12 @@ Self-host a collaborative workspace for Typst.
 
 ## 🏗️ How to Install
 
-### Quick Setup🏃‍♀️
+### Quick Setup🏃‍♀️‍➡️
 If you already have docker-compose and npm installed, you can simply clone this repo and launch the make file:
 
 ***TODO***
 
-### Detailed Setup📃
+### Detailed Setup📜
 For the complete setup instructions, you can follow the [`SETUP.MD`](/SETUP.md) file.
 
 ## 🙏 Acknowledgements
