@@ -3,12 +3,12 @@
   <em>(pronounced collapsed, /kəˈlæpst/)</em>
 </p>
 
-<br />
-
 Self-host a collaborative workspace for Typst.
 
 ![GitHub License](https://img.shields.io/github/license/collabst/collabst?style=flat-square&labelColor=%2326ad84&color=%2396e7c8)&nbsp;
 ![GitHub Repo stars](https://img.shields.io/github/stars/collabst/collabst?style=flat-square&labelColor=%23e8963a&color=%23ffe0a1)
+
+<br />
 
 > **Authors Note:** \
 > *Collabst is currently aimed at personal collaborative projects and scientific lab projects, and is not affiliated in any way with the Typst brand. \
@@ -16,7 +16,6 @@ Self-host a collaborative workspace for Typst.
 > Furthermore, as stated in the [license](LICENSE), we do not provide any support or garantees regarding the use of Collabst: If your organization needs to set up a reliable service with technical support, we cannot recommand enough to contact the Typst team directly, in order to get a proper paid plan for self-hosting the official web app.*
 
 > *In the long run, the Collabst project's goal is to contribute in creating the conditions for scientific knowledge to be entirely produced using sovereign tools, with open source software and easy collaboration in mind.*
-<br />
 
 ## Features
 ***TODO***
@@ -37,42 +36,35 @@ Self-host a collaborative workspace for Typst.
 
 *Collabst was created by*
 
-<div style="display: flex; align-items: center;">
-  <a href="https://github.com/gdamms" style="margin-right: 12px;">
-    <img src="https://avatars.githubusercontent.com/u/79591579?v=4" alt="edgaremy" style="width:40px; height:40px; border-radius:50%;"/>
-  </a>
-  <span>
-    <strong><a href="https://github.com/gdamms" style="text-decoration: none; color: inherit;">Damien Guillotin</a></strong><br/>
-    Front & Backend
-  </span>
-</div>
-
-<div style="display: flex; align-items: center;">
-  <a href="https://github.com/edgaremy" style="margin-right: 12px;">
-    <img src="https://avatars.githubusercontent.com/u/83783043?v=4" alt="edgaremy" style="width:40px; height:40px; border-radius:50%;"/>
-  </a>
-  <span>
-    <strong><a href="https://github.com/edgaremy" style="text-decoration: none; color: inherit;">Edgar Remy</a></strong><br/>
-    UX Design, Visuals &amp; Frontend
-  </span>
-</div>
-
-<div style="display: flex; align-items: center;">
-  <a href="https://github.com/maxime-vaillant" style="margin-right: 12px;">
-    <img src="https://avatars.githubusercontent.com/u/65608587?v=4" alt="edgaremy" style="width:40px; height:40px; border-radius:50%;"/>
-  </a>
-  <span>
-    <strong><a href="https://github.com/maxime-vaillant" style="text-decoration: none; color: inherit;">Maxime Vaillant</a></strong><br/>
-    CI/CD Setup
-  </span>
-</div>
-
-<div style="display: flex; align-items: center;">
-  <a href="https://github.com/travisseng" style="margin-right: 12px;">
-    <img src="https://avatars.githubusercontent.com/u/84069858?v=4" alt="edgaremy" style="width:40px; height:40px; border-radius:50%;"/>
-  </a>
-  <span>
-    <strong><a href="https://github.com/travisseng" style="text-decoration: none; color: inherit;">Travis Seng</a></strong><br/>
-    Optimizations, Front &amp; Backend
-  </span>
-</div>
+  <table>
+    <tr>
+      <td align="center">
+        <a href="https://github.com/gdamms">
+          <img src="https://avatars.githubusercontent.com/u/79591579?v=4" width="40" height="40" style="border-radius:50%;" alt="Damien Guillotin"/><br/>
+          <strong>Damien Guillotin</strong>
+        </a>
+        <br/>Front & Backend
+      </td>
+      <td align="center">
+        <a href="https://github.com/edgaremy">
+          <img src="https://avatars.githubusercontent.com/u/83783043?v=4" width="40" height="40" style="border-radius:50%;" alt="Edgar Remy"/><br/>
+          <strong>Edgar Remy</strong>
+        </a>
+        <br/>UX Design, Visuals &amp; Frontend
+      </td>
+      <td align="center">
+        <a href="https://github.com/maxime-vaillant">
+          <img src="https://avatars.githubusercontent.com/u/65608587?v=4" width="40" height="40" style="border-radius:50%;" alt="Maxime Vaillant"/><br/>
+          <strong>Maxime Vaillant</strong>
+        </a>
+        <br/>CI/CD Setup
+      </td>
+      <td align="center">
+        <a href="https://github.com/travisseng">
+          <img src="https://avatars.githubusercontent.com/u/84069858?v=4" width="40" height="40" style="border-radius:50%;" alt="Travis Seng"/><br/>
+          <strong>Travis Seng</strong>
+        </a>
+        <br/>Optimizations, Front &amp; Backend
+      </td>
+    </tr>
+  </table>
