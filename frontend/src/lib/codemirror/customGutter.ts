@@ -22,8 +22,8 @@ const gutterTheme = EditorView.baseTheme({
 
 /**
  * Custom gutter extension with minimal padding
+ * Note: Line numbers are now managed in CodeEditor.svelte with custom error formatting
  */
 export const customGutter: Extension = [
-    lineNumbers(),
     gutterTheme
 ]

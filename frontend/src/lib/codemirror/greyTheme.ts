@@ -104,6 +104,16 @@ export const greyDarkTheme = EditorView.theme({
     color: darkTextSecondary
   },
 
+  '.cm-lineNumbers .cm-gutterElement.cm-error-icon': {
+    color: '#ff0000 !important',
+    fontWeight: 'bold',
+    fontSize: '20px',
+    lineHeight: '1',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
   '.cm-foldPlaceholder': {
     backgroundColor: 'transparent',
     border: 'none',
@@ -237,6 +247,16 @@ export const greyLightTheme = EditorView.theme({
   '.cm-activeLineGutter': {
     backgroundColor: lightBackgroundHighlight,
     color: lightTextSecondary
+  },
+
+  '.cm-lineNumbers .cm-gutterElement.cm-error-icon': {
+    color: '#ff0000 !important',
+    fontWeight: 'bold',
+    fontSize: '20px',
+    lineHeight: '1',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
 
   '.cm-foldPlaceholder': {
