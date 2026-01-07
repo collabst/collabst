@@ -105,7 +105,7 @@ export const greyDarkTheme = EditorView.theme({
   },
 
   '.cm-lineNumbers .cm-gutterElement.cm-error-icon': {
-    color: '#ff0000 !important',
+    color: '#db5d5dff !important',
     fontWeight: 'bold',
     fontSize: '20px',
     lineHeight: '1',
@@ -250,7 +250,7 @@ export const greyLightTheme = EditorView.theme({
   },
 
   '.cm-lineNumbers .cm-gutterElement.cm-error-icon': {
-    color: '#ff0000 !important',
+    color: '#e56666ff !important',
     fontWeight: 'bold',
     fontSize: '20px',
     lineHeight: '1',
