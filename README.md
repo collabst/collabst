@@ -5,9 +5,6 @@
 
 Self-host a collaborative workspace for Typst.
 
-![GitHub License](https://img.shields.io/github/license/collabst/collabst?style=flat-square&labelColor=%2326ad84&color=%2396e7c8)&nbsp;
-![GitHub Repo stars](https://img.shields.io/github/stars/collabst/collabst?style=flat-square&labelColor=%23e8963a&color=%23ffe0a1)
-
 <br />
 
 > **Authors Note:** \
@@ -17,13 +14,23 @@ Self-host a collaborative workspace for Typst.
 
 > *In the long run, the Collabst project's goal is to contribute in creating the conditions for scientific knowledge to be entirely produced using sovereign tools, with open source software and easy collaboration in mind.*
 
-## Features
+![GitHub License](https://img.shields.io/github/license/collabst/collabst?style=flat-square&labelColor=%2326ad84&color=%2396e7c8)&nbsp;
+![GitHub Repo stars](https://img.shields.io/github/stars/collabst/collabst?style=flat-square&labelColor=%23e8963a&color=%23ffe0a1)
+
+## 💥 Features
 ***TODO***
 
-## How to Install
+## 🏗️ How to Install
+
+### Quick Setup🏃‍♀️
+If you already have docker-compose and npm installed, you can simply clone this repo and launch the make file:
+
 ***TODO***
 
-## Acknowledgements
+### Detailed Setup📃
+For the complete setup instructions, you can follow the [`SETUP.MD`](/SETUP.md) file.
+
+## 🙏 Acknowledgements
 
 *This project could not exist without:*
 - The open source **[Typst Compiler](https://typst.app/open-source/)**
@@ -32,7 +39,7 @@ Self-host a collaborative workspace for Typst.
 - [Levi Zim](https://github.com/kxxt)'s code mirror extension for typst support **[codemirror-lang-typst](https://github.com/kxxt/codemirror-lang-typst)**
 - **[Lucide](https://lucide.dev/)**'s very clean icons.
 
-## Credits
+## 🧑‍🔧 Credits
 
 *Collabst was created by*
 
