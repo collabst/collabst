@@ -27,6 +27,10 @@
     foldGutter,
     indentOnInput,
   } from "@codemirror/language";
+  import { lineNumbers } from "@codemirror/view";
+  import { ViewPlugin } from "@codemirror/view";
+  import type { ViewUpdate } from "@codemirror/view";
+
 
   export let ytext: Y.Text;
   export let provider: WebsocketProvider;
@@ -49,6 +53,10 @@
   const lineWrappingCompartment = new Compartment();
   const languageCompartment = new Compartment();
   const editorStyleCompartment = new Compartment();
+  const lineNumbersCompartment = new Compartment();
+  
+  // Track which lines have errors
+  let errorLines = new Set<number>();
 
   // Subscribe to theme changes
   $: currentTheme = $themeStore;
@@ -64,6 +72,11 @@
   // Update line wrapping when prop changes
   $: if (view && wrapLines !== undefined) {
     updateLineWrapping();
+  }
+
+  // Update line numbers when diagnostics change
+  $: if (view && diagnostics !== undefined) {
+    updateLineNumbers();
   }
 
   // Get theme extensions based on current theme (theme only, no syntax highlighting)
@@ -102,6 +115,22 @@
   // Get line wrapping extensions based on wrapLines prop
   function getLineWrappingExtensions() {
     return wrapLines ? [EditorView.lineWrapping] : [];
+  }
+
+  // Get line numbers extension with custom formatter for errors
+  function getLineNumbersExtension() {
+    return lineNumbers({
+      formatNumber: (lineNo) => {
+        // Show × symbol instead of line number for lines with errors
+        if (errorLines.has(lineNo)) {
+          return '×';
+        }
+        return String(lineNo);
+      },
+      domEventHandlers: {
+        // Add data-error attribute to gutter elements with errors
+      }
+    });
   }
 
   // Get editor style extensions based on settings
@@ -180,6 +209,77 @@
       effects: lineWrappingCompartment.reconfigure(getLineWrappingExtensions()),
     });
   }
+
+  // Update line numbers when diagnostics change
+  function updateLineNumbers() {
+    if (!view) return;
+
+    // Update error lines set from diagnostics
+    errorLines.clear();
+    if (diagnostics && diagnostics.length > 0) {
+      diagnostics.forEach(d => {
+        if (d.range) {
+          const lineNo = d.range.start.line + 1;
+          errorLines.add(lineNo);
+        }
+      });
+    }
+
+    // Reconfigure line numbers to update the display
+    view.dispatch({
+      effects: lineNumbersCompartment.reconfigure(getLineNumbersExtension()),
+    });
+
+    // Style error icons after DOM updates
+    setTimeout(() => styleErrorIcons(), 0);
+  }
+
+  // Add error icon class to × symbols in the gutter
+  function styleErrorIcons() {
+    if (!view) return;
+    
+    const gutterElements = view.dom.querySelectorAll('.cm-lineNumbers .cm-gutterElement');
+    gutterElements.forEach((el) => {
+      const text = el.textContent?.trim();
+      if (text === '×') {
+        (el as HTMLElement).classList.add('cm-error-icon');
+      } else {
+        (el as HTMLElement).classList.remove('cm-error-icon');
+      }
+    });
+  }
+
+  // Create a ViewPlugin to add error icon class to gutter elements
+  function createErrorIconPlugin() {
+    return ViewPlugin.fromClass(
+      class {
+        constructor(view: EditorView) {
+          this.applyClasses(view);
+        }
+
+        update(update: ViewUpdate) {
+          if (update.docChanged || update.viewportChanged || update.selectionSet) {
+            this.applyClasses(update.view);
+          }
+        }
+
+        applyClasses(view: EditorView) {
+          setTimeout(() => {
+            const gutterElements = view.dom.querySelectorAll('.cm-lineNumbers .cm-gutterElement');
+            gutterElements.forEach((el) => {
+              const text = el.textContent?.trim();
+              if (text === '×') {
+                (el as HTMLElement).classList.add('cm-error-icon');
+              } else {
+                (el as HTMLElement).classList.remove('cm-error-icon');
+              }
+            });
+          }, 0);
+        }
+      }
+    );
+  }
+
 
   // Update language when fileName changes
   async function updateLanguage() {
@@ -479,12 +579,14 @@
       extensions: [
         foldGutter(),
         lineWrappingCompartment.of(getLineWrappingExtensions()),
+        lineNumbersCompartment.of(getLineNumbersExtension()),
         basicSetup,
         search(),
         themeCompartment.of(getThemeExtensions()),
         syntaxCompartment.of(syntaxHighlighting),
         languageCompartment.of(languageExtensions),
         editorStyleCompartment.of(getEditorStyleExtensions()),
+        createErrorIconPlugin(),
         bracketMatching(),
         indentOnInput(),
         yCollab(ytext, provider.awareness, { undoManager }),
@@ -553,6 +655,7 @@
         doc: ytext.toString(),
         extensions: [
           lineWrappingCompartment.of(getLineWrappingExtensions()),
+          lineNumbersCompartment.of(getLineNumbersExtension()),
           basicSetup,
           foldGutter(),
           search(),
@@ -560,6 +663,7 @@
           syntaxCompartment.of(syntaxHighlighting),
           languageCompartment.of(languageExtensions),
           editorStyleCompartment.of(getEditorStyleExtensions()),
+          createErrorIconPlugin(),
           bracketMatching(),
           indentOnInput(),
           yCollab(ytext, provider.awareness, { undoManager }),
@@ -695,4 +799,5 @@
     box-shadow: var(--shadow-lg);
     padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
   }
+
 </style>
