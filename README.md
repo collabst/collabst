@@ -40,31 +40,31 @@ Self-host a collaborative workspace for Typst.
   <tr>
     <td align="center" valign="top">
       <a href="https://github.com/gdamms">
-        <img src="https://github.com/gdamms.png" width="50" height="50" alt="Damien Guillotin"/><br/>
-        <strong>Damien Guillotin</strong>
-      </a>
-      <br/>Front & Backend
+        <img src="https://github.com/gdamms.png" width="50" height="50" alt="Damien Guillotin"/>
+      </a><br/>
+      <strong>Damien Guillotin</strong><br/>
+      Front & Backend
     </td>
     <td align="center" valign="top">
       <a href="https://github.com/edgaremy">
-        <img src="https://github.com/edgaremy.png" width="50" height="50" alt="Edgar Remy"/><br/>
-        <strong>Edgar Remy</strong>
-      </a>
-      <br/>UX Design, Visuals &amp; Frontend
+        <img src="https://github.com/edgaremy.png" width="50" height="50" alt="Edgar Remy"/>
+      </a><br/>
+      <strong>Edgar Remy</strong><br/>
+      UX Design, Visuals &amp; Frontend
     </td>
     <td align="center" valign="top">
       <a href="https://github.com/maxime-vaillant">
-        <img src="https://github.com/maxime-vaillant.png" width="50" height="50" alt="Maxime Vaillant"/><br/>
-        <strong>Maxime Vaillant</strong>
-      </a>
-      <br/>CI/CD Setup
+        <img src="https://github.com/maxime-vaillant.png" width="50" height="50" alt="Maxime Vaillant"/>
+      </a><br/>
+      <strong>Maxime Vaillant</strong><br/>
+      CI/CD Setup
     </td>
     <td align="center" valign="top">
       <a href="https://github.com/travisseng">
-        <img src="https://github.com/travisseng.png" width="50" height="50" alt="Travis Seng"/><br/>
-        <strong>Travis Seng</strong>
-      </a>
-      <br/>Optimizations, Front &amp; Backend
+        <img src="https://github.com/travisseng.png" width="50" height="50" alt="Travis Seng"/>
+      </a><br/>
+      <strong>Travis Seng</strong><br/>
+      Optimizations, Front &amp; Backend
     </td>
   </tr>
 </table>
