@@ -7,6 +7,12 @@ Self-host a collaborative workspace for Typst.
 
 <br />
 
+<p align="center">
+<img src="assets/screenshots/editor.png" width="800px">
+</p>
+
+<br />
+
 > **Authors Note:** \
 > *Collabst is currently aimed at personal collaborative projects and scientific lab projects, and is not affiliated in any way with the Typst brand. \
 > We are aware of the delicate balance of the business model behind the Typst development. As such, this project **does not aim to compete with the official [Typst's official web app](https://typst.app/)**. \
