@@ -1,0 +1,27 @@
+{
+  "name": "typst-preview-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "cd ../../ && node scripts/build.mjs build:preview",
+    "preview": "vite preview",
+    "test": "vitest",
+    "coverage": "vitest run --coverage",
+    "link:local": "yarn link @myriaddreamin/typst.ts @myriaddreamin/typst-ts-renderer",
+    "unlink:local": "yarn unlink @myriaddreamin/typst.ts @myriaddreamin/typst-ts-renderer"
+  },
+  "dependencies": {
+    "@myriaddreamin/typst-ts-renderer": "=0.7.0-rc1",
+    "@myriaddreamin/typst.ts": "=0.7.0-rc1",
+    "rxjs": "^7.8.1",
+    "typst-dom": "file:../typst-dom",
+    "vite-plugin-singlefile": "^2.3.0"
+  },
+  "description": "",
+  "main": "vite.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
