@@ -432,7 +432,7 @@ export function provideSvgDoc<
 
         /// center the page and add margin
         const calculatedPaddedX = (newWidth - pageWidth) / 2;
-        const calculatedPaddedY = accumulatedHeight + (i == 0 ? 0 : heightMargin) + fontSize;
+        const calculatedPaddedY = accumulatedHeight + (i == 0 ? 0 : heightMargin);
         const translateAttr = `translate(${calculatedPaddedX}, ${calculatedPaddedY})`;
 
         /// Create inner rectangle
@@ -577,9 +577,9 @@ export function provideSvgDoc<
         );
       }
 
-      // if (this.isContentPreview) {
-      accumulatedHeight += fontSize; // always add a bottom margin for last page number
-      // }  
+      if (this.isContentPreview) {
+        accumulatedHeight += fontSize; // always add a bottom margin for last page number
+      }
 
       /// Apply new width, height
       const newHeight = accumulatedHeight;

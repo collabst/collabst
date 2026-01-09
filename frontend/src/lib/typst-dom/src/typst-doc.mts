@@ -99,7 +99,7 @@ export class TypstDocumentContext<O = any> {
   /// whether kModule is initialized
   moduleInitialized: boolean = false;
   /// patch queue for updating data.
-  patchQueue: [string, string][] = [];
+  patchQueue: [string, string | Uint8Array][] = [];
   /// resources to dispose
   disposeList: (() => void)[] = [];
 
@@ -371,7 +371,7 @@ export class TypstDocumentContext<O = any> {
     return this.currentRealScale * this.currentScaleRatio;
   }
 
-  private processQueue(svgUpdateEvent: [string, string]): boolean {
+  private processQueue(svgUpdateEvent: [string, string | Uint8Array]): boolean {
     const eventName = svgUpdateEvent[0];
     switch (eventName) {
       case "new":
@@ -381,7 +381,7 @@ export class TypstDocumentContext<O = any> {
         }
         this.kModule.manipulateData({
           action: "merge",
-          data: svgUpdateEvent[1] as unknown as Uint8Array,
+          data: svgUpdateEvent[1] as Uint8Array,
         });
 
         this.moduleInitialized = true;
@@ -466,7 +466,7 @@ export class TypstDocumentContext<O = any> {
     }
   }
 
-  addChangement(change: [string, string]) {
+  addChangement(change: [string, string | Uint8Array]) {
     if (change[0] === "new") {
       this.patchQueue.splice(0, this.patchQueue.length);
     }
@@ -512,7 +512,7 @@ export interface TypstDocument<T> {
   kModule: RenderSession;
   dispose(): void;
   reset(): void;
-  addChangement(change: [string, string]): void;
+  addChangement(change: [string, string | Uint8Array]): void;
   addViewportChange(): void;
   setPageColor(color: string): void;
   setPartialRendering(partialRendering: boolean): void;
@@ -556,7 +556,7 @@ export function provideDoc<T extends TypstDocumentContext>(
       this.impl.reset();
     }
 
-    addChangement(change: [string, string]) {
+    addChangement(change: [string, string | Uint8Array]) {
       this.impl.addChangement(change);
     }
 
