@@ -165,7 +165,7 @@
 
     if (extension === "typ") {
       if (typeof window !== "undefined") {
-        const { typst } = await import("codemirror-lang-typst");
+        const { typst } = await import("$lib/codemirror/codemirror-lang-typst/dist/index.js");
         return [typst()];
       }
     }
