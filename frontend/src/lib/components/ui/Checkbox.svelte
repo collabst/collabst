@@ -75,14 +75,13 @@
         background: var(--bg-editor);
         border: 2px solid var(--border-primary);
         border-radius: 4px;
-        color: var(--color-gray-500);
+        color: var(--color-gray-200);
         pointer-events: none;
     }
 
     .checkbox-input:checked ~ .checkbox-custom {
         background: var(--color-primary-500);
         border-color: var(--color-primary-500);
-        color: var(--text-primary);
     }
 
     .checkbox-input:hover:not(:disabled) ~ .checkbox-custom {
