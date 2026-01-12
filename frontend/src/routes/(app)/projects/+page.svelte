@@ -1447,7 +1447,6 @@
     padding: 0.75rem 1rem;
     position: relative;
     cursor: pointer;
-    transition: background 0.15s;
     background: var(--bg-canvas, var(--bg-primary));
   }
 
@@ -1457,7 +1456,7 @@
   }
 
   .list-row:hover {
-    background: var(--surface-active);
+    background: var(--surface-hover);
     border-radius: 0px;
   }
 
@@ -1502,7 +1501,6 @@
     gap: 0.5rem;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.15s;
   }
 
   .list-row:hover .list-action-buttons {
@@ -1511,8 +1509,17 @@
   }
 
   .list-action-buttons .action-btn {
-    background: var(--bg-canvas, var(--bg-primary));
-    pointer-events: auto;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    /* box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); */
+  }
+
+  .list-action-buttons .action-btn:hover {
+    transform: scale(1.3);
+    transition: all 0.1s;
+  }
+  .list-action-buttons .action-btn:active {
+    transform: scale(1.1);
   }
 </style>
