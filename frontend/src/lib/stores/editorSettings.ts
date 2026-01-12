@@ -4,30 +4,33 @@ import { browser } from '$app/environment'
 export interface EditorSettings {
   fontSize: number
   fontFamily: string
+  ligatures: boolean
 }
 
 const DEFAULT_SETTINGS: EditorSettings = {
   fontSize: 13,
-  fontFamily: '"JetBrains Mono", monospace'
+  fontFamily: '"JetBrains Mono", monospace',
+  ligatures: true
 }
 
 // Get initial settings from localStorage or default values
 function getInitialSettings(): EditorSettings {
   if (!browser) return DEFAULT_SETTINGS
-  
+
   try {
     const stored = localStorage.getItem('editorSettings')
     if (stored) {
       const parsed = JSON.parse(stored)
       return {
         fontSize: typeof parsed.fontSize === 'number' ? parsed.fontSize : DEFAULT_SETTINGS.fontSize,
-        fontFamily: typeof parsed.fontFamily === 'string' ? parsed.fontFamily : DEFAULT_SETTINGS.fontFamily
+        fontFamily: typeof parsed.fontFamily === 'string' ? parsed.fontFamily : DEFAULT_SETTINGS.fontFamily,
+        ligatures: typeof parsed.ligatures === 'boolean' ? parsed.ligatures : DEFAULT_SETTINGS.ligatures
       }
     }
   } catch (error) {
     console.error('Failed to parse editor settings from localStorage:', error)
   }
-  
+
   return DEFAULT_SETTINGS
 }
 
@@ -81,6 +84,15 @@ function createEditorSettingsStore() {
     resetFontFamily: () => {
       update(current => {
         const newSettings = { ...current, fontFamily: DEFAULT_SETTINGS.fontFamily }
+        if (browser) {
+          localStorage.setItem('editorSettings', JSON.stringify(newSettings))
+        }
+        return newSettings
+      })
+    },
+    setLigatures: (ligatures: boolean) => {
+      update(current => {
+        const newSettings = { ...current, ligatures }
         if (browser) {
           localStorage.setItem('editorSettings', JSON.stringify(newSettings))
         }
