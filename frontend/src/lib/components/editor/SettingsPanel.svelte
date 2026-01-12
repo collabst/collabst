@@ -3,10 +3,12 @@
   import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
   import ChevronUp from "@lucide/svelte/icons/chevron-up";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import IconButton from "../ui/IconButton.svelte";
+  import Ligature from "@lucide/svelte/icons/ligature";
+  import Checkbox from "../ui/Checkbox.svelte";
 
   let fontSize = $state($editorSettings.fontSize);
   let fontFamily = $state($editorSettings.fontFamily);
+  let ligatures = $state($editorSettings.ligatures);
 
   // Sync local state with store
   $effect(() => {
@@ -17,17 +19,21 @@
     fontFamily = $editorSettings.fontFamily;
   });
 
+  $effect(() => {
+    ligatures = $editorSettings.ligatures;
+  });
+
   function handleFontSizeInput(event: Event) {
     const target = event.target as HTMLInputElement;
     const value = target.value;
-    
+
     // Only allow digits
-    const numericValue = value.replace(/[^\d]/g, '');
-    
+    const numericValue = value.replace(/[^\d]/g, "");
+
     if (numericValue !== value) {
       target.value = numericValue;
     }
-    
+
     if (numericValue) {
       const parsed = parseInt(numericValue, 10);
       if (!isNaN(parsed) && parsed > 0 && parsed <= 999) {
@@ -62,6 +68,11 @@
   function resetFontFamily() {
     editorSettings.resetFontFamily();
   }
+
+  function toggleLigatures(checked: boolean) {
+    ligatures = checked;
+    editorSettings.setLigatures(checked);
+  }
 </script>
 
 <div class="settings-panel">
@@ -71,7 +82,7 @@
   <div class="panel-content">
     <section class="settings-section">
       <h4>Editor Settings</h4>
-      
+
       <div class="setting-item">
         <div class="setting-row">
           <label for="font-size">Font size</label>
@@ -129,6 +140,20 @@
           >
             <RotateCcw size={16} />
           </button>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-row">
+          <label class="checkbox-label" for="ligatures">
+            <Ligature size={16} />
+            <span>Ligatures</span>
+          </label>
+          <Checkbox
+            id="ligatures"
+            checked={ligatures}
+            onchange={toggleLigatures}
+          />
         </div>
       </div>
     </section>
@@ -230,7 +255,6 @@
     width: 40px;
     padding: var(--space-2) var(--space-2);
     text-align: right;
-    
   }
 
   .font-family-input {
@@ -297,5 +321,12 @@
   .reset-btn:active {
     color: var(--text-active);
     transform: scale(0.9);
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
   }
 </style>

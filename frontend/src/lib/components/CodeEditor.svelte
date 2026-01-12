@@ -54,6 +54,7 @@
   const languageCompartment = new Compartment();
   const editorStyleCompartment = new Compartment();
   const lineNumbersCompartment = new Compartment();
+  const ligaturesCompartment = new Compartment();
 
   // Track which lines have errors
   let errorLines = new Set<number>();
@@ -67,6 +68,11 @@
   // Subscribe to editor settings changes
   $: if (view && $editorSettings) {
     updateEditorStyles();
+  }
+
+  // Update ligatures when setting changes
+  $: if (view && $editorSettings) {
+    updateLigatures();
   }
 
   // Update line wrapping when prop changes
@@ -150,12 +156,33 @@
     });
   }
 
+  // Get ligatures extension based on settings
+  function getLigaturesExtension() {
+    return EditorView.theme({
+      "&": {
+        fontVariantLigatures: $editorSettings.ligatures ? "normal" : "none",
+      },
+      ".cm-content": {
+        fontVariantLigatures: $editorSettings.ligatures ? "normal" : "none",
+      },
+    });
+  }
+
   // Update editor styles when settings change
   function updateEditorStyles() {
     if (!view) return;
 
     view.dispatch({
       effects: editorStyleCompartment.reconfigure(getEditorStyleExtensions()),
+    });
+  }
+
+  // Update ligatures when setting changes
+  function updateLigatures() {
+    if (!view) return;
+
+    view.dispatch({
+      effects: ligaturesCompartment.reconfigure(getLigaturesExtension()),
     });
   }
 
@@ -607,6 +634,7 @@
         syntaxCompartment.of(syntaxHighlighting),
         languageCompartment.of(languageExtensions),
         editorStyleCompartment.of(getEditorStyleExtensions()),
+        ligaturesCompartment.of(getLigaturesExtension()),
         createErrorIconPlugin(),
         bracketMatching(),
         closeBrackets(),
@@ -686,6 +714,7 @@
           syntaxCompartment.of(syntaxHighlighting),
           languageCompartment.of(languageExtensions),
           editorStyleCompartment.of(getEditorStyleExtensions()),
+          ligaturesCompartment.of(getLigaturesExtension()),
           createErrorIconPlugin(),
           bracketMatching(),
           closeBrackets(),
