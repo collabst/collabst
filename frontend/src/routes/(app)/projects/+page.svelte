@@ -5,6 +5,8 @@
   import { notifications } from "$lib/stores/notifications";
   import { projectsApi, invitationsApi } from "$lib/services/api";
   import { ThemeToggle, ProfileMenu, Tooltip } from "$lib/components/ui";
+  import IconToggle from "$lib/components/ui/IconToggle.svelte";
+  import DropdownSettingsButton from "$lib/components/ui/DropdownSettingsButton.svelte";
   import InvitationsPanel from "$lib/components/InvitationsPanel.svelte";
   import PlaceholderPanel from "$lib/components/editor/PlaceholderPanel.svelte";
   import type { Project } from "$lib/types";
@@ -17,6 +19,12 @@
   import Rocket from "@lucide/svelte/icons/rocket";
   import Settings from "@lucide/svelte/icons/settings";
   import SendHorizontal from "@lucide/svelte/icons/send-horizontal";
+  import LayoutGrid from "@lucide/svelte/icons/layout-grid";
+  import List from "@lucide/svelte/icons/list";
+  import File from "@lucide/svelte/icons/file";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import Search from "@lucide/svelte/icons/search";
+  import X from "@lucide/svelte/icons/x";
 
   let projects = $state<Project[]>([]);
   let loading = $state(true);
@@ -33,6 +41,49 @@
   let inviteRole = $state("editor");
   let projectNameInput = $state<HTMLInputElement | undefined>();
   let inviteEmailInput = $state<HTMLInputElement | undefined>();
+
+  // Search state
+  let searchQuery = $state("");
+
+  // View and sort settings - load from localStorage if available
+  let viewMode = $state<"grid" | "list">(
+    (typeof localStorage !== "undefined" &&
+      (localStorage.getItem("dashboardViewMode") as "grid" | "list")) ||
+      "grid",
+  );
+  let sortBy = $state<"name" | "created" | "modified">(
+    (typeof localStorage !== "undefined" &&
+      (localStorage.getItem("dashboardSortBy") as
+        | "name"
+        | "created"
+        | "modified")) ||
+      "modified",
+  );
+
+  // Save view mode to localStorage when it changes
+  $effect(() => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("dashboardViewMode", viewMode);
+    }
+  });
+
+  // Save sort mode to localStorage when it changes
+  $effect(() => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("dashboardSortBy", sortBy);
+    }
+  });
+
+  const viewOptions = [
+    { value: "grid", icon: LayoutGrid, label: "Grid View" },
+    { value: "list", icon: List, label: "List View" },
+  ];
+
+  const sortOptions = [
+    { value: "modified", label: "Last Modified" },
+    { value: "created", label: "Last Created" },
+    { value: "name", label: "Name" },
+  ];
 
   // Focus inputs when modals open
   $effect(() => {
@@ -89,6 +140,60 @@
       default:
         return "role-owner";
     }
+  }
+
+  // Sorting and filtering logic
+  const sortedProjects = $derived(() => {
+    // First filter by search query
+    let filtered = projects;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = projects.filter(
+        (project) =>
+          project.name.toLowerCase().includes(query) ||
+          project.description?.toLowerCase().includes(query),
+      );
+    }
+
+    // Then sort
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "created":
+        return sorted.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+      case "modified":
+      default:
+        return sorted.sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+        );
+    }
+  });
+
+  // Format date for display
+  function formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return "Today";
+    } else if (diffDays === 1) {
+      return "Yesterday";
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  }
+
+  function handleSortByColumn(column: "name" | "created" | "modified") {
+    sortBy = column;
   }
 
   async function loadProjects() {
@@ -197,17 +302,17 @@
       <div class="activity-bar">
         <div class="spacer"></div>
         <div class="bottom-activities">
-          <Tooltip text="Settings" position="right" delay={600}>
+          <Tooltip text="Settings" position="right">
             <button
               class="activity-btn"
               class:active={showSettingsPanel}
-              on:click={() => (showSettingsPanel = !showSettingsPanel)}
+              onclick={() => (showSettingsPanel = !showSettingsPanel)}
               aria-label="Settings"
             >
               <Settings size={24} />
             </button>
           </Tooltip>
-          <Tooltip text="Typst Universe" position="right" delay={600}>
+          <Tooltip text="Typst Universe" position="right">
             <a
               class="activity-btn"
               href="https://typst.app/universe"
@@ -218,7 +323,7 @@
               <Rocket size={24} />
             </a>
           </Tooltip>
-          <Tooltip text="Help" position="right" delay={600}>
+          <Tooltip text="Help" position="right">
             <a
               class="activity-btn"
               href="https://typst.app/docs"
@@ -249,80 +354,234 @@
 
         <div class="content">
           <h1 class="page-title">Dashboard</h1>
-          <button on:click={() => (showCreateModal = true)} class="create-btn">
-            + New Project
-          </button>
 
-          <div class="projects-grid">
-            {#if projects.length === 0}
-              <div class="empty">
-                <h2>No projects yet</h2>
-                <p>Create your first project to get started!</p>
+          <div class="controls-row">
+            <button onclick={() => (showCreateModal = true)} class="create-btn">
+              + New Project
+            </button>
+
+            <div class="view-controls">
+              <div class="search-bar">
+                <Search size={16} class="search-icon" />
+                <input
+                  type="text"
+                  bind:value={searchQuery}
+                  placeholder="Search projects..."
+                  class="search-input"
+                />
+                {#if searchQuery}
+                  <button
+                    onclick={() => (searchQuery = "")}
+                    class="search-clear"
+                    aria-label="Clear search"
+                  >
+                    <X size={16} />
+                  </button>
+                {/if}
               </div>
-            {:else}
-              {#each projects as project (project.id)}
-                <div class="project-card">
-                  <a
-                    href="/editor/{project.id}"
-                    class="card-link"
-                    aria-label="Open {project.name}"
-                  ></a>
 
-                  <div class="file-icon-container">
-                    <img src={fileIcon} alt="Project file" class="file-icon" />
+              <IconToggle bind:value={viewMode} options={viewOptions} />
 
-                    <div class="action-buttons">
-                      <a
-                        href="/editor/{project.id}"
-                        class="action-btn open-action"
-                        title="Open"
-                      >
-                        <Play size={16} />
-                        <span class="action-label">Open</span>
-                      </a>
+              <div class="sort-label">Sort by:</div>
+              <div class="sort-dropdown">
+                <DropdownSettingsButton
+                  bind:value={sortBy}
+                  options={sortOptions}
+                />
+              </div>
+            </div>
+          </div>
 
-                      {#if project.current_user_role === "owner" || project.current_user_role === "admin"}
-                        <button
-                          on:click|stopPropagation={() =>
-                            handleOpenInviteModal(project.id)}
-                          class="action-btn invite-action"
-                          title="Invite"
+          {#if viewMode === "grid"}
+            <div class="projects-grid">
+              {#if sortedProjects().length === 0}
+                <div class="empty">
+                  <h2>No projects yet</h2>
+                  <p>Create your first project to get started!</p>
+                </div>
+              {:else}
+                {#each sortedProjects() as project (project.id)}
+                  <div class="project-card">
+                    <a
+                      href="/editor/{project.id}"
+                      class="card-link"
+                      aria-label="Open {project.name}"
+                    ></a>
+
+                    <div class="file-icon-container">
+                      <img
+                        src={fileIcon}
+                        alt="Project file"
+                        class="file-icon"
+                      />
+
+                      <div class="action-buttons">
+                        <a
+                          href="/editor/{project.id}"
+                          class="action-btn open-action"
+                          title="Open"
                         >
-                          <UserPlus size={16} />
-                          <span class="action-label">Invite</span>
-                        </button>
-                      {/if}
+                          <Play size={16} />
+                          <span class="action-label">Open</span>
+                        </a>
 
-                      {#if project.current_user_role === "owner"}
-                        <button
-                          on:click|stopPropagation={() =>
-                            handleDeleteProject(project.id)}
-                          class="action-btn delete-action"
-                          title="Delete"
+                        {#if project.current_user_role === "owner" || project.current_user_role === "admin"}
+                          <button
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              handleOpenInviteModal(project.id);
+                            }}
+                            class="action-btn invite-action"
+                            title="Invite"
+                          >
+                            <UserPlus size={16} />
+                            <span class="action-label">Invite</span>
+                          </button>
+                        {/if}
+
+                        {#if project.current_user_role === "owner"}
+                          <button
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProject(project.id);
+                            }}
+                            class="action-btn delete-action"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                            <span class="action-label">Delete</span>
+                          </button>
+                        {/if}
+                      </div>
+                    </div>
+
+                    <div class="project-info">
+                      <h3>{project.name}</h3>
+                      {#if project.current_user_role}
+                        <span
+                          class="role-badge {getRoleBadgeClass(
+                            project.current_user_role,
+                          )}"
                         >
-                          <Trash2 size={16} />
-                          <span class="action-label">Delete</span>
-                        </button>
+                          {project.current_user_role}
+                        </span>
                       {/if}
                     </div>
                   </div>
-
-                  <div class="project-info">
-                    <h3>{project.name}</h3>
-                    {#if project.current_user_role}
-                      <span
-                        class="role-badge {getRoleBadgeClass(
-                          project.current_user_role,
-                        )}"
-                      >
-                        {project.current_user_role}
-                      </span>
-                    {/if}
-                  </div>
+                {/each}
+              {/if}
+            </div>
+          {:else}
+            <div class="projects-list">
+              {#if sortedProjects().length === 0}
+                <div class="empty">
+                  <h2>No projects yet</h2>
+                  <p>Create your first project to get started!</p>
                 </div>
-              {/each}
-            {/if}
-          </div>
+              {:else}
+                <div class="list-header">
+                  <button
+                    class="list-header-cell project-col"
+                    onclick={() => handleSortByColumn("name")}
+                  >
+                    Project
+                    {#if sortBy === "name"}
+                      <ChevronDown size={16} />
+                    {/if}
+                  </button>
+                  <div class="list-header-cell actions-col"></div>
+                  <button
+                    class="list-header-cell"
+                    onclick={() => handleSortByColumn("created")}
+                  >
+                    Created
+                    {#if sortBy === "created"}
+                      <ChevronDown size={16} />
+                    {/if}
+                  </button>
+                  <button
+                    class="list-header-cell"
+                    onclick={() => handleSortByColumn("modified")}
+                  >
+                    Last Modified
+                    {#if sortBy === "modified"}
+                      <ChevronDown size={16} />
+                    {/if}
+                  </button>
+                </div>
+
+                {#each sortedProjects() as project, index (project.id)}
+                  <div class="list-row" class:odd={index % 2 === 1}>
+                    <a
+                      href="/editor/{project.id}"
+                      class="list-row-link"
+                      aria-label="Open {project.name}"
+                    ></a>
+
+                    <div class="list-cell project-col">
+                      <File size={16} class="project-file-icon" />
+                      <span class="project-name">{project.name}</span>
+                      {#if project.current_user_role}
+                        <span
+                          class="role-badge {getRoleBadgeClass(
+                            project.current_user_role,
+                          )}"
+                        >
+                          {project.current_user_role}
+                        </span>
+                      {/if}
+                    </div>
+
+                    <div class="list-cell actions-col">
+                      <div class="list-action-buttons">
+                        <a
+                          href="/editor/{project.id}"
+                          class="action-btn open-action"
+                          title="Open"
+                        >
+                          <Play size={16} />
+                        </a>
+
+                        {#if project.current_user_role === "owner" || project.current_user_role === "admin"}
+                          <button
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              handleOpenInviteModal(project.id);
+                            }}
+                            class="action-btn invite-action"
+                            title="Invite"
+                          >
+                            <UserPlus size={16} />
+                          </button>
+                        {/if}
+
+                        {#if project.current_user_role === "owner"}
+                          <button
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProject(project.id);
+                            }}
+                            class="action-btn delete-action"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        {/if}
+                      </div>
+                    </div>
+
+                    <div class="list-cell">
+                      {formatDate(project.created_at)}
+                    </div>
+
+                    <div class="list-cell">
+                      {formatDate(project.updated_at)}
+                    </div>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -330,16 +589,23 @@
     {#if showCreateModal}
       <div
         class="modal"
-        on:click={() => (showCreateModal = false)}
-        on:keydown={(e) => e.key === "Escape" && (showCreateModal = false)}
+        onclick={() => (showCreateModal = false)}
+        onkeydown={(e) => e.key === "Escape" && (showCreateModal = false)}
         role="presentation"
       >
-        <div class="modal-content" on:click|stopPropagation>
+        <div
+          class="modal-content"
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => e.stopPropagation()}
+          role="dialog"
+          tabindex="-1"
+        >
           <h2>Create New Project</h2>
-          <form on:submit={handleCreateProject}>
+          <form onsubmit={handleCreateProject}>
             <div class="field">
-              <label>Project Name</label>
+              <label for="project-name">Project Name</label>
               <input
+                id="project-name"
                 bind:this={projectNameInput}
                 type="text"
                 bind:value={newProjectName}
@@ -348,16 +614,17 @@
               />
             </div>
             <div class="field">
-              <label>Description</label>
+              <label for="project-description">Description</label>
               <textarea
+                id="project-description"
                 bind:value={newProjectDescription}
                 placeholder="A brief description of your project"
-              />
+              ></textarea>
             </div>
             <div class="modal-actions">
               <button
                 type="button"
-                on:click={() => (showCreateModal = false)}
+                onclick={() => (showCreateModal = false)}
                 class="cancel-btn"
               >
                 Cancel
@@ -372,15 +639,23 @@
     {#if showInviteModal}
       <div
         class="modal"
-        on:click={() => (showInviteModal = false)}
+        onclick={() => (showInviteModal = false)}
+        onkeydown={(e) => e.key === "Escape" && (showInviteModal = false)}
         role="presentation"
       >
-        <div class="modal-content" on:click|stopPropagation>
+        <div
+          class="modal-content"
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => e.stopPropagation()}
+          role="dialog"
+          tabindex="-1"
+        >
           <h2>Invite Collaborator</h2>
-          <form on:submit={handleSendInvite}>
+          <form onsubmit={handleSendInvite}>
             <div class="field">
-              <label>Email Address</label>
+              <label for="invite-email">Email Address</label>
               <input
+                id="invite-email"
                 bind:this={inviteEmailInput}
                 type="email"
                 bind:value={inviteEmail}
@@ -389,8 +664,8 @@
               />
             </div>
             <div class="field">
-              <label>Role</label>
-              <select bind:value={inviteRole}>
+              <label for="invite-role">Role</label>
+              <select id="invite-role" bind:value={inviteRole}>
                 <option value="reader">Reader - Can only view</option>
                 <option value="editor">Editor - Can edit files</option>
                 <option value="admin">Admin - Can manage collaborators</option>
@@ -399,7 +674,7 @@
             <div class="modal-actions">
               <button
                 type="button"
-                on:click={() => (showInviteModal = false)}
+                onclick={() => (showInviteModal = false)}
                 class="cancel-btn"
               >
                 Cancel
@@ -417,13 +692,25 @@
     {#if showDeleteModal}
       <div
         class="modal"
-        on:click={() => {
+        onclick={() => {
           showDeleteModal = false;
           deleteProjectId = null;
         }}
+        onkeydown={(e) => {
+          if (e.key === "Escape") {
+            showDeleteModal = false;
+            deleteProjectId = null;
+          }
+        }}
         role="presentation"
       >
-        <div class="modal-content" on:click|stopPropagation>
+        <div
+          class="modal-content"
+          onclick={(e) => e.stopPropagation()}
+          onkeydown={(e) => e.stopPropagation()}
+          role="dialog"
+          tabindex="-1"
+        >
           <h2>Delete Project</h2>
           <p class="delete-message">
             Are you sure you want to delete this project?<br />This action
@@ -432,7 +719,7 @@
           <div class="modal-actions">
             <button
               type="button"
-              on:click={() => {
+              onclick={() => {
                 showDeleteModal = false;
                 deleteProjectId = null;
               }}
@@ -442,7 +729,7 @@
             </button>
             <button
               type="button"
-              on:click={confirmDeleteProject}
+              onclick={confirmDeleteProject}
               class="delete-btn"
             >
               Delete Project
@@ -636,7 +923,6 @@
     font-weight: 500;
     cursor: pointer;
     font-size: 14px;
-    margin-bottom: 2rem;
   }
 
   .create-btn:hover {
@@ -647,6 +933,91 @@
   .create-btn:active {
     background: var(--surface-active);
     transform: scale(0.98);
+  }
+
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .view-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+  }
+
+  .sort-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .sort-dropdown {
+    min-width: 150px;
+  }
+
+  .search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-primary);
+    border: 2px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 0.55rem 0.75rem;
+    gap: 0.5rem;
+    min-width: 280px;
+  }
+
+  .search-bar :global(.search-icon) {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .search-bar:hover {
+    border-color: var(--border-secondary);
+  }
+
+  .search-bar:focus-within {
+    border-color: var(--color-primary-500);
+  }
+
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 14px;
+    padding: 0;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .search-clear {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .search-clear:hover {
+    color: var(--text-primary);
+  }
+
+  .search-clear:active {
+    transform: scale(0.9);
+    color: var(--color-error-glow);
   }
 
   .projects-grid {
@@ -1027,5 +1398,121 @@
 
   .delete-btn:active {
     box-shadow: 0 1px 16px var(--color-error-glow);
+  }
+
+  /* List View Styles */
+  .projects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .list-header {
+    display: grid;
+    grid-template-columns: 2fr 150px 1fr 1fr;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-canvas, var(--bg-primary));
+    border-bottom: 2px solid var(--border-primary);
+    font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .list-header-cell {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.15s;
+  }
+
+  .list-header-cell:hover {
+    color: var(--color-primary);
+  }
+
+  .list-row {
+    display: grid;
+    grid-template-columns: 2fr 150px 1fr 1fr;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.15s;
+    background: var(--bg-canvas, var(--bg-primary));
+  }
+
+  .list-row.odd {
+    background: var(--bg-top-bar);
+    border-radius: 4px;
+  }
+
+  .list-row:hover {
+    background: var(--surface-active);
+    border-radius: 0px;
+  }
+
+  .list-row-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .list-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 14px;
+    color: var(--text-primary);
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .project-col {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .project-file-icon {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .project-name {
+    font-weight: 500;
+  }
+
+  .actions-col {
+    justify-content: flex-start;
+  }
+
+  .list-action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+
+  .list-row:hover .list-action-buttons {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .list-action-buttons .action-btn {
+    background: var(--bg-canvas, var(--bg-primary));
+    pointer-events: auto;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   }
 </style>
