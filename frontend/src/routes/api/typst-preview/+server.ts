@@ -33,10 +33,21 @@ export async function GET({ fetch, url }) {
   );
   const zoomBridgeScript = await readFile(repoZoomBridgePath, "utf-8");
 
+  // Load the render mode bridge script
+  const repoRenderModeBridgePath = path.resolve(
+    path.dirname(thisFile),
+    "../../../lib/preview/render-mode-bridge.js"
+  );
+  const renderModeBridgeScript = await readFile(
+    repoRenderModeBridgePath,
+    "utf-8"
+  );
+
   // Inject helper scripts at the beginning of <head>
   const injectedScripts = [
     `<script id="websocket-mock">${websocketMockScript}</script>`,
     `<script id="zoom-bridge">${zoomBridgeScript}</script>`,
+    `<script id="render-mode-bridge">${renderModeBridgeScript}</script>`,
   ].join("\n");
 
   const headMatch = html.match(/<head[^>]*>/i);
