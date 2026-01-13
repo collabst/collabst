@@ -17,3 +17,4 @@ class Project(Base):
     files = relationship("File", back_populates="project", cascade="all, delete-orphan")
     assets = relationship("Asset", back_populates="project", cascade="all, delete-orphan")
     collaborators = relationship("ProjectCollaborator", back_populates="project", cascade="all, delete-orphan")
+    yjs_document_state = relationship("YjsDocumentState", uselist=False, cascade="all, delete-orphan")
