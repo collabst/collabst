@@ -543,6 +543,16 @@
       syncFilesAndAssets();
     }
   });
+
+  let pixelPerPt = $state(3);
+  function setPixelPerPt(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = parseFloat(input.value);
+    if (!isNaN(value) && value > 0) {
+      pixelPerPt = value;
+      sendCommandToIframe('typst-set-pixelperpt', { pixelPerPt });
+    }
+  }
 </script>
 
 <div class="preview-wrapper">
@@ -575,6 +585,7 @@
     <div>
       <button onclick={() => setRenderMode('svg')} disabled={renderMode === 'svg'}>SVG</button>
       <button onclick={() => setRenderMode('canvas')} disabled={renderMode === 'canvas'}>Canvas</button>
+      <input type="number" step="0.1" min="0.1" max="10" value={pixelPerPt} onchange={setPixelPerPt} />
     </div>
     <div class="download-controls">
       <Tooltip text="Export PDF" position="bottom">

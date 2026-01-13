@@ -1,4 +1,4 @@
-/** @typedef {"typst-set-render-mode"} RenderModeCommand */
+/** @typedef {"typst-set-render-mode" | "typst-set-pixelperpt"} RenderModeCommand */
 
 /**
  * Switches the render mode of a Typst document.
@@ -60,6 +60,34 @@ const switchRenderMode = (targetMode) => {
   return true;
 };
 
+/**
+ * Sets the pixelPerPt value for the Typst document rendering.
+ *
+ * @param {number} pixelPerPt - The new pixelPerPt value to set
+ * @returns {boolean} - Whether the operation was successful
+ */
+const setPixelPerPt = (pixelPerPt) => {
+  const doc = document.getElementById('typst-container')?.documents?.[0];
+
+  if (!doc) {
+    console.warn("[RenderModeBridge] No document found.");
+    return false;
+  }
+
+  const impl = doc.impl;
+  if (!impl) {
+    console.warn("[RenderModeBridge] No impl found on document.");
+    return false;
+  }
+
+  impl.pixelPerPt = pixelPerPt;
+
+  // Trigger a fresh render via viewport change
+  impl.addViewportChange();
+
+  return true;
+}
+
 const handleCommandRenderMode = (
   /** @type {RenderModeCommand} */ command,
   /** @type {any} */ payload
@@ -68,6 +96,10 @@ const handleCommandRenderMode = (
     case "typst-set-render-mode": {
       const mode = payload.mode;
       switchRenderMode(mode);
+      return;
+    }
+    case "typst-set-pixelperpt": {
+      setPixelPerPt(payload.pixelPerPt);
       return;
     }
     default:
