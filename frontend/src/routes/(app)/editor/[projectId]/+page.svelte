@@ -120,6 +120,7 @@
   let resizeStartX = 0;
   let resizeStartWidth = 0;
   let editorPane: any = $state(null); // Reference to EditorPane component
+  let dragOverlay: HTMLDivElement | undefined = $state();
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
@@ -145,6 +146,7 @@
     isResizingLeft = true;
     resizeStartX = e.clientX;
     resizeStartWidth = leftPanelWidth;
+    createDragOverlay();
     e.preventDefault();
   }
 
@@ -152,7 +154,30 @@
     isResizingRight = true;
     resizeStartX = e.clientX;
     resizeStartWidth = previewPanelWidth;
+    createDragOverlay();
     e.preventDefault();
+  }
+
+  function createDragOverlay() {
+    if (dragOverlay) return
+    dragOverlay = document.createElement('div')
+    dragOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10000;
+      cursor: ${isResizingLeft ? 'col-resize' : 'col-resize'};
+    `
+    document.body.appendChild(dragOverlay)
+  }
+
+  function removeDragOverlay() {
+    if (dragOverlay && dragOverlay.parentNode) {
+      dragOverlay.parentNode.removeChild(dragOverlay)
+    }
+    dragOverlay = undefined
   }
 
   function handleMouseMove(e: MouseEvent) {
@@ -202,6 +227,7 @@
   function handleMouseUp() {
     isResizingLeft = false;
     isResizingRight = false;
+    removeDragOverlay();
   }
 
   // Editor action handlers
