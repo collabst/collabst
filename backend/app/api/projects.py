@@ -230,6 +230,24 @@ async def delete_project(
             detail="Only the project owner can delete the project"
         )
 
+    # Clean up storage files before deleting database records
+    from app.models.asset import Asset
+    from app.services.storage import storage_service
+    
+    # Get all assets that will be deleted
+    assets_result = await db.execute(
+        select(Asset).where(Asset.project_id == project_id)
+    )
+    assets = assets_result.scalars().all()
+    
+    # Delete files from storage
+    for asset in assets:
+        try:
+            storage_service.delete_file(asset.storage_path)
+        except Exception as e:
+            # Log the error but continue with deletion
+            print(f"Warning: Failed to delete storage file {asset.storage_path}: {e}")
+
     await db.delete(project)
     await db.commit()
 
