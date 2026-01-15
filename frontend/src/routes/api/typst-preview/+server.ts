@@ -43,11 +43,19 @@ export async function GET({ fetch, url }) {
     "utf-8"
   );
 
+  // Load the setup script
+  const repoSetupPath = path.resolve(
+    path.dirname(thisFile),
+    "../../../lib/preview/setup.js"
+  );
+  const setupScript = await readFile(repoSetupPath, "utf-8");
+
   // Inject helper scripts at the beginning of <head>
   const injectedScripts = [
     `<script id="websocket-mock">${websocketMockScript}</script>`,
     `<script id="zoom-bridge">${zoomBridgeScript}</script>`,
     `<script id="render-mode-bridge">${renderModeBridgeScript}</script>`,
+    `<script id="setup">${setupScript}</script>`,
   ].join("\n");
 
   const headMatch = html.match(/<head[^>]*>/i);

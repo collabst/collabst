@@ -28,18 +28,17 @@ const notifyZoomChange = () => {
   }
 };
 
-// Hook into viewport changes to detect zoom updates
-const hookViewportChange = () => {
+// Set up hook for viewport changes to track zoom changes
+const setupZoomHook = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
-  if (doc?.impl?.addViewportChange) {
+  if (doc?.impl) {
     const originalAddViewportChange = doc.impl.addViewportChange;
     doc.impl.addViewportChange = function() {
-      originalAddViewportChange.call(this);
+      if (originalAddViewportChange) {
+        originalAddViewportChange.call(this);
+      }
       notifyZoomChange();
     };
-  } else {
-    // Retry if document not ready yet
-    setTimeout(hookViewportChange, 100);
   }
 };
 
@@ -87,7 +86,7 @@ const zoomFitPage = () => {
   }
 }
 
-const handleCommand = (
+const handleZoomCommand = (
   /** @type {CommandType} */ command,
   /** @type {any} */ payload
 ) => {
@@ -121,14 +120,10 @@ const handleCommand = (
   }
 };
 
+// Listen for zoom commands from parent window
 window.addEventListener("message", (event) => {
   const { type, command, payload } = event.data || {};
   if (type === "typst-command" && command) {
-    handleCommand(command, payload);
+    handleZoomCommand(command, payload);
   }
-});
-
-// Initialize zoom change tracking when document loads
-document.addEventListener('DOMContentLoaded', () => {
-  hookViewportChange();
 });
