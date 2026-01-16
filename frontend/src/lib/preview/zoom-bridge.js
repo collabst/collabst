@@ -62,19 +62,58 @@ const stepZoom = (/** @type {"in" | "out"} */ direction) => {
   document.body.dispatchEvent(event);
 };
 
+let currentScaleRatio = 1;  // Keep track of current scale ratio
+let currentZoomMode = 'fit-page';  // Keep track of current zoom mode
+let currentZoomValue = 1;  // Keep track of current zoom value
+let inhibNextZoomChange = false; // Flag to inhibit next zoom change notification
+
 // Send zoom change notification to parent window
 const notifyZoomChange = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   if (doc?.impl?.currentScaleRatio) {
     const zoom = scaleToZoom(doc.impl.currentScaleRatio);
-    window.parent.postMessage(
-      {
-        type: 'typst-zoom-changed',
-        zoom: zoom,
-        mode: 'custom'
-      },
-      '*'
-    );
+
+    if (currentScaleRatio !== doc.impl.currentScaleRatio) {
+      if (inhibNextZoomChange) {
+        // Ignore this change - it was a backlash of our own command
+        inhibNextZoomChange = false;
+        currentScaleRatio = doc.impl.currentScaleRatio;
+        return;
+      }
+
+      // Zoom level changed
+      currentScaleRatio = doc.impl.currentScaleRatio;
+      currentZoomValue = zoom;
+      currentZoomMode = 'custom';
+      window.parent.postMessage(
+        {
+          type: 'typst-zoom-changed',
+          zoom: currentZoomValue,
+          mode: currentZoomMode,
+        },
+        '*'
+      );
+      return;
+    }
+
+    // Zoom level did not change but viewport changed - reapply current zoom mode
+    inhibNextZoomChange = true;
+    switch (currentZoomMode) {
+      case 'fit-width':
+        zoomFitWidth();
+        break;
+      case 'fit-height':
+        zoomFitHeight();
+        break;
+      case 'fit-page':
+        zoomFitPage();
+        break;
+      case 'custom':
+        setZoom(currentZoomValue);
+        break;
+      default:
+        break;
+    }
   }
 };
 
@@ -83,7 +122,7 @@ const setupZoomHook = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   if (doc?.impl) {
     const originalAddViewportChange = doc.impl.addViewportChange;
-    doc.impl.addViewportChange = function() {
+    doc.impl.addViewportChange = function () {
       if (originalAddViewportChange) {
         originalAddViewportChange.call(this);
       }
@@ -120,6 +159,7 @@ const zoomFitWidth = () => {
     const scale = containerWidth / pageWidth;
     setScale(scale * doc.impl.currentScaleRatio * fitDownScaleFactor);
   }
+  currentZoomMode = 'fit-width';
 }
 
 // Zoom to fit height of the container
@@ -132,6 +172,7 @@ const zoomFitHeight = () => {
     const scale = containerHeight / pageHeight;
     setScale(scale * doc.impl.currentScaleRatio * fitDownScaleFactor);
   }
+  currentZoomMode = 'fit-height';
 }
 
 // Zoom to fit entire page in the container
@@ -147,6 +188,7 @@ const zoomFitPage = () => {
     const scale = Math.min(scaleX, scaleY);
     setScale(scale * doc.impl.currentScaleRatio * fitDownScaleFactor);
   }
+  currentZoomMode = 'fit-page';
 }
 
 // Handle zoom commands from parent window
