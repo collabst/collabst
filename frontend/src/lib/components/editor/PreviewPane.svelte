@@ -269,12 +269,6 @@
     }, '*');
   }
 
-  let renderMode = $state<'canvas' | 'svg'>('svg');
-  function setRenderMode(mode: 'canvas' | 'svg') {
-    renderMode = mode;
-    sendCommandToIframe('typst-set-render-mode', { mode });
-  }
-
   // Sync files and assets with the worker
   // Debounce syncFilesAndAssets to prevent rapid repeated calls
   let syncTimeout: any = null;
@@ -578,11 +572,6 @@
       <Tooltip text="Show preview in popup" position="bottom">
         <ToolButton icon={PictureInPicture} onclick={openSeparatePreview} position="standalone" />
       </Tooltip>
-    </div>
-    <div>
-      <button onclick={() => setRenderMode('svg')} disabled={renderMode === 'svg'}>SVG</button>
-      <button onclick={() => setRenderMode('canvas')} disabled={renderMode === 'canvas'}>Canvas</button>
-      <input type="number" step="0.1" min="0.1" max="10" value={pixelPerPt} onchange={setPixelPerPt} />
     </div>
     <div class="download-controls">
       <Tooltip text="Export PDF" position="bottom">
