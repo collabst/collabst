@@ -216,8 +216,6 @@
         break;
 
       case 'typst-ws-connect':
-        syncFilesAndAssets();
-        compile();
         break;
 
       case 'typst-ws-send':
@@ -241,9 +239,8 @@
     if (typeof data === 'string') {
       if (data === 'current') {
         // Iframe is requesting current state - trigger a recompile
-        if (workerReady) {
-          compile();
-        }
+        syncFilesAndAssets();
+        compile();
       }
     }
   }
