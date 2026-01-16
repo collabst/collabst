@@ -40,11 +40,19 @@ export async function GET({ fetch, url }) {
   );
   const setupScript = await readFile(repoSetupPath, "utf-8");
 
+  // Load the preview CSS
+  const repoCssPath = path.resolve(
+    path.dirname(thisFile),
+    "../../../lib/preview/preview.css"
+  );
+  const previewCss = await readFile(repoCssPath, "utf-8");
+
   // Inject helper scripts at the beginning of <head>
   const injectedScripts = [
     `<script id="websocket-mock">${websocketMockScript}</script>`,
     `<script id="zoom-bridge">${zoomBridgeScript}</script>`,
     `<script id="setup">${setupScript}</script>`,
+    `<style id="preview-css">${previewCss}</style>`,
   ].join("\n");
 
   const headMatch = html.match(/<head[^>]*>/i);

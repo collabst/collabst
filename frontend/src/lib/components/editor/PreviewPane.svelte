@@ -57,7 +57,7 @@
   
   // Load zoom state from localStorage
   const savedLayout = browser ? loadLayoutState() : null;
-  let currentZoomScale = $state(savedLayout?.zoomScale ?? 1);
+  let currentZoomValue = $state(savedLayout?.zoomScale ?? 1);
   let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>(savedLayout?.zoomMode ?? 'custom');
   let currentTheme = $state<'light' | 'dark'>($themeStore);
   
@@ -68,10 +68,10 @@
   
   // Save zoom state to localStorage when it changes
   $effect(() => {
-    if (browser && currentZoomMode && currentZoomScale) {
+    if (browser && currentZoomMode && currentZoomValue) {
       saveLayoutState({
         zoomMode: currentZoomMode,
-        zoomScale: currentZoomScale,
+        zoomScale: currentZoomValue,
       });
     }
   });
@@ -89,10 +89,10 @@
       sendCommandToIframe('zoom-out');
     }
 
-    function setZoom(scale: number, mode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom' = 'custom') {
-      currentZoomScale = scale;
+    function setZoom(zoom: number, mode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom' = 'custom') {
+      currentZoomValue = zoom;
       currentZoomMode = mode;
-      sendCommandToIframe('set-zoom', { scale, mode });
+      sendCommandToIframe('set-zoom', { zoom, mode });
     }
 
     function fitToWidth() {
@@ -227,7 +227,7 @@
 
       case 'typst-zoom-changed':
         if (typeof zoom === 'number') {
-          currentZoomScale = zoom;
+          currentZoomValue = zoom;
           currentZoomMode = mode ?? 'custom';
         }
         break;
@@ -561,7 +561,7 @@
       </Tooltip>
       <Tooltip text="Zoom options" position="bottom">
         <DropdownToolButton 
-          icon={currentZoomMode === 'fit-width' ? MoveHorizontal : currentZoomMode === 'fit-height' ? MoveVertical : currentZoomMode === 'fit-page' ? File : `${Math.round(currentZoomScale * 100)}%`} 
+          icon={currentZoomMode === 'fit-width' ? MoveHorizontal : currentZoomMode === 'fit-height' ? MoveVertical : currentZoomMode === 'fit-page' ? File : `${Math.round(currentZoomValue * 100)}%`} 
           items={zoomItems} 
           position="middle"
           buttonWidth="45px"
