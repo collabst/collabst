@@ -305,5 +305,8 @@
   .preview-iframe {
     flex: 1;
     width: 100%;
+    border: none;
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
   }
 </style>
