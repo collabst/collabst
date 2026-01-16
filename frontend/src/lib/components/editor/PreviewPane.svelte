@@ -60,6 +60,7 @@
   let currentZoomValue = $state(savedLayout?.zoomScale ?? 1);
   let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>(savedLayout?.zoomMode ?? 'custom');
   let currentTheme = $state<'light' | 'dark'>($themeStore);
+  let inhibNextZoomChange = false;
   
   // Subscribe to theme changes
   $effect(() => {
@@ -97,16 +98,19 @@
 
     function fitToWidth() {
       currentZoomMode = 'fit-width';
+      inhibNextZoomChange = true;
       sendCommandToIframe('fit-width');
     }
 
     function fitToHeight() {
       currentZoomMode = 'fit-height';
+      inhibNextZoomChange = true;
       sendCommandToIframe('fit-height');
     }
 
     function fitToPage() {
       currentZoomMode = 'fit-page';
+      inhibNextZoomChange = true;
       sendCommandToIframe('fit-page');
     }
 
@@ -226,6 +230,11 @@
         break;
 
       case 'typst-zoom-changed':
+        if (inhibNextZoomChange) {
+          // Ignore this change - it was a backlash of our own command
+          inhibNextZoomChange = false;
+          return;
+        }
         if (typeof zoom === 'number') {
           currentZoomValue = zoom;
           currentZoomMode = mode ?? 'custom';
