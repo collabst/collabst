@@ -210,12 +210,11 @@
 
     switch (type) {
       case 'typst-ws-mock-ready':
-        iframeMockReady = true;
-        initialized = true;
-        status = 'Ready';
+        // Iframe mock WebSocket is ready to receive connections - can be usefull ¯\_(ツ)_/¯
         break;
 
       case 'typst-ws-connect':
+        // Iframe mock WebSocket is now connected - can be usefull too ¯\_(ツ)_/¯
         break;
 
       case 'typst-ws-send':
@@ -223,6 +222,7 @@
         break;
 
       case 'typst-ws-close':
+        // Iframe mock WebSocket closed - can be usefull also ¯\_(ツ)_/¯
         break;
 
       case 'typst-zoom-changed':
@@ -238,6 +238,12 @@
   function handleIframeSend(data: string | ArrayBuffer) {
     if (typeof data === 'string') {
       if (data === 'current') {
+        if (!iframeMockReady) {
+          // First time receiving 'current' - iframe mock is ready
+          iframeMockReady = true;
+          initialized = true;
+          status = 'Ready';
+        }
         // Iframe is requesting current state - trigger a recompile
         syncFilesAndAssets();
         compile();
