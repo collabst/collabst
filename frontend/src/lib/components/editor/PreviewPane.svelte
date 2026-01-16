@@ -240,6 +240,12 @@
           currentZoomMode = mode ?? 'custom';
         }
         break;
+
+      case 'typst-request-current':
+        // Iframe is requesting current state - trigger a recompile
+        syncFilesAndAssets();
+        compile();
+        break;
     }
   }
 
