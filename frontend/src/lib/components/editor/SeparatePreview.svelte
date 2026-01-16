@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { ToolButton, DropdownToolButton, Tooltip } from "$lib/components/ui";
   import Plus from "@lucide/svelte/icons/plus";
   import Minus from "@lucide/svelte/icons/minus";
@@ -32,16 +32,12 @@
     onExportSourcesAsZip = () => {},
   }: Props = $props();
 
-  // Own render session for separate preview
-  let renderSession: any = null;
+  // iframe reference for communication
+  let previewIframe: HTMLIFrameElement | undefined;
+  let iframeMockReady = false;
+  let initialized = false;
 
-  let previewContainer: HTMLDivElement | undefined;
-  let docContainer: HTMLDivElement | undefined;
-  let TypstSvgDocument: any = null;
-  let typstDoc: any | undefined;
-  let initialized: boolean = false;
-
-  // Queue for messages that arrive before initialization
+  // Queue for messages that arrive before iframe is ready
   let messageQueue: Array<{ data: any; isFirstCompile: boolean }> = [];
 
   // Load zoom state from localStorage
@@ -59,90 +55,45 @@
     }
   });
 
-  // --- Zoom Logic ---
-  function updateZoomStateFromTypst() {
-    if (typstDoc && typstDoc.impl) {
-      currentZoomScale = typstDoc.impl.currentScaleRatio;
-      currentZoomMode = 'custom';
-    }
-  }
-
+  // --- Zoom Logic (via iframe commands) ---
   function zoomIn() {
-    if (typstDoc && typstDoc.impl) {
-      typstDoc.impl.__doRescaleFromToolbar?.(-1);
-      updateZoomStateFromTypst();
-    }
+    sendCommandToIframe('zoom-in');
   }
 
   function zoomOut() {
-    if (typstDoc && typstDoc.impl) {
-      typstDoc.impl.__doRescaleFromToolbar?.(1);
-      updateZoomStateFromTypst();
-    }
+    sendCommandToIframe('zoom-out');
   }
 
   function setZoom(scale: number, mode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom' = 'custom') {
-    if (typstDoc && typstDoc.impl) {
-      typstDoc.impl.currentScaleRatio = scale;
-      typstDoc.impl.r.rescale();
-      currentZoomScale = scale;
-      currentZoomMode = mode;
-    }
+    currentZoomScale = scale;
+    currentZoomMode = mode;
+    sendCommandToIframe('set-zoom', { scale, mode });
   }
 
   function fitToWidth() {
-    if (previewContainer && docContainer && typstDoc && typstDoc.impl) {
-      const containerWidth = previewContainer.clientWidth;
-      const docWidth = docContainer.scrollWidth;
-      const scale = (containerWidth - 40) / docWidth;
-      setZoom(scale, 'fit-width');
-    }
+    currentZoomMode = 'fit-width';
+    sendCommandToIframe('fit-width');
   }
 
   function fitToHeight() {
-    if (previewContainer && docContainer && typstDoc && typstDoc.impl) {
-      const containerHeight = previewContainer.clientHeight;
-      const docHeight = docContainer.scrollHeight;
-      const scale = (containerHeight - 40) / docHeight;
-      setZoom(scale, 'fit-height');
-    }
+    currentZoomMode = 'fit-height';
+    sendCommandToIframe('fit-height');
   }
 
   function fitToPage() {
-    if (previewContainer && docContainer && typstDoc && typstDoc.impl) {
-      const containerWidth = previewContainer.clientWidth;
-      const containerHeight = previewContainer.clientHeight;
-      const docWidth = docContainer.scrollWidth;
-      const docHeight = docContainer.scrollHeight;
-      const scaleWidth = (containerWidth - 40) / docWidth;
-      const scaleHeight = (containerHeight - 40) / docHeight;
-      const scale = Math.min(scaleWidth, scaleHeight);
-      setZoom(scale, 'fit-page');
-    }
+    currentZoomMode = 'fit-page';
+    sendCommandToIframe('fit-page');
   }
 
-  // Patch TypstDocumentContext to expose doRescale for toolbar
-  function patchTypstDocForToolbarZoom(typstDoc: any) {
-    if (!typstDoc || !typstDoc.impl) return;
-    if (typeof typstDoc.impl.__doRescaleFromToolbar === 'function') return;
-    typstDoc.impl.__doRescaleFromToolbar = function(direction: number) {
-      const factors = [
-        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.4, 2.7, 3,
-        3.3, 3.7, 4.1, 4.6, 5.1, 5.7, 6.3, 7, 7.7, 8.5, 9.4, 10,
-      ];
-      const prevScaleRatio = this.currentScaleRatio;
-      if (direction === -1) {
-        if (this.currentScaleRatio >= factors.at(-1)!) return;
-        this.currentScaleRatio = factors.filter((x) => x > this.currentScaleRatio).at(0)!;
-      } else if (direction === 1) {
-        if (this.currentScaleRatio <= factors.at(0)!) return;
-        this.currentScaleRatio = factors.filter((x) => x < this.currentScaleRatio).at(-1)!;
-      } else {
-        return;
-      }
-      this.r.rescale();
-      this.addViewportChange();
-    };
+  // Send a command to the iframe
+  function sendCommandToIframe(command: string, payload?: any) {
+    if (previewIframe?.contentWindow) {
+      previewIframe.contentWindow.postMessage({
+        type: 'typst-command',
+        command,
+        payload
+      }, '*');
+    }
   }
 
   const zoomItems = [
@@ -164,148 +115,107 @@
     { label: "Export sources as ZIP", onclick: () => onExportSourcesAsZip() },
   ];
 
-  onMount(async () => {
-    // Set up message listener first to queue messages
-    separateWindow.addEventListener("message", (event) => {
-      if (event.data.type === "typst-vector-data") {
-        let vectorDataEvent = event.data;
-        let data = vectorDataEvent.data;
-        let isFirstCompile = vectorDataEvent.isFirstCompile;
+  // Handle messages from iframe
+  function handleIframeMessage(event: MessageEvent) {
+    const { type, data, command, zoom, mode } = event.data || {};
 
-        if (initialized && typstDoc) {
-          // Process immediately if initialized
-          if (isFirstCompile) {
-            typstDoc.addChangement(["new", data]);
-          } else {
-            typstDoc.addChangement(["diff-v1", data]);
-          }
-        } else {
-          // Queue message for later processing
-          messageQueue.push({ data, isFirstCompile });
+    switch (type) {
+      case 'typst-ws-send':
+        handleIframeSend(data);
+        break;
+
+      case 'typst-zoom-changed':
+        if (typeof zoom === 'number') {
+          currentZoomScale = zoom;
+          currentZoomMode = mode ?? 'custom';
+        }
+        break;
+    }
+  }
+
+  // Handle messages the iframe sends via the mock WebSocket
+  function handleIframeSend(data: string | ArrayBuffer) {
+    if (typeof data === 'string') {
+      if (data === 'current') {
+        if (!iframeMockReady) {
+          // First time receiving 'current' - iframe mock is ready
+          iframeMockReady = true;
+          initialized = true;
+          processQueuedMessages();
         }
       }
-    });
+    }
+  }
 
-    // Now create the document (will process queued messages when done)
-    await createTypstDocument();
+  // Handle messages from the main window (vector data from compiler)
+  function handleMainWindowMessage(event: MessageEvent) {
+    if (event.data.type === "typst-vector-data") {
+      const { data, isFirstCompile } = event.data;
+
+
+      if (initialized && iframeMockReady) {
+        // Forward to iframe immediately
+        sendVectorDataToIframe(data, isFirstCompile);
+      } else {
+        // Queue message for later processing
+        messageQueue.push({ data, isFirstCompile });
+      }
+    }
+  }
+
+  // Process queued messages after iframe is ready
+  function processQueuedMessages() {
+    for (const msg of messageQueue) {
+      sendVectorDataToIframe(msg.data, msg.isFirstCompile);
+    }
+    messageQueue = [];
+
+    // Request current state from main window after iframe is ready
+    // This triggers a recompile in the main window
+    if (window.opener) {
+      window.opener.postMessage({ type: 'typst-request-current' }, '*');
+    }
+  }
+
+  // Send vector data to the iframe via postMessage
+  function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
+    if (!previewIframe?.contentWindow || !iframeMockReady) {
+      return;
+    }
+
+    // Format message as the typst preview expects: "messageType,binaryData"
+    const messageType = isFirstCompile ? 'new' : 'diff-v1';
+    const encoder = new TextEncoder();
+    const typeBytes = encoder.encode(messageType + ',');
+
+    // Combine type and data
+    const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
+    combined.set(typeBytes, 0);
+    combined.set(new Uint8Array(vectorData), typeBytes.length);
+
+    // Send via postMessage to iframe
+    previewIframe.contentWindow.postMessage({
+      type: 'typst-ws-message',
+      data: combined.buffer.slice(0)
+    }, '*');
+  }
+
+  onMount(() => {
+    if (!browser) return;
+
+    // Listen for messages from the iframe (zoom changes, mock ready)
+    separateWindow.addEventListener('message', handleIframeMessage);
+
+    // Listen for messages from the main window (vector data)
+    separateWindow.addEventListener('message', handleMainWindowMessage);
   });
 
-  function handleScroll() {
-    if (!typstDoc || !initialized || !previewContainer) return;
-    if ((previewContainer as any)._scrollTimeout) {
-      clearTimeout((previewContainer as any)._scrollTimeout);
+  onDestroy(() => {
+    if (browser) {
+      separateWindow.removeEventListener('message', handleIframeMessage);
+      separateWindow.removeEventListener('message', handleMainWindowMessage);
     }
-    (previewContainer as any)._scrollTimeout = setTimeout(() => {
-      typstDoc.addViewportChange();
-    }, 200);
-  }
-
-  async function createTypstDocument() {
-    if (!docContainer || !previewContainer) return;
-
-    try {
-      // Dynamically import typst modules and create own render session
-      const typstModule = await import(
-        'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts/dist/esm/contrib/all-in-one-lite.bundle.js'
-      );
-      const typst = typstModule.$typst;
-
-      // Renderer is a singleton - it may already be initialized by PreviewPane
-      try {
-        typst.setRendererInitOptions({
-          getModule: () =>
-            'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm',
-        });
-      } catch (e) {
-        // Renderer already initialized, that's fine - we'll reuse it
-        console.log('SeparatePreview: Renderer already initialized, reusing');
-      }
-
-      const renderer = await typst.getRenderer();
-
-      // Create our own render session
-      renderer.runWithSession(async (session: any) => {
-        renderSession = session;
-
-        // Dynamically import typst-dom modules (browser-only)
-        const [typstDocModule, svgDocModule, canvasDocModule] = await Promise.all(
-          [
-            import("$lib/typst-dom/src/typst-doc.mts"),
-            import("$lib/typst-dom/src/typst-doc.svg.mts"),
-            import("$lib/typst-dom/src/typst-doc.canvas.mts"),
-          ]
-        );
-
-        // Create SVG-only document class
-        TypstSvgDocument = class extends (
-          typstDocModule.provideDoc(
-            typstDocModule.composeDoc(
-              typstDocModule.TypstDocumentContext,
-              svgDocModule.provideSvgDoc,
-              canvasDocModule.provideCanvasDoc
-            )
-          )
-        ) {};
-
-        (previewContainer as any).initTypstSvg = () => {};
-        (previewContainer as any).currentPosition = () => undefined;
-        (previewContainer as any).handleTypstLocation = () => {};
-        (previewContainer as any).documents = [];
-        (previewContainer as any).typstWebsocket = { send: async () => {} };
-
-        typstDoc = new TypstSvgDocument({
-          windowElem: previewContainer,
-          hookedElem: docContainer,
-          kModule: renderSession,
-          renderMode: "svg",
-          previewMode: 0,
-          isContentPreview: false,
-          sourceMapping: false,
-          retrieveDOMState: () => ({
-            width: previewContainer!.clientWidth,
-            height: previewContainer!.clientHeight,
-            boundingRect: previewContainer!.getBoundingClientRect(),
-          }),
-        });
-
-        patchTypstDocForToolbarZoom(typstDoc);
-        typstDoc.setPartialRendering(true);
-        previewContainer!.addEventListener('scroll', handleScroll);
-
-        initialized = true;
-
-        // Process any queued messages
-        for (const msg of messageQueue) {
-          if (msg.isFirstCompile) {
-            typstDoc.addChangement(["new", msg.data]);
-          } else {
-            typstDoc.addChangement(["diff-v1", msg.data]);
-          }
-        }
-        messageQueue = [];
-
-        // Restore saved zoom state after initialization
-        if (savedLayout && typstDoc && typstDoc.impl) {
-          setTimeout(() => {
-            if (savedLayout.zoomMode === 'custom') {
-              setZoom(savedLayout.zoomScale, 'custom');
-            } else if (savedLayout.zoomMode === 'fit-width') {
-              fitToWidth();
-            } else if (savedLayout.zoomMode === 'fit-height') {
-              fitToHeight();
-            } else if (savedLayout.zoomMode === 'fit-page') {
-              fitToPage();
-            }
-          }, 100);
-        }
-
-        // Keep the session alive - return a Promise that never resolves
-        return new Promise(() => {});
-      });
-    } catch (error: any) {
-      console.error("SeparatePreview: TypstDocument creation error:", error);
-    }
-  }
+  });
 </script>
 
 <div class="preview-wrapper">
@@ -348,9 +258,13 @@
       </Tooltip>
     </div>
   </div>
-  <div class="preview-container" bind:this={previewContainer}>
-    <div class="doc-container" bind:this={docContainer}></div>
-  </div>
+  <iframe
+    bind:this={previewIframe}
+    id="preview-iframe"
+    class="preview-iframe"
+    title="Typst Preview"
+    src="/api/typst-preview">
+  </iframe>
 </div>
 
 <style>
@@ -388,18 +302,8 @@
     display: flex;
   }
 
-  .preview-container {
+  .preview-iframe {
     flex: 1;
-    overflow: auto;
-    background: var(--bg-preview);
-    position: relative;
-    scrollbar-gutter: stable; /* workaround for layout shift when scrollbar appears */
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-  }
-
-  .doc-container {
     width: 100%;
-    height: 100%;
   }
 </style>

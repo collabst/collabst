@@ -866,6 +866,7 @@
       if (yjsConnection?.provider?.awareness) {
         yjsConnection.provider.awareness.setLocalState(null);
       }
+      closeSeparatePreview()
     };
 
     // Handle keyboard shortcuts: Ctrl+S, Ctrl+N, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
