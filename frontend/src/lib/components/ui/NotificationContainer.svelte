@@ -12,10 +12,11 @@
 <style>
   .notification-container {
     position: fixed;
-    top: 1rem;
-    right: 1rem;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 0.5rem;
     z-index: 1000;
     pointer-events: none;
