@@ -128,6 +128,7 @@
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     font-size: var(--text-sm);
+    font-family: var(--font-sans);
     white-space: nowrap;
     z-index: 10000;
     pointer-events: none;

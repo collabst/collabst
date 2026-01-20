@@ -13,6 +13,7 @@
   import { openSearchPanel, search } from "@codemirror/search";
   import { indentMore, indentLess } from "@codemirror/commands";
   import { closeBrackets } from "@codemirror/autocomplete";
+  import { createFindPanel } from "$lib/codemirror/findPanel";
   import * as Y from "yjs";
   import type { WebsocketProvider } from "y-websocket";
   import {
@@ -629,7 +630,7 @@
         lineWrappingCompartment.of(getLineWrappingExtensions()),
         lineNumbersCompartment.of(getLineNumbersExtension()),
         basicSetup,
-        search(),
+        search({ createPanel: createFindPanel }),
         themeCompartment.of(getThemeExtensions()),
         syntaxCompartment.of(syntaxHighlighting),
         languageCompartment.of(languageExtensions),
@@ -709,7 +710,7 @@
           lineNumbersCompartment.of(getLineNumbersExtension()),
           basicSetup,
           foldGutter(),
-          search(),
+          search({ createPanel: createFindPanel }),
           themeCompartment.of(getThemeExtensions()),
           syntaxCompartment.of(syntaxHighlighting),
           languageCompartment.of(languageExtensions),
