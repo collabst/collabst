@@ -15,42 +15,41 @@
 <style>
 
   .notification {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: 6px;
+    position: relative;
+    padding: 0.75rem 1.25rem;
+    border-radius: 20px;
     font-size: 14px;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    z-index: 1000;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    animation: slideIn 0.3s ease;
+    animation: slideUpIn 0.3s ease;
+    min-width: 300px;
+    justify-content: center;
   }
 
   .notification.closing {
-    animation: slideOut 0.3s ease forwards;
+    animation: slideDownOut 0.3s ease forwards;
   }
 
-  @keyframes slideIn {
+  @keyframes slideUpIn {
     from {
-      transform: translateX(calc(100% + 1rem));
+      transform: translateY(calc(100% + 1rem));
       opacity: 0;
     }
     to {
-      transform: translateX(0);
+      transform: translateY(0);
       opacity: 1;
     }
   }
 
-  @keyframes slideOut {
+  @keyframes slideDownOut {
     from {
-      transform: translateX(0);
+      transform: translateY(0);
       opacity: 1;
     }
     to {
-      transform: translateX(calc(100% + 1rem));
+      transform: translateY(calc(100% + 1rem));
       opacity: 0;
     }
   }
