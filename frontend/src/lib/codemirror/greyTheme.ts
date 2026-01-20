@@ -74,9 +74,18 @@ export const greyDarkTheme = EditorView.theme({
     borderBottomRightRadius: '5px'
   },
 
-  '.cm-panels': { backgroundColor: darkBackground, color: darkText },
+  '.cm-panels': { backgroundColor: 'transparent', color: darkText },
   '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${darkBorder}` },
-  '.cm-panels.cm-panels-bottom': { borderTop: `1px solid ${darkBorder}` },
+  '.cm-panels.cm-panels-bottom': { 
+    borderTop: 'none',
+    padding: '0',
+    background: 'transparent'
+  },
+  '.cm-panels .cm-panel': {
+    padding: '0',
+    background: 'transparent',
+    border: 'none'
+  },
 
   '.cm-searchMatch': {
     backgroundColor: darkSearchMatch,
@@ -219,9 +228,18 @@ export const greyLightTheme = EditorView.theme({
     borderBottomRightRadius: '5px'
   },
 
-  '.cm-panels': { backgroundColor: lightBackgroundHighlight, color: lightText },
+  '.cm-panels': { backgroundColor: 'transparent', color: lightText },
   '.cm-panels.cm-panels-top': { borderBottom: `1px solid ${lightBorder}` },
-  '.cm-panels.cm-panels-bottom': { borderTop: `1px solid ${lightBorder}` },
+  '.cm-panels.cm-panels-bottom': { 
+    borderTop: 'none',
+    padding: '0',
+    background: 'transparent'
+  },
+  '.cm-panels .cm-panel': {
+    padding: '0',
+    background: 'transparent',
+    border: 'none'
+  },
 
   '.cm-searchMatch': {
     backgroundColor: lightSearchMatch,

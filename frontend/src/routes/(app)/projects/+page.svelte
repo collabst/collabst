@@ -361,7 +361,7 @@
             </button>
 
             <div class="view-controls">
-              <div class="search-bar">
+              <label class="search-bar">
                 <Search size={16} class="search-icon" />
                 <input
                   type="text"
@@ -378,7 +378,7 @@
                     <X size={16} />
                   </button>
                 {/if}
-              </div>
+              </label>
 
               <IconToggle bind:value={viewMode} options={viewOptions} />
 
@@ -969,6 +969,7 @@
     padding: 0.55rem 0.75rem;
     gap: 0.5rem;
     min-width: 280px;
+    cursor: text;
   }
 
   .search-bar :global(.search-icon) {
@@ -1246,7 +1247,16 @@
     justify-content: center;
     padding: 2rem;
     z-index: var(--z-modal-backdrop);
-    animation: slideUp var(--transition-fast);
+    animation: fadeIn var(--transition-fast);
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes slideUp {
@@ -1268,6 +1278,7 @@
     width: 100%;
     max-width: 500px;
     box-shadow: var(--shadow-2xl);
+    animation: slideUp var(--transition-base);
   }
 
   .modal-content h2 {
