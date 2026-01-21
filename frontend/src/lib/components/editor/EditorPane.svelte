@@ -1,7 +1,6 @@
 <script lang="ts">
   import CodeEditor from '$lib/components/CodeEditor.svelte'
   import { IconButton, Tooltip, ToolButton, DropdownToolButton } from '$lib/components/ui'
-  import type { DropdownMenuItem } from '$lib/components/ui/DropdownMenuButton.svelte'
   import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
   import Bold from '@lucide/svelte/icons/bold'
   import Italic from '@lucide/svelte/icons/italic'
