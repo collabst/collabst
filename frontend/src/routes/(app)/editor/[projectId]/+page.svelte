@@ -1270,7 +1270,7 @@
 
   .home-btn:hover {
     color: var(--text-primary);
-    transform: scale(1.05);
+    transform: scale(1.04);
   }
 
   .home-btn:active {
