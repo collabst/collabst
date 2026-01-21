@@ -21,11 +21,11 @@ function getInitialTheme(): Theme {
 }
 
 function setDataTheme(theme: Theme) {
-  document.documentElement.setAttribute('data-theme', theme)
-  const previewFrame = document.getElementById('preview-iframe') as HTMLIFrameElement | null
-  if (previewFrame && previewFrame.contentWindow) {
-    previewFrame.contentWindow.postMessage({ type: 'typst-update-theme' }, '*')
-  }
+  document.documentElement.setAttribute('data-theme', theme);
+
+  // Also set theme for preview iframe if it exists
+  const previewIFrame = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+  previewIFrame?.contentDocument?.documentElement.setAttribute('data-theme', theme);
 }
 
 function createThemeStore() {
@@ -35,8 +35,8 @@ function createThemeStore() {
     subscribe,
     set: (value: Theme) => {
       if (browser) {
-        localStorage.setItem('theme', value)
-        setDataTheme(value)
+        localStorage.setItem('theme', value);
+        setDataTheme(value);
       }
       set(value)
     },
@@ -44,20 +44,20 @@ function createThemeStore() {
       update(current => {
         const newTheme = current === 'dark' ? 'light' : 'dark'
         if (browser) {
-          localStorage.setItem('theme', newTheme)
-          setDataTheme(newTheme)
+          localStorage.setItem('theme', newTheme);
+          setDataTheme(newTheme);
         }
         return newTheme
       })
     },
     init: () => {
       if (browser) {
-        const theme = getInitialTheme()
-        setDataTheme(theme)
-        set(theme)
+        const theme = getInitialTheme();
+        setDataTheme(theme);
+        set(theme);
       }
     }
   }
 }
 
-export const theme = createThemeStore()
+export const theme = createThemeStore();

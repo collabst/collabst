@@ -4,10 +4,16 @@ const updateThemeFromParent = () => {
   document.documentElement.setAttribute("data-theme", theme);
 };
 
-// Listen for theme change messages from parent window
-window.addEventListener("message", (event) => {
-  const { type } = event.data || {};
-  if (type === "typst-update-theme") {
-    updateThemeFromParent();
+
+// Utility to sync negative colors setting from local storage
+const updateNegativePreviewFromStorage = () => {
+  const negative = localStorage.getItem('editor.negativePreview') === 'true';
+  const typstApp = document.querySelector('#typst-app');
+  if (typstApp) {
+    if (negative) {
+      typstApp.classList.add('negative');
+    } else {
+      typstApp.classList.remove('negative');
+    }
   }
-});
+}
