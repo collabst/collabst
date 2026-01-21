@@ -95,8 +95,16 @@
   let rightClickMenuItems = $state<RightClickMenuItem[]>([]);
 
   // State for drag and drop with overlay
-  let draggedItem = $state<{ id: number; isAsset: boolean; isFolder: boolean } | null>(null);
-  let dropZone = $state<{ top: number; height: number; targetId: number | null } | null>(null);
+  let draggedItem = $state<{
+    id: number;
+    isAsset: boolean;
+    isFolder: boolean;
+  } | null>(null);
+  let dropZone = $state<{
+    top: number;
+    height: number;
+    targetId: number | null;
+  } | null>(null);
   let treeContentElement = $state<HTMLDivElement | undefined>();
 
   function updateAwareness() {
@@ -167,7 +175,7 @@
 
   // Type guard to check if item is a folder (not an asset)
   function isFolder(item: TreeItem): item is FileTreeNode {
-    return !item.isAsset && 'is_folder' in item && item.is_folder === true;
+    return !item.isAsset && "is_folder" in item && item.is_folder === true;
   }
 
   // Build hierarchical file tree and integrate assets
@@ -461,200 +469,230 @@
   }
 
   // Calculate drop zone based on mouse position and hovered item
-  function calculateDropZone(e: DragEvent): { top: number; height: number; targetId: number | null } | null {
+  function calculateDropZone(
+    e: DragEvent,
+  ): { top: number; height: number; targetId: number | null } | null {
     if (!treeContentElement) return null;
 
     const treeRect = treeContentElement.getBoundingClientRect();
     const target = e.target as HTMLElement;
-    
+
     // Find the item element (with data-item-id)
-    let itemElement = target.closest('[data-item-id]') as HTMLElement | null;
-    
+    let itemElement = target.closest("[data-item-id]") as HTMLElement | null;
+
     if (!itemElement) {
       // Dragging over background - drop to root
-      const firstItem = treeContentElement.querySelector('[role="treeitem"]') as HTMLElement | null;
-      const lastItem = Array.from(treeContentElement.querySelectorAll('[role="treeitem"]')).pop() as HTMLElement | null;
-      
+      const firstItem = treeContentElement.querySelector(
+        '[role="treeitem"]',
+      ) as HTMLElement | null;
+      const lastItem = Array.from(
+        treeContentElement.querySelectorAll('[role="treeitem"]'),
+      ).pop() as HTMLElement | null;
+
       if (firstItem && lastItem) {
         const firstRect = firstItem.getBoundingClientRect();
         const lastRect = lastItem.getBoundingClientRect();
         return {
           top: firstRect.top - treeRect.top,
           height: lastRect.bottom - firstRect.top,
-          targetId: null
+          targetId: null,
         };
       } else {
         // No items - highlight entire tree content
         return {
           top: 0,
           height: treeRect.height,
-          targetId: null
+          targetId: null,
         };
       }
     }
 
-    const itemId = parseInt(itemElement.getAttribute('data-item-id') || '0');
-    const item = allItems.find(i => i.id === itemId && !isCreatingItem(i)) as TreeItem | undefined;
-    
+    const itemId = parseInt(itemElement.getAttribute("data-item-id") || "0");
+    const item = allItems.find((i) => i.id === itemId && !isCreatingItem(i)) as
+      | TreeItem
+      | undefined;
+
     if (!item) return null;
 
     // Check if this is a folder
     if (isFolder(item)) {
       const isExpanded = expandedFolders.has(item.id);
       const itemRect = itemElement.getBoundingClientRect();
-      
+
       if (isExpanded) {
         // Expanded folder - highlight folder + all its children
         // Find all children at any depth
         let lastChildElement = itemElement;
-        const children = Array.from(treeContentElement.querySelectorAll('[role="treeitem"]')) as HTMLElement[];
+        const children = Array.from(
+          treeContentElement.querySelectorAll('[role="treeitem"]'),
+        ) as HTMLElement[];
         const itemIndex = children.indexOf(itemElement);
-        
+
         for (let i = itemIndex + 1; i < children.length; i++) {
-          const childId = parseInt(children[i].getAttribute('data-item-id') || '0');
-          const childItem = allItems.find(c => c.id === childId && !isCreatingItem(c)) as TreeItem | undefined;
-          
-          if (!childItem || !('parent_id' in childItem)) break;
-          
+          const childId = parseInt(
+            children[i].getAttribute("data-item-id") || "0",
+          );
+          const childItem = allItems.find(
+            (c) => c.id === childId && !isCreatingItem(c),
+          ) as TreeItem | undefined;
+
+          if (!childItem || !("parent_id" in childItem)) break;
+
           // Check if this child belongs to our folder (directly or indirectly)
           let parentId = childItem.parent_id;
           let belongsToFolder = false;
-          
+
           while (parentId !== null) {
             if (parentId === item.id) {
               belongsToFolder = true;
               break;
             }
-            const parent = allItems.find(p => p.id === parentId && !isCreatingItem(p) && !p.isAsset) as TreeItem | undefined;
-            if (!parent || !('parent_id' in parent)) break;
+            const parent = allItems.find(
+              (p) => p.id === parentId && !isCreatingItem(p) && !p.isAsset,
+            ) as TreeItem | undefined;
+            if (!parent || !("parent_id" in parent)) break;
             parentId = parent.parent_id;
           }
-          
+
           if (belongsToFolder) {
             lastChildElement = children[i];
           } else {
             break;
           }
         }
-        
+
         const lastRect = lastChildElement.getBoundingClientRect();
         return {
           top: itemRect.top - treeRect.top,
           height: lastRect.bottom - itemRect.top,
-          targetId: item.id
+          targetId: item.id,
         };
       } else {
         // Collapsed folder - just highlight the folder item
         return {
           top: itemRect.top - treeRect.top,
           height: itemRect.height,
-          targetId: item.id
+          targetId: item.id,
         };
       }
     }
-    
+
     // File or asset - drop will use its parent (same level as this item)
     // Determine parent
-    const parentId = 'parent_id' in item ? item.parent_id : null;
-    
+    const parentId = "parent_id" in item ? item.parent_id : null;
+
     if (parentId === null) {
       // Root level file/asset - highlight all root items (like background hover)
-      const firstItem = treeContentElement.querySelector('[role="treeitem"]') as HTMLElement | null;
-      const lastItem = Array.from(treeContentElement.querySelectorAll('[role="treeitem"]')).pop() as HTMLElement | null;
-      
+      const firstItem = treeContentElement.querySelector(
+        '[role="treeitem"]',
+      ) as HTMLElement | null;
+      const lastItem = Array.from(
+        treeContentElement.querySelectorAll('[role="treeitem"]'),
+      ).pop() as HTMLElement | null;
+
       if (firstItem && lastItem) {
         const firstRect = firstItem.getBoundingClientRect();
         const lastRect = lastItem.getBoundingClientRect();
         return {
           top: firstRect.top - treeRect.top,
           height: lastRect.bottom - firstRect.top,
-          targetId: null
+          targetId: null,
         };
       } else {
         return {
           top: 0,
           height: treeRect.height,
-          targetId: null
+          targetId: null,
         };
       }
     } else {
       // File/asset inside a folder - highlight parent folder + all its content
-      const parent = allItems.find(p => p.id === parentId && !isCreatingItem(p) && !p.isAsset) as TreeItem | undefined;
-      
+      const parent = allItems.find(
+        (p) => p.id === parentId && !isCreatingItem(p) && !p.isAsset,
+      ) as TreeItem | undefined;
+
       if (!parent || !isFolder(parent)) {
         // Fallback - just highlight this item
         const itemRect = itemElement.getBoundingClientRect();
         return {
           top: itemRect.top - treeRect.top,
           height: itemRect.height,
-          targetId: parentId
+          targetId: parentId,
         };
       }
-      
+
       // Find parent element and highlight it + children (like hovering the folder)
-      const children = Array.from(treeContentElement.querySelectorAll('[role="treeitem"]')) as HTMLElement[];
-      const parentElement = children.find(el => {
-        const id = parseInt(el.getAttribute('data-item-id') || '0');
+      const children = Array.from(
+        treeContentElement.querySelectorAll('[role="treeitem"]'),
+      ) as HTMLElement[];
+      const parentElement = children.find((el) => {
+        const id = parseInt(el.getAttribute("data-item-id") || "0");
         return id === parentId;
       });
-      
+
       if (!parentElement) {
         // Fallback
         const itemRect = itemElement.getBoundingClientRect();
         return {
           top: itemRect.top - treeRect.top,
           height: itemRect.height,
-          targetId: parentId
+          targetId: parentId,
         };
       }
-      
+
       const parentRect = parentElement.getBoundingClientRect();
       const isExpanded = expandedFolders.has(parentId);
-      
+
       if (isExpanded) {
         // Find all children of parent folder
         let lastChildElement = parentElement;
         const parentIndex = children.indexOf(parentElement);
-        
+
         for (let i = parentIndex + 1; i < children.length; i++) {
-          const childId = parseInt(children[i].getAttribute('data-item-id') || '0');
-          const childItem = allItems.find(c => c.id === childId && !isCreatingItem(c)) as TreeItem | undefined;
-          
-          if (!childItem || !('parent_id' in childItem)) break;
-          
+          const childId = parseInt(
+            children[i].getAttribute("data-item-id") || "0",
+          );
+          const childItem = allItems.find(
+            (c) => c.id === childId && !isCreatingItem(c),
+          ) as TreeItem | undefined;
+
+          if (!childItem || !("parent_id" in childItem)) break;
+
           // Check if this child belongs to our folder (directly or indirectly)
           let checkParentId = childItem.parent_id;
           let belongsToFolder = false;
-          
+
           while (checkParentId !== null) {
             if (checkParentId === parentId) {
               belongsToFolder = true;
               break;
             }
-            const parentOfChild = allItems.find(p => p.id === checkParentId && !isCreatingItem(p) && !p.isAsset) as TreeItem | undefined;
-            if (!parentOfChild || !('parent_id' in parentOfChild)) break;
+            const parentOfChild = allItems.find(
+              (p) => p.id === checkParentId && !isCreatingItem(p) && !p.isAsset,
+            ) as TreeItem | undefined;
+            if (!parentOfChild || !("parent_id" in parentOfChild)) break;
             checkParentId = parentOfChild.parent_id;
           }
-          
+
           if (belongsToFolder) {
             lastChildElement = children[i];
           } else {
             break;
           }
         }
-        
+
         const lastRect = lastChildElement.getBoundingClientRect();
         return {
           top: parentRect.top - treeRect.top,
           height: lastRect.bottom - parentRect.top,
-          targetId: parentId
+          targetId: parentId,
         };
       } else {
         // Collapsed folder - just highlight the parent folder item
         return {
           top: parentRect.top - treeRect.top,
           height: parentRect.height,
-          targetId: parentId
+          targetId: parentId,
         };
       }
     }
@@ -663,7 +701,7 @@
   function handleTreeDragOver(e: DragEvent) {
     e.preventDefault();
     if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move';
+      e.dataTransfer.dropEffect = "move";
     }
     dropZone = calculateDropZone(e);
   }
@@ -677,7 +715,7 @@
 
   function handleTreeDrop(e: DragEvent) {
     e.preventDefault();
-    
+
     if (!draggedItem || !e.dataTransfer) {
       dropZone = null;
       draggedItem = null;
@@ -685,8 +723,8 @@
     }
 
     try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json'));
-      
+      const data = JSON.parse(e.dataTransfer.getData("application/json"));
+
       // Calculate final target
       const zone = calculateDropZone(e);
       const targetParentId = zone?.targetId ?? null;
@@ -709,14 +747,18 @@
         }
       }
     } catch (error) {
-      console.error('Failed to parse drag data:', error);
+      console.error("Failed to parse drag data:", error);
     }
 
     dropZone = null;
     draggedItem = null;
   }
 
-  function handleItemDragStart(itemId: number, isAsset: boolean, isFolder: boolean) {
+  function handleItemDragStart(
+    itemId: number,
+    isAsset: boolean,
+    isFolder: boolean,
+  ) {
     draggedItem = { id: itemId, isAsset, isFolder };
   }
 
@@ -841,9 +883,10 @@
 
     // Add .typ extension to files without an extension
     if (type === "file") {
-      const hasExtension = trimmedName.includes('.') && trimmedName.lastIndexOf('.') > 0;
+      const hasExtension =
+        trimmedName.includes(".") && trimmedName.lastIndexOf(".") > 0;
       if (!hasExtension) {
-        trimmedName = trimmedName + '.typ';
+        trimmedName = trimmedName + ".typ";
       }
     }
 
@@ -979,7 +1022,12 @@
                 onToggleFolder={!item.isAsset && item.is_folder
                   ? () => handleToggleFolder(item.id)
                   : undefined}
-                onDragStart={() => handleItemDragStart(item.id, item.isAsset ?? false, isFolder(item))}
+                onDragStart={() =>
+                  handleItemDragStart(
+                    item.id,
+                    item.isAsset ?? false,
+                    isFolder(item),
+                  )}
                 onDragEnd={handleItemDragEnd}
               />
             </div>
