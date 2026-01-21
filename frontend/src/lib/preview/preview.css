@@ -2,3 +2,11 @@
   display: flex;
   align-items: center;
 }
+
+#typst-container-main {
+  background: var(--bg-preview);
+}
+
+#typst-app {
+  --typst-preview-background-color: var(--bg-preview);
+}

@@ -40,7 +40,21 @@ export async function GET({ fetch, url }) {
   );
   const setupScript = await readFile(repoSetupPath, "utf-8");
 
-  // Load the preview CSS
+  // Load utils script
+  const repoUtilsPath = path.resolve(
+    path.dirname(thisFile),
+    "../../../lib/preview/utils.js"
+  );
+  const utilsScript = await readFile(repoUtilsPath, "utf-8");
+
+  // Load the theme css
+  const repoThemePath = path.resolve(
+    path.dirname(thisFile),
+    "../../../lib/styles/theme.css"
+  );
+  const themeCss = await readFile(repoThemePath, "utf-8");
+
+  // Load the preview css
   const repoCssPath = path.resolve(
     path.dirname(thisFile),
     "../../../lib/preview/preview.css"
@@ -52,7 +66,9 @@ export async function GET({ fetch, url }) {
     `<script id="websocket-mock">${websocketMockScript}</script>`,
     `<script id="zoom-bridge">${zoomBridgeScript}</script>`,
     `<script id="setup">${setupScript}</script>`,
+    `<script id="utils">${utilsScript}</script>`,
     `<style id="preview-css">${previewCss}</style>`,
+    `<style id="theme-css">${themeCss}</style>`,
   ].join("\n");
 
   const headMatch = html.match(/<head[^>]*>/i);
