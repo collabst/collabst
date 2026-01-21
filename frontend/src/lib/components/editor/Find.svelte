@@ -28,9 +28,10 @@
 
   interface FindProps {
     view: EditorView;
+    onComponentMount?: (instance: { focus: () => void }) => void;
   }
 
-  let { view }: FindProps = $props();
+  let { view, onComponentMount }: FindProps = $props();
 
   let searchInput: HTMLInputElement | undefined;
   let replaceInput: HTMLInputElement | undefined;
@@ -49,6 +50,10 @@
     tick().then(() => {
       searchInput?.select();
     });
+    // Provide focus method to parent
+    if (onComponentMount) {
+      onComponentMount({ focus });
+    }
   });
 
   // Update search when any parameter changes
@@ -123,6 +128,13 @@
   function close() {
     closeSearchPanel(view);
   }
+
+  export function focus() {
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
 </script>
 
 <div class="find-panel">
@@ -141,7 +153,7 @@
         <IconButton
           variant="flat"
           icon={CaseSensitive}
-          size="sm"
+          size="find-toggle"
           onclick={() => (caseSensitive = !caseSensitive)}
           selected={caseSensitive}
         />
@@ -150,7 +162,7 @@
         <IconButton
           variant="flat"
           icon={WholeWord}
-          size="sm"
+          size="find-toggle"
           onclick={() => (wholeWord = !wholeWord)}
           selected={wholeWord}
         />
@@ -159,7 +171,7 @@
         <IconButton
           variant="flat"
           icon={Regex}
-          size="sm"
+          size="find-toggle"
           onclick={() => (regex = !regex)}
           selected={regex}
         />
@@ -246,16 +258,31 @@
   .replace-area {
     display: flex;
     gap: 4px;
-    /* border: 1px solid var(--border-primary); */
+    border: 2px solid var(--bg-editor);
     border-radius: 8px;
     background: var(--bg-editor);
     align-items: center;
-    padding: 4px;
+    padding: 2px;
     flex: 1 1 0%;
     min-width: 0;
     max-width: 300px;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .search-area:hover,
+  .replace-area:hover {
+    border: 2px solid var(--dropdown-border);
+  }
+
+  .search-area:focus-within,
+  .replace-area:focus-within {
+    border: 2px solid var(--text-tertiary);
+  }
+
+  .search-area:active,
+  .replace-area:active {
+    border: 2px solid var(--text-secondary);
   }
 
   .search-input,
