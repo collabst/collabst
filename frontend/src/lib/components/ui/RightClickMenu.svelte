@@ -1,51 +1,51 @@
 <script lang="ts">
   export interface RightClickMenuItem {
-    label: string
-    icon?: any
-    onclick: () => void
-    separator?: boolean // Add separator after this item
+    label: string;
+    icon?: any;
+    onclick: () => void;
+    separator?: boolean; // Add separator after this item
   }
 
   interface Props {
-    show: boolean
-    x: number
-    y: number
-    items: RightClickMenuItem[]
-    onClose: () => void
+    show: boolean;
+    x: number;
+    y: number;
+    items: RightClickMenuItem[];
+    onClose: () => void;
   }
 
-  let { show = $bindable(), x, y, items, onClose }: Props = $props()
+  let { show = $bindable(), x, y, items, onClose }: Props = $props();
 
-  let menuElement = $state<HTMLDivElement | undefined>()
+  let menuElement = $state<HTMLDivElement | undefined>();
 
   function handleClickOutside(event: MouseEvent) {
     if (menuElement && !menuElement.contains(event.target as Node)) {
-      onClose()
+      onClose();
     }
   }
 
   function handleContextMenu(event: MouseEvent) {
-    event.preventDefault()
+    event.preventDefault();
   }
 
   $effect(() => {
     if (show) {
       // Add listeners when menu opens
       setTimeout(() => {
-        document.addEventListener('click', handleClickOutside)
-        document.addEventListener('contextmenu', handleClickOutside)
-      }, 0)
+        document.addEventListener("click", handleClickOutside);
+        document.addEventListener("contextmenu", handleClickOutside);
+      }, 0);
 
       return () => {
-        document.removeEventListener('click', handleClickOutside)
-        document.removeEventListener('contextmenu', handleClickOutside)
-      }
+        document.removeEventListener("click", handleClickOutside);
+        document.removeEventListener("contextmenu", handleClickOutside);
+      };
     }
-  })
+  });
 
   function handleItemClick(item: RightClickMenuItem) {
-    item.onclick()
-    onClose()
+    item.onclick();
+    onClose();
   }
 </script>
 
@@ -91,7 +91,6 @@
     z-index: 1000;
     overflow: hidden;
     min-width: 130px;
-
   }
 
   .menu-item {
