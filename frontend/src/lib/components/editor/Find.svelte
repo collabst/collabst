@@ -214,14 +214,11 @@
 <style>
   .find-panel {
     position: absolute;
-    bottom: 8px;
-    left: 8px;
+    inset: auto 8px 8px 8px;
     background: var(--find-bg);
     backdrop-filter: blur(var(--find-blur));
     -webkit-backdrop-filter: blur(var(--find-blur));
     border: 1px solid var(--dropdown-border);
-    /* background: var(--bg-top-panel);
-    border: 1px solid var(--border-primary); */
     border-radius: 14px;
     padding: 8px;
     display: flex;
@@ -229,30 +226,41 @@
     gap: 6px;
     box-shadow: 0 0px 15px rgba(0, 0, 0, 0.1);
     z-index: 20;
-    min-width: 450px;
-    max-width: 90vw;
+    min-width: 300px;
+    max-width: 455px;
+    width: auto;
+    box-sizing: border-box;
+    overflow: visible;
+    transform: translate3d(0, 0, 0);
+    pointer-events: auto;
   }
 
   .find-row {
     display: flex;
     gap: 8px;
     align-items: center;
+    width: 100%;
   }
 
   .search-area,
   .replace-area {
     display: flex;
     gap: 4px;
-    border: 1px solid var(--border-primary);
-    border-radius: 6px;
+    /* border: 1px solid var(--border-primary); */
+    border-radius: 8px;
     background: var(--bg-editor);
     align-items: center;
     padding: 4px;
+    flex: 1 1 0%;
+    min-width: 0;
+    max-width: 300px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .search-input,
   .replace-input {
-    flex: 1;
+    flex: 1 1 0%;
     padding: 4px 8px;
     font-size: 0.9em;
     color: var(--text-primary);
@@ -261,19 +269,14 @@
     outline: none;
     min-height: 26px;
     min-width: 0;
+    max-width: 300px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .search-input::placeholder,
   .replace-input::placeholder {
     color: var(--text-tertiary);
-  }
-
-  .search-area {
-    width: 300px;
-  }
-
-  .replace-area {
-    width: 300px;
   }
 
   .button-group {

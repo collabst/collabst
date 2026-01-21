@@ -79,12 +79,15 @@ export const greyDarkTheme = EditorView.theme({
   '.cm-panels.cm-panels-bottom': { 
     borderTop: 'none',
     padding: '0',
-    background: 'transparent'
+    background: 'transparent',
+    overflow: 'visible',
+    position: 'relative'
   },
   '.cm-panels .cm-panel': {
     padding: '0',
     background: 'transparent',
-    border: 'none'
+    border: 'none',
+    overflow: 'visible'
   },
 
   '.cm-searchMatch': {
@@ -233,12 +236,15 @@ export const greyLightTheme = EditorView.theme({
   '.cm-panels.cm-panels-bottom': { 
     borderTop: 'none',
     padding: '0',
-    background: 'transparent'
+    background: 'transparent',
+    overflow: 'visible',
+    position: 'relative'
   },
   '.cm-panels .cm-panel': {
     padding: '0',
     background: 'transparent',
-    border: 'none'
+    border: 'none',
+    overflow: 'visible'
   },
 
   '.cm-searchMatch': {
