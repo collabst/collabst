@@ -20,6 +20,7 @@
     MenuBar,
   } from "$lib/components/ui";
   import Home from "@lucide/svelte/icons/home";
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ActivityBar from "$lib/components/editor/ActivityBar.svelte";
   import FileTree from "$lib/components/editor/FileTree.svelte";
   import PlaceholderPanel from "$lib/components/editor/PlaceholderPanel.svelte";
@@ -526,6 +527,32 @@
       handleDeleteFile(selectedFile.id);
     }
   }
+
+  // Build path breadcrumb from parent_id chain
+  function buildItemPath(item: ProjectFile | Asset | null): { folders: string[], filename: string } {
+    if (!item) return { folders: [], filename: '' };
+    
+    const folders: string[] = [];
+    let currentParentId = 'parent_id' in item ? item.parent_id : null;
+    
+    // Find parent folders by traversing the parent chain
+    while (currentParentId !== null) {
+      const parentFolder = files.find(f => f.id === currentParentId && f.is_folder);
+      if (parentFolder) {
+        folders.unshift(parentFolder.name);
+        currentParentId = parentFolder.parent_id;
+      } else {
+        break;
+      }
+    }
+    
+    const filename = 'filename' in item ? item.filename : item.name;
+    return { folders, filename };
+  }
+
+  // Reactive path computation
+  let currentPath = $derived(buildItemPath(selectedAsset || selectedFile));
+
   async function handleMoveFile(fileId: number, targetFolderId: number | null) {
     try {
       const updatedFile = await filesApi.move(
@@ -1196,13 +1223,27 @@
 
       {#if selectedAsset}
         <div class="header-center">
-          <span class="current-file-name">{selectedAsset.filename}</span>
-          <span class="current-file-type">{selectedAsset.mime_type}</span>
+          {#if currentPath.folders.length > 0}
+            <span class="path-folders">
+              {#each currentPath.folders as folder, i}
+                {folder}
+                <ChevronRight size={15} class="path-chevron" />
+              {/each}
+            </span>
+          {/if}
+          <span class="current-file-name">{currentPath.filename}</span>
         </div>
       {:else if selectedFile}
         <div class="header-center">
-          <span class="current-file-name">{selectedFile.name}</span>
-          <span class="current-file-type">{selectedFile.type}</span>
+          {#if currentPath.folders.length > 0}
+            <span class="path-folders">
+              {#each currentPath.folders as folder, i}
+                {folder}
+                <ChevronRight size={15} class="path-chevron" />
+              {/each}
+            </span>
+          {/if}
+          <span class="current-file-name">{currentPath.filename}</span>
         </div>
       {/if}
 
@@ -1295,6 +1336,7 @@
         {selectedFile}
         {selectedAsset}
         {assets}
+        {files}
         ytext={selectedYtext}
         provider={yjsConnection?.provider || null}
         {isConnected}
@@ -1310,6 +1352,8 @@
         {showToolbar}
         {separateWindow}
         {closeSeparatePreview}
+        onRenameAsset={handleRenameSelectedItem}
+        onDeleteAsset={handleDeleteAsset}
       />
 
       <div
@@ -1416,20 +1460,28 @@
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     align-items: center;
+  }
+
+  .path-folders {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .path-folders :global(.path-chevron) {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
   }
 
   .current-file-name {
     color: var(--text-primary);
     font-size: 14px;
     font-weight: 600;
-  }
-
-  .current-file-type {
-    color: var(--text-tertiary);
-    font-size: 12px;
-    text-transform: uppercase;
   }
 
   .home-btn {

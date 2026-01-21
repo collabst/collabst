@@ -1,46 +1,60 @@
 <script lang="ts">
-  import CodeEditor from '$lib/components/CodeEditor.svelte'
-  import { IconButton, Tooltip, ToolButton, DropdownToolButton } from '$lib/components/ui'
-  import MessageSquarePlus from '@lucide/svelte/icons/message-square-plus'
-  import Bold from '@lucide/svelte/icons/bold'
-  import Italic from '@lucide/svelte/icons/italic'
-  import Underline from '@lucide/svelte/icons/underline'
-  import List from '@lucide/svelte/icons/list'
-  import ListOrdered from '@lucide/svelte/icons/list-ordered'
-  import Sigma from '@lucide/svelte/icons/sigma'
+  import CodeEditor from "$lib/components/CodeEditor.svelte";
+  import AssetMetadata from "$lib/components/editor/AssetMetadata.svelte";
+  import {
+    IconButton,
+    Tooltip,
+    ToolButton,
+    DropdownToolButton,
+  } from "$lib/components/ui";
+  import MessageSquarePlus from "@lucide/svelte/icons/message-square-plus";
+  import Bold from "@lucide/svelte/icons/bold";
+  import Italic from "@lucide/svelte/icons/italic";
+  import Underline from "@lucide/svelte/icons/underline";
+  import List from "@lucide/svelte/icons/list";
+  import ListOrdered from "@lucide/svelte/icons/list-ordered";
+  import Sigma from "@lucide/svelte/icons/sigma";
   import Columns2 from "@lucide/svelte/icons/columns-2";
-  import Code from '@lucide/svelte/icons/code'
-  import Redo from '@lucide/svelte/icons/redo'
-  import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line'
-  import ArrowUpFromLine from '@lucide/svelte/icons/arrow-up-from-line'
-  import PencilLine from '@lucide/svelte/icons/pencil-line'
-  import Trash2 from '@lucide/svelte/icons/trash-2'
-  import MoreHorizontal from '@lucide/svelte/icons/ellipsis'
-  import { onDestroy } from 'svelte'
-  import type { File as ProjectFile, Asset, Comment, Diagnostic } from '$lib/types'
-  import { revokeBlobUrl } from '$lib/utils/assetCache'
-  import type * as Y from 'yjs'
-  import type { WebsocketProvider } from 'y-websocket'
-  import type { Component } from 'svelte'
+  import Code from "@lucide/svelte/icons/code";
+  import Redo from "@lucide/svelte/icons/redo";
+  import ArrowDownToLine from "@lucide/svelte/icons/arrow-down-to-line";
+  import ArrowUpFromLine from "@lucide/svelte/icons/arrow-up-from-line";
+  import PencilLine from "@lucide/svelte/icons/pencil-line";
+  import Trash2 from "@lucide/svelte/icons/trash-2";
+  import MoreHorizontal from "@lucide/svelte/icons/ellipsis";
+  import { onDestroy } from "svelte";
+  import type {
+    File as ProjectFile,
+    Asset,
+    Comment,
+    Diagnostic,
+  } from "$lib/types";
+  import { revokeBlobUrl } from "$lib/utils/assetCache";
+  import type * as Y from "yjs";
+  import type { WebsocketProvider } from "y-websocket";
+  import type { Component } from "svelte";
 
   interface EditorPaneProps {
-    selectedFile: ProjectFile | null
-    selectedAsset: Asset | null
-    assets: Asset[]
-    ytext: Y.Text | null
-    provider: WebsocketProvider | null
-    isConnected: boolean
-    onGetAssetUrl: ((assetId: number) => Promise<string>) | null
-    onGetAssetBlob: ((asset: Asset) => Promise<string>) | null
-    ydoc: Y.Doc | null
-    currentUserId: number
-    currentUserName: string
-    currentUserColor: string
-    diagnostics?: Diagnostic[]
-    wrapLines?: boolean
-    showToolbar?: boolean
-    separateWindow?: Window | null
-    closeSeparatePreview?: () => void
+    selectedFile: ProjectFile | null;
+    selectedAsset: Asset | null;
+    assets: Asset[];
+    ytext: Y.Text | null;
+    provider: WebsocketProvider | null;
+    isConnected: boolean;
+    onGetAssetUrl: ((assetId: number) => Promise<string>) | null;
+    onGetAssetBlob: ((asset: Asset) => Promise<string>) | null;
+    ydoc: Y.Doc | null;
+    currentUserId: number;
+    currentUserName: string;
+    currentUserColor: string;
+    diagnostics?: Diagnostic[];
+    wrapLines?: boolean;
+    showToolbar?: boolean;
+    separateWindow?: Window | null;
+    closeSeparatePreview?: () => void;
+    onRenameAsset?: ((assetId: number) => void) | null;
+    onDeleteAsset?: ((assetId: number) => void) | null;
+    files?: ProjectFile[];
   }
 
   let {
@@ -61,7 +75,10 @@
     showToolbar = true,
     separateWindow = null,
     closeSeparatePreview = () => {},
-  }: EditorPaneProps = $props()
+    onRenameAsset = null,
+    onDeleteAsset = null,
+    files = [],
+  }: EditorPaneProps = $props();
 
   // Simple blob URL cache - keyed by asset ID
   const blobUrlCache: Record<number, string> = {};
@@ -96,7 +113,7 @@
           currentBlobAssetId = assetId;
         }
       } catch (err) {
-        console.error('Failed to load asset blob:', assetId, err);
+        console.error("Failed to load asset blob:", assetId, err);
       }
     }
   }
@@ -122,7 +139,9 @@
 
   // Only show blob URL if it matches the selected asset
   let safeBlobUrl = $derived(
-    selectedAsset && currentBlobAssetId === selectedAsset.id ? currentBlobUrl : null
+    selectedAsset && currentBlobAssetId === selectedAsset.id
+      ? currentBlobUrl
+      : null,
   );
 
   // Cleanup on unmount
@@ -134,218 +153,349 @@
 
   let fileName = $derived(
     selectedFile
-      ? (selectedFile.path?.startsWith('/') ? selectedFile.path.slice(1) : selectedFile.path)
-      : ''
-  )
+      ? selectedFile.path?.startsWith("/")
+        ? selectedFile.path.slice(1)
+        : selectedFile.path
+      : "",
+  );
 
-  let codeEditor: any = $state(null)
-  let comments: Comment[] = []
-  let newCommentDraft: { text: string; range: { from: number; to: number }; selectedText: string } | null = null
-  let commentsVersion = 0 // Simple counter to trigger reactivity
-  let showCommentButton =  $state(false)
-  let commentButtonPosition = $state({ top: 0, left: 0 })
-  let editorContainer: HTMLElement | null = $state(null)
-  let listenersSetup = false
-  
+  let codeEditor: any = $state(null);
+  let comments: Comment[] = [];
+  let newCommentDraft: {
+    text: string;
+    range: { from: number; to: number };
+    selectedText: string;
+  } | null = null;
+  let commentsVersion = 0; // Simple counter to trigger reactivity
+  let showCommentButton = $state(false);
+  let commentButtonPosition = $state({ top: 0, left: 0 });
+  let editorContainer: HTMLElement | null = $state(null);
+  let listenersSetup = false;
+
   // Dynamic toolbar overflow handling
-  let toolbarElement = $state<HTMLElement | null>(null)
+  let toolbarElement = $state<HTMLElement | null>(null);
   // Overflow buttons always have onclick defined (filtered in checkToolbarOverflow)
-  let overflowButtons = $state<Array<{ label: string; icon?: Component; onclick: () => void }>>([])
+  let overflowButtons = $state<
+    Array<{ label: string; icon?: Component; onclick: () => void }>
+  >([]);
 
   // Export editor action methods
   export function undo() {
     if (codeEditor) {
-      codeEditor.undo()
+      codeEditor.undo();
     }
   }
 
   export function redo() {
     if (codeEditor) {
-      codeEditor.redo()
+      codeEditor.redo();
     }
   }
 
   export function selectAll() {
     if (codeEditor) {
-      codeEditor.selectAll()
+      codeEditor.selectAll();
     }
   }
 
   export function openSearch() {
     if (codeEditor) {
-      codeEditor.openSearch()
+      codeEditor.openSearch();
     }
   }
 
   export function toggleLineComment() {
     if (codeEditor) {
-      codeEditor.toggleLinePrefix('// ')
+      codeEditor.toggleLinePrefix("// ");
     }
   }
 
   export function toggleBlockComment() {
     if (codeEditor) {
-      codeEditor.toggleWrap('/* ', ' */')
+      codeEditor.toggleWrap("/* ", " */");
     }
   }
 
   export function canUndo(): boolean {
-    return codeEditor ? codeEditor.canUndo() : false
+    return codeEditor ? codeEditor.canUndo() : false;
   }
 
   export function canRedo(): boolean {
-    return codeEditor ? codeEditor.canRedo() : false
+    return codeEditor ? codeEditor.canRedo() : false;
   }
 
   // Expose the underlying CodeMirror EditorView to parent components
   export function getEditorView() {
     try {
-      return codeEditor?.getView?.() ?? null
+      return codeEditor?.getView?.() ?? null;
     } catch (e) {
-      return null
+      return null;
     }
   }
 
   // Navigate to a specific line and column in the editor
-  export function navigateToDiagnostic(line: number, character: number, endLine?: number, endCharacter?: number) {
+  export function navigateToDiagnostic(
+    line: number,
+    character: number,
+    endLine?: number,
+    endCharacter?: number,
+  ) {
     try {
-      const view = codeEditor?.getView?.()
-      if (!view) return
+      const view = codeEditor?.getView?.();
+      if (!view) return;
 
-      const doc = view.state.doc
+      const doc = view.state.doc;
       // Convert 1-based to 0-based line numbering
-      const startLineNum = Math.max(1, line)
-      const endLineNum = endLine ? Math.max(1, endLine) : startLineNum
+      const startLineNum = Math.max(1, line);
+      const endLineNum = endLine ? Math.max(1, endLine) : startLineNum;
 
       if (startLineNum <= doc.lines && endLineNum <= doc.lines) {
-        const startLineObj = doc.line(startLineNum)
-        const endLineObj = doc.line(endLineNum)
+        const startLineObj = doc.line(startLineNum);
+        const endLineObj = doc.line(endLineNum);
 
-        const from = startLineObj.from + Math.max(0, character)
-        const to = endLineObj.from + Math.max(0, endCharacter ?? character)
+        const from = startLineObj.from + Math.max(0, character);
+        const to = endLineObj.from + Math.max(0, endCharacter ?? character);
 
         // Dispatch transaction to set selection and scroll into view
         view.dispatch({
           selection: { anchor: from, head: to },
-          scrollIntoView: true
-        })
-        view.focus()
+          scrollIntoView: true,
+        });
+        view.focus();
       }
     } catch (e) {
-      console.error('Failed to navigate to diagnostic:', e)
+      console.error("Failed to navigate to diagnostic:", e);
     }
   }
 
   // Update comments whenever the version changes or file changes
   $effect(() => {
-    if (codeEditor && selectedFile && (commentsVersion >= 0)) {
-      updateCommentsFromTracker()
+    if (codeEditor && selectedFile && commentsVersion >= 0) {
+      updateCommentsFromTracker();
     }
-  })
+  });
 
   // Reset listeners flag and hide comment button when file changes
   $effect(() => {
     if (selectedFile) {
-      listenersSetup = false
-      showCommentButton = false
+      listenersSetup = false;
+      showCommentButton = false;
     }
-  })
+  });
 
   // Setup selection listeners when editor is ready
   $effect(() => {
     if (codeEditor && !listenersSetup) {
-      const view = codeEditor.getView()
+      const view = codeEditor.getView();
       if (view) {
-        setupSelectionListener(view)
-        listenersSetup = true
+        setupSelectionListener(view);
+        listenersSetup = true;
       }
     }
-  })
+  });
 
   function handleTrackerReady(tracker: any) {
     // Set up callback for when comments change
     tracker.onCommentsChange(() => {
-      commentsVersion++
-    })
+      commentsVersion++;
+    });
     // Trigger initial update
-    commentsVersion++
+    commentsVersion++;
   }
 
   function setupSelectionListener(view: any) {
-    const editorDom = view.dom
+    const editorDom = view.dom;
 
     const handleSelectionChange = () => {
       setTimeout(() => {
-        const selection = codeEditor?.getSelection()
-        if (selection && selection.from !== selection.to && selection.text.trim()) {
+        const selection = codeEditor?.getSelection();
+        if (
+          selection &&
+          selection.from !== selection.to &&
+          selection.text.trim()
+        ) {
           // Get the coordinates of the selection
-          const coords = view.coordsAtPos(selection.to)
+          const coords = view.coordsAtPos(selection.to);
           if (coords && editorContainer) {
-            const containerRect = editorContainer.getBoundingClientRect()
-            showCommentButton = true
+            const containerRect = editorContainer.getBoundingClientRect();
+            showCommentButton = true;
             commentButtonPosition = {
               top: coords.top - containerRect.top + 20,
-              left: coords.left - containerRect.left
-            }
+              left: coords.left - containerRect.left,
+            };
           }
         } else {
-          showCommentButton = false
+          showCommentButton = false;
         }
-      }, 10)
-    }
+      }, 10);
+    };
 
-    editorDom.addEventListener('mouseup', handleSelectionChange)
-    editorDom.addEventListener('keyup', handleSelectionChange)
+    editorDom.addEventListener("mouseup", handleSelectionChange);
+    editorDom.addEventListener("keyup", handleSelectionChange);
   }
 
   function updateCommentsFromTracker() {
-    const tracker = codeEditor?.getCommentTracker()
+    const tracker = codeEditor?.getCommentTracker();
     if (tracker) {
-      comments = tracker.getAllComments()
+      comments = tracker.getAllComments();
     } else {
-      comments = []
+      comments = [];
     }
   }
 
   function isImage(mimeType: string) {
-    return mimeType.startsWith('image/')
+    return mimeType.startsWith("image/");
   }
 
   function isPdf(mimeType: string) {
-    return mimeType === 'application/pdf'
+    return mimeType === "application/pdf";
   }
 
-  function handleAddComment() {
-    if (!codeEditor) return
+  function formatFileSize(bytes: number): string {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  }
 
-    const selection = codeEditor.getSelection()
+  function formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+
+    if (diffDays === 0) {
+      return `Today at ${timeStr}`;
+    } else if (diffDays === 1) {
+      return `Yesterday at ${timeStr}`;
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  }
+
+  function getFileExtension(filename: string): string {
+    const parts = filename.split(".");
+    return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : "FILE";
+  }
+
+  // Build path breadcrumb from parent_id chain
+  function buildAssetPath(asset: Asset | null): {
+    folders: string[];
+    filename: string;
+  } {
+    if (!asset) return { folders: [], filename: "" };
+
+    const folders: string[] = [];
+    let currentParentId = asset.parent_id;
+
+    // Find parent folders by traversing the parent chain
+    while (currentParentId !== null) {
+      const parentFolder = files.find(
+        (f) => f.id === currentParentId && f.is_folder,
+      );
+      if (parentFolder) {
+        folders.unshift(parentFolder.name);
+        currentParentId = parentFolder.parent_id;
+      } else {
+        break;
+      }
+    }
+
+    return { folders, filename: asset.filename };
+  }
+
+  function buildFilePath(file: ProjectFile | null): {
+    folders: string[];
+    filename: string;
+  } {
+    if (!file) return { folders: [], filename: "" };
+
+    const folders: string[] = [];
+    let currentParentId = file.parent_id;
+
+    // Find parent folders by traversing the parent chain
+    while (currentParentId !== null) {
+      const parentFolder = files.find(
+        (f) => f.id === currentParentId && f.is_folder,
+      );
+      if (parentFolder) {
+        folders.unshift(parentFolder.name);
+        currentParentId = parentFolder.parent_id;
+      } else {
+        break;
+      }
+    }
+
+    return { folders, filename: file.name };
+  }
+
+  // Reactive path computation
+  let currentPath = $derived(
+    selectedAsset
+      ? buildAssetPath(selectedAsset)
+      : selectedFile
+        ? buildFilePath(selectedFile)
+        : { folders: [], filename: "" },
+  );
+
+  // Track image dimensions
+  let imageDimensions = $state<{ width: number; height: number } | null>(null);
+
+  function handleImageLoad(event: Event) {
+    const img = event.target as HTMLImageElement;
+    imageDimensions = {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    };
+  }
+
+  // Reset dimensions when asset changes
+  $effect(() => {
+    if (selectedAsset) {
+      imageDimensions = null;
+    }
+  });
+
+  function handleAddComment() {
+    if (!codeEditor) return;
+
+    const selection = codeEditor.getSelection();
     if (!selection || selection.from === selection.to) {
-      return
+      return;
     }
 
     // Create a draft comment and open it in the panel
     newCommentDraft = {
-      text: '',
+      text: "",
       range: { from: selection.from, to: selection.to },
-      selectedText: selection.text
-    }
+      selectedText: selection.text,
+    };
 
     // Hide the button
-    showCommentButton = false
+    showCommentButton = false;
   }
 
   function handleSubmitNewComment(content: string) {
-    if (!codeEditor || !newCommentDraft || !selectedFile || !ydoc) return
+    if (!codeEditor || !newCommentDraft || !selectedFile || !ydoc) return;
 
-    const tracker = codeEditor.getCommentTracker()
-    if (!tracker) return
+    const tracker = codeEditor.getCommentTracker();
+    if (!tracker) return;
 
-    const view = codeEditor.getView()
-    if (!view) return
+    const view = codeEditor.getView();
+    if (!view) return;
 
-    const line = view.state.doc.lineAt(newCommentDraft.range.from).number
+    const line = view.state.doc.lineAt(newCommentDraft.range.from).number;
 
-    const commentId = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const commentId = `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const comment: Comment = {
       id: commentId,
       fileId: selectedFile.id,
@@ -353,112 +503,117 @@
       author: {
         id: currentUserId,
         username: currentUserName,
-        color: currentUserColor
+        color: currentUserColor,
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       resolved: false,
       replies: [],
-      line: line
-    }
+      line: line,
+    };
 
-    tracker.addComment(commentId, newCommentDraft.range.from, newCommentDraft.range.to, comment)
+    tracker.addComment(
+      commentId,
+      newCommentDraft.range.from,
+      newCommentDraft.range.to,
+      comment,
+    );
 
     // Clear the draft
-    newCommentDraft = null
+    newCommentDraft = null;
   }
 
   function handleCancelNewComment() {
-    newCommentDraft = null
+    newCommentDraft = null;
   }
 
   function handleCommentResolve(event: CustomEvent) {
-    if (!codeEditor) return
+    if (!codeEditor) return;
 
-    const tracker = codeEditor.getCommentTracker()
-    if (!tracker) return
+    const tracker = codeEditor.getCommentTracker();
+    if (!tracker) return;
 
-    tracker.resolveComment(event.detail.commentId)
+    tracker.resolveComment(event.detail.commentId);
     // No need to call updateCommentsList() - the observer will handle it
   }
 
   function handleCommentDelete(event: CustomEvent) {
-    if (!codeEditor) return
+    if (!codeEditor) return;
 
-    const tracker = codeEditor.getCommentTracker()
-    if (!tracker) return
+    const tracker = codeEditor.getCommentTracker();
+    if (!tracker) return;
 
-    tracker.removeComment(event.detail.commentId)
+    tracker.removeComment(event.detail.commentId);
     // No need to call updateCommentsList() - the observer will handle it
   }
 
   function handleCommentReply(event: CustomEvent) {
-    if (!codeEditor) return
+    if (!codeEditor) return;
 
-    const tracker = codeEditor.getCommentTracker()
-    if (!tracker) return
+    const tracker = codeEditor.getCommentTracker();
+    if (!tracker) return;
 
-    const replyId = `reply-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const replyId = `reply-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const reply = {
       id: replyId,
       content: event.detail.content,
       author: {
         id: currentUserId,
         username: currentUserName,
-        color: currentUserColor
+        color: currentUserColor,
       },
-      createdAt: new Date().toISOString()
-    }
+      createdAt: new Date().toISOString(),
+    };
 
-    tracker.addReply(event.detail.commentId, reply)
+    tracker.addReply(event.detail.commentId, reply);
     // No need to call updateCommentsList() - the observer will handle it
   }
 
   // Action button handlers for typst files
   function handleBold() {
     if (codeEditor) {
-      codeEditor.toggleWrap('*', '*')
+      codeEditor.toggleWrap("*", "*");
     }
   }
 
   function handleItalic() {
     if (codeEditor) {
-      codeEditor.toggleWrap('_', '_')
+      codeEditor.toggleWrap("_", "_");
     }
   }
 
   function handleUnderline() {
     if (codeEditor) {
-      codeEditor.toggleWrap('#underline[', ']')
+      codeEditor.toggleWrap("#underline[", "]");
     }
   }
 
   function handleList() {
     if (codeEditor) {
-      codeEditor.toggleLinePrefix('- ', '+ ')
+      codeEditor.toggleLinePrefix("- ", "+ ");
     }
   }
 
   function handleNumberedList() {
     if (codeEditor) {
-      codeEditor.toggleLinePrefix('+ ', '- ')
+      codeEditor.toggleLinePrefix("+ ", "- ");
     }
   }
 
   function handleEquation() {
     if (codeEditor) {
-      codeEditor.toggleWrap('$', '$')
+      codeEditor.toggleWrap("$", "$");
     }
   }
 
   function handleCodeBlock() {
     if (codeEditor) {
-      codeEditor.toggleWrap('`', '`')
+      codeEditor.toggleWrap("`", "`");
     }
   }
 
   function handleScrollPreview() {
-    console.log('Scroll preview')
+    console.log("Scroll preview");
     // TODO: Implement scroll preview
   }
 
@@ -466,392 +621,563 @@
   async function handleDownloadFile() {
     if (selectedAsset && onGetAssetUrl) {
       try {
-        const url = await onGetAssetUrl(selectedAsset.id)
-        window.open(url, '_blank')
+        const url = await onGetAssetUrl(selectedAsset.id);
+        window.open(url, "_blank");
       } catch (error) {
-        console.error('Failed to download asset:', error)
+        console.error("Failed to download asset:", error);
       }
     } else if (selectedFile) {
-      console.log('Download file:', selectedFile.name)
+      console.log("Download file:", selectedFile.name);
       // TODO: Implement file download
     }
   }
 
   function handleUploadFile() {
-    console.log('Upload file')
+    console.log("Upload file");
     // TODO: Implement file upload/replace
   }
 
   function handleRenameFile() {
-    console.log('Rename file')
-    // TODO: Implement file rename
+    if (selectedAsset && onRenameAsset) {
+      // Trigger rename in FileTree for currently selected asset
+      window.dispatchEvent(new CustomEvent("trigger-file-rename"));
+    } else {
+      console.log("Rename file");
+      // TODO: Implement file rename
+    }
   }
 
   function handleDeleteFile() {
-    console.log('Delete file')
-    // TODO: Implement file delete
+    if (selectedAsset && onDeleteAsset) {
+      onDeleteAsset(selectedAsset.id);
+    } else {
+      console.log("Delete file");
+      // TODO: Implement file delete
+    }
   }
 
   // Check if file type is text-editable
-  let isTextEditable = $derived(selectedFile?.type === 'text' || selectedFile?.type === 'yaml' || selectedFile?.type === 'json')
-  let isTypstFile = $derived(selectedFile?.type === 'typst')
-  
+  let isTextEditable = $derived(
+    selectedFile?.type === "text" ||
+      selectedFile?.type === "yaml" ||
+      selectedFile?.type === "json",
+  );
+  let isTypstFile = $derived(selectedFile?.type === "typst");
+
   // Define all toolbar buttons with their metadata
   type ToolbarButton = {
-    id: string
-    label: string
-    icon: Component
-    onclick: () => void
-    position?: 'first' | 'middle' | 'last' | 'standalone'
-    strokeWidth?: number
-    shortcut?: string
-  }
-  
+    id: string;
+    label: string;
+    icon: Component;
+    onclick: () => void;
+    position?: "first" | "middle" | "last" | "standalone";
+    strokeWidth?: number;
+    shortcut?: string;
+  };
+
   const typstToolbarButtons: ToolbarButton[][] = [
     [
-      { id: 'bold', label: 'Bold', icon: Bold, onclick: handleBold, position: 'first', strokeWidth: 3, shortcut: 'Ctrl+B' },
-      { id: 'italic', label: 'Italic', icon: Italic, onclick: handleItalic, position: 'middle', shortcut: 'Ctrl+I' },
-      { id: 'underline', label: 'Underline', icon: Underline, onclick: handleUnderline, position: 'last', shortcut: 'Ctrl+U' }
+      {
+        id: "bold",
+        label: "Bold",
+        icon: Bold,
+        onclick: handleBold,
+        position: "first",
+        strokeWidth: 3,
+        shortcut: "Ctrl+B",
+      },
+      {
+        id: "italic",
+        label: "Italic",
+        icon: Italic,
+        onclick: handleItalic,
+        position: "middle",
+        shortcut: "Ctrl+I",
+      },
+      {
+        id: "underline",
+        label: "Underline",
+        icon: Underline,
+        onclick: handleUnderline,
+        position: "last",
+        shortcut: "Ctrl+U",
+      },
     ],
     [
-      { id: 'list', label: 'List', icon: List, onclick: handleList, position: 'first' },
-      { id: 'numberedList', label: 'Numbered list', icon: ListOrdered, onclick: handleNumberedList, position: 'middle' },
-      { id: 'equation', label: 'Equation', icon: Sigma, onclick: handleEquation, position: 'middle' },
-      { id: 'codeBlock', label: 'Code block', icon: Code, onclick: handleCodeBlock, position: 'last' }
+      {
+        id: "list",
+        label: "List",
+        icon: List,
+        onclick: handleList,
+        position: "first",
+      },
+      {
+        id: "numberedList",
+        label: "Numbered list",
+        icon: ListOrdered,
+        onclick: handleNumberedList,
+        position: "middle",
+      },
+      {
+        id: "equation",
+        label: "Equation",
+        icon: Sigma,
+        onclick: handleEquation,
+        position: "middle",
+      },
+      {
+        id: "codeBlock",
+        label: "Code block",
+        icon: Code,
+        onclick: handleCodeBlock,
+        position: "last",
+      },
     ],
     [
-      { id: 'addComment', label: 'Add comment', icon: MessageSquarePlus, onclick: handleAddComment, position: 'standalone' }
-    ]
-  ]
-  
+      {
+        id: "addComment",
+        label: "Add comment",
+        icon: MessageSquarePlus,
+        onclick: handleAddComment,
+        position: "standalone",
+      },
+    ],
+  ];
+
   // Right-side buttons (scroll preview, close separate preview)
   let rightButtons = $derived.by(() => {
-    const buttons: ToolbarButton[] = []
-    
+    const buttons: ToolbarButton[] = [];
+
     if (separateWindow) {
       buttons.push({
-        id: 'closeSeparatePreview',
-        label: 'Close separate preview',
+        id: "closeSeparatePreview",
+        label: "Close separate preview",
         icon: Columns2,
         onclick: closeSeparatePreview,
-        position: 'middle'
-      })
+        position: "middle",
+      });
     }
-    
+
     if (isTypstFile) {
       buttons.push({
-        id: 'scrollPreview',
-        label: 'Scroll preview to cursor',
+        id: "scrollPreview",
+        label: "Scroll preview to cursor",
         icon: Redo,
         onclick: handleScrollPreview,
-        position: 'middle'
-      })
+        position: "middle",
+      });
     }
-    
-    return buttons
-  })
-  
+
+    return buttons;
+  });
+
   const assetToolbarButtons: ToolbarButton[][] = [
     [
-      { id: 'download', label: 'Download', icon: ArrowDownToLine, onclick: handleDownloadFile, position: 'first' },
-      { id: 'upload', label: 'Upload', icon: ArrowUpFromLine, onclick: handleUploadFile, position: 'middle' },
-      { id: 'rename', label: 'Rename', icon: PencilLine, onclick: handleRenameFile, position: 'middle' },
-      { id: 'delete', label: 'Delete', icon: Trash2, onclick: handleDeleteFile, position: 'last' }
-    ]
-  ]
-  
+      {
+        id: "download",
+        label: "Download",
+        icon: ArrowDownToLine,
+        onclick: handleDownloadFile,
+        position: "first",
+      },
+      {
+        id: "upload",
+        label: "Upload",
+        icon: ArrowUpFromLine,
+        onclick: handleUploadFile,
+        position: "middle",
+      },
+      {
+        id: "rename",
+        label: "Rename",
+        icon: PencilLine,
+        onclick: handleRenameFile,
+        position: "middle",
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: Trash2,
+        onclick: handleDeleteFile,
+        position: "last",
+      },
+    ],
+  ];
+
   const nonTypstToolbarButtons: ToolbarButton[][] = [
     [
-      { id: 'download', label: 'Download', icon: ArrowDownToLine, onclick: handleDownloadFile, position: 'first' },
-      { id: 'upload', label: 'Upload', icon: ArrowUpFromLine, onclick: handleUploadFile, position: 'middle' },
-      { id: 'rename', label: 'Rename', icon: PencilLine, onclick: handleRenameFile, position: 'middle' },
-      { id: 'delete', label: 'Delete', icon: Trash2, onclick: handleDeleteFile, position: 'last' }
-    ]
-  ]
-  
+      {
+        id: "download",
+        label: "Download",
+        icon: ArrowDownToLine,
+        onclick: handleDownloadFile,
+        position: "first",
+      },
+      {
+        id: "upload",
+        label: "Upload",
+        icon: ArrowUpFromLine,
+        onclick: handleUploadFile,
+        position: "middle",
+      },
+      {
+        id: "rename",
+        label: "Rename",
+        icon: PencilLine,
+        onclick: handleRenameFile,
+        position: "middle",
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: Trash2,
+        onclick: handleDeleteFile,
+        position: "last",
+      },
+    ],
+  ];
+
   const nonTypstWithCommentButtons: ToolbarButton[][] = [
     [
-      { id: 'download', label: 'Download', icon: ArrowDownToLine, onclick: handleDownloadFile, position: 'first' },
-      { id: 'upload', label: 'Upload', icon: ArrowUpFromLine, onclick: handleUploadFile, position: 'middle' },
-      { id: 'rename', label: 'Rename', icon: PencilLine, onclick: handleRenameFile, position: 'middle' },
-      { id: 'delete', label: 'Delete', icon: Trash2, onclick: handleDeleteFile, position: 'last' }
+      {
+        id: "download",
+        label: "Download",
+        icon: ArrowDownToLine,
+        onclick: handleDownloadFile,
+        position: "first",
+      },
+      {
+        id: "upload",
+        label: "Upload",
+        icon: ArrowUpFromLine,
+        onclick: handleUploadFile,
+        position: "middle",
+      },
+      {
+        id: "rename",
+        label: "Rename",
+        icon: PencilLine,
+        onclick: handleRenameFile,
+        position: "middle",
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: Trash2,
+        onclick: handleDeleteFile,
+        position: "last",
+      },
     ],
     [
-      { id: 'addComment', label: 'Add comment', icon: MessageSquarePlus, onclick: handleAddComment, position: 'standalone' }
-    ]
-  ]
-  
+      {
+        id: "addComment",
+        label: "Add comment",
+        icon: MessageSquarePlus,
+        onclick: handleAddComment,
+        position: "standalone",
+      },
+    ],
+  ];
+
   // Get current toolbar buttons based on file type
   let currentToolbarButtons = $derived<ToolbarButton[][]>(
-    selectedAsset ? assetToolbarButtons :
-    isTypstFile ? typstToolbarButtons :
-    isTextEditable ? nonTypstWithCommentButtons : nonTypstToolbarButtons
-  )
-  
+    selectedAsset
+      ? assetToolbarButtons
+      : isTypstFile
+        ? typstToolbarButtons
+        : isTextEditable
+          ? nonTypstWithCommentButtons
+          : nonTypstToolbarButtons,
+  );
+
   // Flattened list of all buttons (left + right) with group info
   interface FlatButton extends ToolbarButton {
-    section: 'left' | 'right'
-    groupIndex: number
-    buttonIndex: number
-    originalPosition: 'first' | 'middle' | 'last' | 'standalone'
+    section: "left" | "right";
+    groupIndex: number;
+    buttonIndex: number;
+    originalPosition: "first" | "middle" | "last" | "standalone";
   }
-  
+
   let flatButtons = $derived.by(() => {
     const leftButtons = currentToolbarButtons.flatMap((group, groupIndex) =>
       group.map((button, buttonIndex) => ({
         ...button,
-        section: 'left' as const,
+        section: "left" as const,
         groupIndex,
         buttonIndex,
-        originalPosition: button.position || 'standalone'
-      }))
-    )
-    
+        originalPosition: button.position || "standalone",
+      })),
+    );
+
     const rightButtonsFlat = rightButtons.map((button, buttonIndex) => ({
       ...button,
-      section: 'right' as const,
+      section: "right" as const,
       groupIndex: currentToolbarButtons.length,
       buttonIndex,
-      originalPosition: button.position || 'standalone'
-    }))
-    
-    return [...leftButtons, ...rightButtonsFlat]
-  })
-  
+      originalPosition: button.position || "standalone",
+    }));
+
+    return [...leftButtons, ...rightButtonsFlat];
+  });
+
   // Track which buttons are visible (by index in flatButtons)
-  let visibleButtonIndices = $state<number[]>([])
-  
+  let visibleButtonIndices = $state<number[]>([]);
+
   // Computed visible buttons for the toolbar with adjusted positions
   let visibleLeftButtons = $derived.by(() => {
-    const leftButtons = flatButtons
-      .filter((btn, index) => btn.section === 'left' && visibleButtonIndices.includes(index))
-    
+    const leftButtons = flatButtons.filter(
+      (btn, index) =>
+        btn.section === "left" && visibleButtonIndices.includes(index),
+    );
+
     // Adjust positions based on visibility
     return leftButtons.map((btn, index, arr) => {
-      const prevBtn = index > 0 ? arr[index - 1] : null
-      const nextBtn = index < arr.length - 1 ? arr[index + 1] : null
-      
-      const isStartOfGroup = !prevBtn || prevBtn.groupIndex !== btn.groupIndex
-      const isEndOfGroup = !nextBtn || nextBtn.groupIndex !== btn.groupIndex
-      
-      let position: 'first' | 'middle' | 'last' | 'standalone'
-      if (btn.originalPosition === 'standalone') {
-        position = 'standalone'
+      const prevBtn = index > 0 ? arr[index - 1] : null;
+      const nextBtn = index < arr.length - 1 ? arr[index + 1] : null;
+
+      const isStartOfGroup = !prevBtn || prevBtn.groupIndex !== btn.groupIndex;
+      const isEndOfGroup = !nextBtn || nextBtn.groupIndex !== btn.groupIndex;
+
+      let position: "first" | "middle" | "last" | "standalone";
+      if (btn.originalPosition === "standalone") {
+        position = "standalone";
       } else if (isStartOfGroup && isEndOfGroup) {
-        position = 'standalone'
+        position = "standalone";
       } else if (isStartOfGroup) {
-        position = 'first'
+        position = "first";
       } else if (isEndOfGroup) {
-        position = 'last'
+        position = "last";
       } else {
-        position = 'middle'
+        position = "middle";
       }
-      
-      return { ...btn, position }
-    })
-  })
+
+      return { ...btn, position };
+    });
+  });
 
   // Computed visible right buttons for the toolbar
   let visibleRightButtons = $derived.by(() => {
-    const rightBtns = flatButtons
-      .filter((btn, index) => btn.section === 'right' && visibleButtonIndices.includes(index))
-    
+    const rightBtns = flatButtons.filter(
+      (btn, index) =>
+        btn.section === "right" && visibleButtonIndices.includes(index),
+    );
+
     // Adjust positions based on visibility
     return rightBtns.map((btn, index, arr) => {
-      const prevBtn = index > 0 ? arr[index - 1] : null
-      const nextBtn = index < arr.length - 1 ? arr[index + 1] : null
-      
-      const isStartOfGroup = !prevBtn || prevBtn.groupIndex !== btn.groupIndex
-      const isEndOfGroup = !nextBtn || nextBtn.groupIndex !== btn.groupIndex
-      
-      let position: 'first' | 'middle' | 'last' | 'standalone'
-      if (btn.originalPosition === 'standalone') {
-        position = 'standalone'
+      const prevBtn = index > 0 ? arr[index - 1] : null;
+      const nextBtn = index < arr.length - 1 ? arr[index + 1] : null;
+
+      const isStartOfGroup = !prevBtn || prevBtn.groupIndex !== btn.groupIndex;
+      const isEndOfGroup = !nextBtn || nextBtn.groupIndex !== btn.groupIndex;
+
+      let position: "first" | "middle" | "last" | "standalone";
+      if (btn.originalPosition === "standalone") {
+        position = "standalone";
       } else if (isStartOfGroup && isEndOfGroup) {
-        position = 'standalone'
+        position = "standalone";
       } else if (isStartOfGroup) {
-        position = 'first'
+        position = "first";
       } else if (isEndOfGroup) {
-        position = 'last'
+        position = "last";
       } else {
-        position = 'middle'
+        position = "middle";
       }
-      
-      return { ...btn, position }
-    })
-  })
-  
+
+      return { ...btn, position };
+    });
+  });
+
   // Detect toolbar overflow and move buttons to More dropdown
-  let resizeTimeoutId: number | null = null
-  let measuredButtonWidth: number | null = null
-  let measuredMoreButtonWidth: number | null = null
-  let measuredGapWidth: number | null = null
-  
+  let resizeTimeoutId: number | null = null;
+  let measuredButtonWidth: number | null = null;
+  let measuredMoreButtonWidth: number | null = null;
+  let measuredGapWidth: number | null = null;
+
   function checkToolbarOverflow() {
-    if (!toolbarElement || !showToolbar) return
-    
+    if (!toolbarElement || !showToolbar) return;
+
     // Measure actual button widths on first run
-    if (measuredButtonWidth === null || measuredMoreButtonWidth === null || measuredGapWidth === null) {
-      const toolButton = toolbarElement.querySelector('.tool-group button')
-      const moreButton = toolbarElement.querySelector('.more-button button')
-      const toolGroups = toolbarElement.querySelectorAll('.toolbar-left > .tool-group')
-      
+    if (
+      measuredButtonWidth === null ||
+      measuredMoreButtonWidth === null ||
+      measuredGapWidth === null
+    ) {
+      const toolButton = toolbarElement.querySelector(".tool-group button");
+      const moreButton = toolbarElement.querySelector(".more-button button");
+      const toolGroups = toolbarElement.querySelectorAll(
+        ".toolbar-left > .tool-group",
+      );
+
       if (toolButton) {
-        const rect = toolButton.getBoundingClientRect()
-        measuredButtonWidth = rect.width
+        const rect = toolButton.getBoundingClientRect();
+        measuredButtonWidth = rect.width;
       }
-      
+
       if (moreButton) {
-        const rect = moreButton.getBoundingClientRect()
-        measuredMoreButtonWidth = rect.width
+        const rect = moreButton.getBoundingClientRect();
+        measuredMoreButtonWidth = rect.width;
       }
-      
+
       // Measure gap by checking distance between two tool groups
       if (toolGroups.length >= 2) {
-        const firstGroup = toolGroups[0].getBoundingClientRect()
-        const secondGroup = toolGroups[1].getBoundingClientRect()
-        measuredGapWidth = secondGroup.left - firstGroup.right
+        const firstGroup = toolGroups[0].getBoundingClientRect();
+        const secondGroup = toolGroups[1].getBoundingClientRect();
+        measuredGapWidth = secondGroup.left - firstGroup.right;
       }
-      
+
       // If we couldn't measure, use fallback values and try again later
-      if (!measuredButtonWidth || !measuredMoreButtonWidth || !measuredGapWidth) {
-        measuredButtonWidth = 38
-        measuredMoreButtonWidth = 40
-        measuredGapWidth = 8
+      if (
+        !measuredButtonWidth ||
+        !measuredMoreButtonWidth ||
+        !measuredGapWidth
+      ) {
+        measuredButtonWidth = 38;
+        measuredMoreButtonWidth = 40;
+        measuredGapWidth = 8;
       }
     }
-    
-    const toolbarWidth = toolbarElement.clientWidth
-    const moreButtonWidth = measuredMoreButtonWidth || 40
-    const buttonWidth = measuredButtonWidth || 38
-    const gapWidth = measuredGapWidth || 8
-    
+
+    const toolbarWidth = toolbarElement.clientWidth;
+    const moreButtonWidth = measuredMoreButtonWidth || 40;
+    const buttonWidth = measuredButtonWidth || 38;
+    const gapWidth = measuredGapWidth || 8;
+
     // Calculate how many buttons we can fit
-    const totalButtons = flatButtons.length
-    
+    const totalButtons = flatButtons.length;
+
     // Calculate available space
-    const availableWidth = toolbarWidth - moreButtonWidth - gapWidth - 10 // 10px safety margin
-    
+    const availableWidth = toolbarWidth - moreButtonWidth - gapWidth - 10; // 10px safety margin
+
     // Estimate total width needed for all buttons
-    let estimatedWidth = 0
-    let lastGroupIndex = -1
-    
+    let estimatedWidth = 0;
+    let lastGroupIndex = -1;
+
     for (let i = 0; i < totalButtons; i++) {
-      const btn = flatButtons[i]
+      const btn = flatButtons[i];
       if (btn.groupIndex !== lastGroupIndex && i > 0) {
-        estimatedWidth += gapWidth // Add gap between groups
+        estimatedWidth += gapWidth; // Add gap between groups
       }
-      estimatedWidth += buttonWidth
-      lastGroupIndex = btn.groupIndex
+      estimatedWidth += buttonWidth;
+      lastGroupIndex = btn.groupIndex;
     }
-    
+
     // If everything fits, show all buttons
     if (estimatedWidth <= availableWidth) {
-      visibleButtonIndices = Array.from({ length: totalButtons }, (_, i) => i)
-      overflowButtons = []
-      return
+      visibleButtonIndices = Array.from({ length: totalButtons }, (_, i) => i);
+      overflowButtons = [];
+      return;
     }
-    
+
     // Calculate how many buttons we can fit with the More button
-    let visibleCount = 0
-    let currentWidth = moreButtonWidth + gapWidth
-    lastGroupIndex = -1
-    
+    let visibleCount = 0;
+    let currentWidth = moreButtonWidth + gapWidth;
+    lastGroupIndex = -1;
+
     for (let i = 0; i < totalButtons; i++) {
-      const btn = flatButtons[i]
-      const groupGap = (btn.groupIndex !== lastGroupIndex && i > 0) ? gapWidth : 0
-      const buttonSpace = buttonWidth + groupGap
-      
+      const btn = flatButtons[i];
+      const groupGap =
+        btn.groupIndex !== lastGroupIndex && i > 0 ? gapWidth : 0;
+      const buttonSpace = buttonWidth + groupGap;
+
       if (currentWidth + buttonSpace <= availableWidth) {
-        currentWidth += buttonSpace
-        visibleCount = i + 1
-        lastGroupIndex = btn.groupIndex
+        currentWidth += buttonSpace;
+        visibleCount = i + 1;
+        lastGroupIndex = btn.groupIndex;
       } else {
-        break
+        break;
       }
     }
-    
+
     // Build list of visible button indices
-    const newVisibleIndices: number[] = []
+    const newVisibleIndices: number[] = [];
     for (let i = 0; i < visibleCount; i++) {
-      newVisibleIndices.push(i)
+      newVisibleIndices.push(i);
     }
-    
-    visibleButtonIndices = newVisibleIndices
-    
+
+    visibleButtonIndices = newVisibleIndices;
+
     // Build overflow menu items (hidden buttons)
-    const newOverflow: Array<{ label: string; icon?: Component; onclick: () => void }> = []
-    
+    const newOverflow: Array<{
+      label: string;
+      icon?: Component;
+      onclick: () => void;
+    }> = [];
+
     for (let i = visibleCount; i < totalButtons; i++) {
-      const btn = flatButtons[i]
+      const btn = flatButtons[i];
       newOverflow.push({
         label: btn.label,
         icon: btn.icon,
-        onclick: btn.onclick
-      })
+        onclick: btn.onclick,
+      });
     }
-    
-    overflowButtons = newOverflow
+
+    overflowButtons = newOverflow;
   }
-  
+
   // Set up ResizeObserver for toolbar with debouncing
   $effect(() => {
     if (toolbarElement && showToolbar) {
       const resizeObserver = new ResizeObserver(() => {
         // Debounce the overflow check to prevent flickering
         if (resizeTimeoutId !== null) {
-          clearTimeout(resizeTimeoutId)
+          clearTimeout(resizeTimeoutId);
         }
-        
+
         resizeTimeoutId = window.setTimeout(() => {
-          checkToolbarOverflow()
-          resizeTimeoutId = null
-        }, 50) // 50ms debounce
-      })
-      
-      resizeObserver.observe(toolbarElement)
-      checkToolbarOverflow() // Initial check
-      
+          checkToolbarOverflow();
+          resizeTimeoutId = null;
+        }, 50); // 50ms debounce
+      });
+
+      resizeObserver.observe(toolbarElement);
+      checkToolbarOverflow(); // Initial check
+
       return () => {
-        resizeObserver.disconnect()
+        resizeObserver.disconnect();
         if (resizeTimeoutId !== null) {
-          clearTimeout(resizeTimeoutId)
+          clearTimeout(resizeTimeoutId);
         }
-      }
+      };
     }
-  })
+  });
 
   // Debug logging
   $effect(() => {
-    console.log('File type changed:', {
+    console.log("File type changed:", {
       fileName: selectedFile?.name,
       fileType: selectedFile?.type,
       isTypstFile,
-      isTextEditable
-    })
-  })
-
+      isTextEditable,
+    });
+  });
 </script>
 
 <div class="editor-pane">
   <!-- Action Toolbar - Dynamic with overflow detection -->
   {#if (selectedAsset || selectedFile) && showToolbar}
-    <div class="action-toolbar" class:has-more={overflowButtons.length > 0} bind:this={toolbarElement}>
+    <div
+      class="action-toolbar"
+      class:has-more={overflowButtons.length > 0}
+      bind:this={toolbarElement}
+    >
       <div class="toolbar-left">
-        {#each Object.entries(
-          visibleLeftButtons.reduce((groups: Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>, button: FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' }) => {
-            const key = button.groupIndex
-            if (!groups[key]) groups[key] = []
-            groups[key].push(button)
-            return groups
-          }, {} as Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>)
-        ) as [groupIndex, groupButtons]}
+        {#each Object.entries(visibleLeftButtons.reduce((groups: Record<number, (FlatButton & { position: "first" | "middle" | "last" | "standalone" })[]>, button: FlatButton & { position: "first" | "middle" | "last" | "standalone" }) => {
+              const key = button.groupIndex;
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(button);
+              return groups;
+            }, {} as Record<number, (FlatButton & { position: "first" | "middle" | "last" | "standalone" })[]>)) as [groupIndex, groupButtons]}
           <div class="tool-group">
             {#each groupButtons as button (button.id)}
-              <Tooltip text={button.label} position="bottom" shortcut={button.shortcut}>
-                <ToolButton 
-                  icon={button.icon} 
-                  onclick={button.onclick} 
+              <Tooltip
+                text={button.label}
+                position="bottom"
+                shortcut={button.shortcut}
+              >
+                <ToolButton
+                  icon={button.icon}
+                  onclick={button.onclick}
                   position={button.position}
                   strokeWidth={button.strokeWidth}
                 />
@@ -860,22 +1186,24 @@
           </div>
         {/each}
       </div>
-      
+
       <div class="toolbar-right">
-        {#each Object.entries(
-          visibleRightButtons.reduce((groups: Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>, button: FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' }) => {
-            const key = button.groupIndex
-            if (!groups[key]) groups[key] = []
-            groups[key].push(button)
-            return groups
-          }, {} as Record<number, (FlatButton & { position: 'first' | 'middle' | 'last' | 'standalone' })[]>)
-        ) as [groupIndex, groupButtons]}
+        {#each Object.entries(visibleRightButtons.reduce((groups: Record<number, (FlatButton & { position: "first" | "middle" | "last" | "standalone" })[]>, button: FlatButton & { position: "first" | "middle" | "last" | "standalone" }) => {
+              const key = button.groupIndex;
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(button);
+              return groups;
+            }, {} as Record<number, (FlatButton & { position: "first" | "middle" | "last" | "standalone" })[]>)) as [groupIndex, groupButtons]}
           <div class="tool-group">
             {#each groupButtons as button (button.id)}
-              <Tooltip text={button.label} position="bottom" shortcut={button.shortcut}>
-                <ToolButton 
-                  icon={button.icon} 
-                  onclick={button.onclick} 
+              <Tooltip
+                text={button.label}
+                position="bottom"
+                shortcut={button.shortcut}
+              >
+                <ToolButton
+                  icon={button.icon}
+                  onclick={button.onclick}
                   position={button.position}
                   strokeWidth={button.strokeWidth}
                 />
@@ -883,13 +1211,13 @@
             {/each}
           </div>
         {/each}
-        
+
         {#if overflowButtons.length > 0}
           <div class="more-button">
             <Tooltip text="More options" position="bottom">
-              <DropdownToolButton 
-                icon={MoreHorizontal} 
-                items={overflowButtons} 
+              <DropdownToolButton
+                icon={MoreHorizontal}
+                items={overflowButtons}
                 position="standalone"
                 buttonWidth="32px"
                 allowIconOverflow={false}
@@ -913,9 +1241,9 @@
             {ydoc}
             fileId={selectedFile.id}
             onTrackerReady={handleTrackerReady}
-             {diagnostics}
-             fileName={fileName}
-             {wrapLines}
+            {diagnostics}
+            {fileName}
+            {wrapLines}
           />
 
           {#if showCommentButton}
@@ -923,14 +1251,14 @@
               class="floating-comment-wrapper"
               style="position: absolute; top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"
             >
-            <Tooltip text="Add comment to selection">
-              <IconButton
-                icon={MessageSquarePlus}
-                variant="primary"
-                class="floating-comment-btn"
-                onclick={handleAddComment}
-              />
-            </Tooltip>
+              <Tooltip text="Add comment to selection">
+                <IconButton
+                  icon={MessageSquarePlus}
+                  variant="primary"
+                  class="floating-comment-btn"
+                  onclick={handleAddComment}
+                />
+              </Tooltip>
             </div>
           {/if}
         </div>
@@ -951,60 +1279,81 @@
   {#if selectedAsset}
     <div class="asset-preview">
       <div class="preview-content">
-        {#if onGetAssetBlob}
-          {#if safeBlobUrl}
-            {#if isImage(selectedAsset.mime_type)}
-              <img src={safeBlobUrl} alt={selectedAsset.filename} />
-            {:else if isPdf(selectedAsset.mime_type)}
-              <iframe src={safeBlobUrl} title={selectedAsset.filename}></iframe>
+        <div class="asset-display">
+          {#if onGetAssetBlob}
+            {#if safeBlobUrl}
+              {#if isImage(selectedAsset.mime_type)}
+                <img
+                  src={safeBlobUrl}
+                  alt={selectedAsset.filename}
+                  onload={handleImageLoad}
+                />
+              {:else if isPdf(selectedAsset.mime_type)}
+                <iframe src={safeBlobUrl} title={selectedAsset.filename}
+                ></iframe>
+              {:else}
+                <div class="no-preview">
+                  <p>No preview available for this file type</p>
+                  <a
+                    href={safeBlobUrl}
+                    download={selectedAsset.filename}
+                    class="download-link"
+                  >
+                    Download {selectedAsset.filename}
+                  </a>
+                </div>
+              {/if}
             {:else}
-              <div class="no-preview">
-                <p>No preview available for this file type</p>
-                <a href={safeBlobUrl} download={selectedAsset.filename} class="download-link">
-                  Download {selectedAsset.filename}
-                </a>
+              <div class="loading-preview">
+                <p>Loading preview...</p>
               </div>
             {/if}
+          {:else if onGetAssetUrl}
+            {#await onGetAssetUrl(selectedAsset.id)}
+              <div class="loading-preview">
+                <p>Loading preview...</p>
+              </div>
+            {:then assetUrl}
+              {#if isImage(selectedAsset.mime_type)}
+                <img
+                  src={assetUrl}
+                  alt={selectedAsset.filename}
+                  onload={handleImageLoad}
+                />
+              {:else if isPdf(selectedAsset.mime_type)}
+                <iframe src={assetUrl} title={selectedAsset.filename}></iframe>
+              {:else}
+                <div class="no-preview">
+                  <p>No preview available for this file type</p>
+                  <a
+                    href={assetUrl}
+                    download={selectedAsset.filename}
+                    class="download-link"
+                  >
+                    Download {selectedAsset.filename}
+                  </a>
+                </div>
+              {/if}
+            {:catch}
+              <div class="no-preview">
+                <p>Failed to load preview</p>
+              </div>
+            {/await}
           {:else}
-            <div class="loading-preview">
-              <p>Loading preview...</p>
+            <div class="no-preview">
+              <p>No preview handler available</p>
             </div>
           {/if}
-        {:else if onGetAssetUrl}
-          {#await onGetAssetUrl(selectedAsset.id)}
-            <div class="loading-preview">
-              <p>Loading preview...</p>
-            </div>
-          {:then assetUrl}
-            {#if isImage(selectedAsset.mime_type)}
-              <img src={assetUrl} alt={selectedAsset.filename} />
-            {:else if isPdf(selectedAsset.mime_type)}
-              <iframe src={assetUrl} title={selectedAsset.filename}></iframe>
-            {:else}
-              <div class="no-preview">
-                <p>No preview available for this file type</p>
-                <a href={assetUrl} download={selectedAsset.filename} class="download-link">
-                  Download {selectedAsset.filename}
-                </a>
-              </div>
-            {/if}
-          {:catch}
-            <div class="no-preview">
-              <p>Failed to load preview</p>
-            </div>
-          {/await}
-        {:else}
-          <div class="no-preview">
-            <p>No preview handler available</p>
-          </div>
-        {/if}
+        </div>
+
+        <AssetMetadata asset={selectedAsset} {imageDimensions} />
       </div>
     </div>
   {/if}
 
   {#if !selectedFile && !selectedAsset}
     <div class="no-selection">
-      <p>{!isConnected ? 'Connecting...' : 'Select a file to start editing'}</p>
+      <p>{!isConnected ? "Connecting..." : "Select a file to start editing"}</p>
     </div>
   {/if}
 </div>
@@ -1048,17 +1397,17 @@
     border-top-right-radius: 8px;
     overflow: visible;
   }
-  
+
   .action-toolbar.has-more {
     padding-right: 0;
   }
-  
+
   .toolbar-left {
     display: flex;
     gap: 8px;
     align-items: center;
   }
-  
+
   .toolbar-right {
     display: flex;
     gap: 8px;
@@ -1070,7 +1419,7 @@
     display: flex;
     align-items: center;
   }
-  
+
   .more-button {
     display: flex;
     align-items: center;
@@ -1111,8 +1460,34 @@
     overflow: auto;
     background: var(--bg-primary);
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: var(--space-8) var(--space-12);
+    padding-top: 15vh;
+    gap: var(--space-6);
+  }
+
+  .asset-display {
+    display: flex;
     align-items: center;
     justify-content: center;
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+
+  .asset-display img {
+    max-width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+    border-radius: 1px;
+  }
+
+  .asset-display iframe {
+    width: 100%;
+    height: 60vh;
+    border: none;
+    border-radius: 1px;
   }
 
   .preview-content img {
