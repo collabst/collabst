@@ -1176,6 +1176,17 @@
     });
 
     separateWindow.addEventListener("beforeunload", closeSeparatePreview);
+
+    // Subscribe to theme changes to update separate window
+    theme.subscribe(value => {
+      if (separateWindow && !separateWindow.closed) {
+        separateWindow.document.documentElement.setAttribute('data-theme', value);
+
+        // Also set theme for preview iframe if it exists
+        const previewIFrame = separateWindow.document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+        previewIFrame?.contentDocument?.documentElement.setAttribute('data-theme', value);
+      }
+    });
   }
 
   function closeSeparatePreview() {
@@ -1183,6 +1194,34 @@
       separateWindow.close();
     }
     separateWindow = null;
+  }
+
+  function toggleNegativePreview() {
+    negativePreview = !negativePreview;
+
+    // Apply negative class to preview svg
+    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+    const typstApp = previewIframe?.contentDocument?.querySelector('#typst-app')
+    if (typstApp) {
+      if (negativePreview) {
+        typstApp.classList.add('negative');
+      } else {
+        typstApp.classList.remove('negative');
+      }
+    }
+
+    // Apply negative class to separate window if open
+    if (separateWindow && !separateWindow.closed) {
+      const previewIframe = separateWindow.document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+      const typstApp = previewIframe?.contentDocument?.querySelector('#typst-app');
+      if (typstApp) {
+        if (negativePreview) {
+          typstApp.classList.add('negative');
+        } else {
+          typstApp.classList.remove('negative');
+        }
+      }
+    }
   }
 </script>
 
@@ -1234,14 +1273,13 @@
           onSelectAll={handleSelectAll}
           onToggleLineComment={handleToggleLineComment}
           onToggleBlockComment={handleToggleBlockComment}
-          onAddComment={() => console.log("Add comment - to be implemented")}
-          onShowToolbar={() => (showToolbar = !showToolbar)}
-          onScrollOnType={() =>
-            console.log("Scroll on type - to be implemented")}
-          onWrapLines={() => (wrapLines = !wrapLines)}
-          onThemeLight={() => theme.set("light")}
-          onThemeDark={() => theme.set("dark")}
-          onNegativePreview={() => (negativePreview = !negativePreview)}
+          onAddComment={() => console.log('Add comment - to be implemented')}
+          onShowToolbar={() => showToolbar = !showToolbar}
+          onScrollOnType={() => console.log('Scroll on type - to be implemented')}
+          onWrapLines={() => wrapLines = !wrapLines}
+          onThemeLight={() => theme.set('light')}
+          onThemeDark={() => theme.set('dark')}
+          onNegativePreview={toggleNegativePreview}
           {wrapLines}
           {negativePreview}
           {showToolbar}

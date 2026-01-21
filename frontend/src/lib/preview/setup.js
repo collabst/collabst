@@ -5,6 +5,7 @@ const setupBridge = () => {
     doc.setPartialRendering(true)
     setupZoomHook();
     updateThemeFromParent();
+    updateNegativePreviewFromStorage();
   } else {
     // Retry if document not ready yet
     setTimeout(setupBridge, 100);
