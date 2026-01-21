@@ -28,10 +28,9 @@
 
   interface FindProps {
     view: EditorView;
-    onComponentMount?: (instance: { focus: () => void }) => void;
   }
 
-  let { view, onComponentMount }: FindProps = $props();
+  let { view }: FindProps = $props();
 
   let searchInput: HTMLInputElement | undefined;
   let replaceInput: HTMLInputElement | undefined;
@@ -50,10 +49,6 @@
     tick().then(() => {
       searchInput?.select();
     });
-    // Provide focus method to parent
-    if (onComponentMount) {
-      onComponentMount({ focus });
-    }
   });
 
   // Update search when any parameter changes
@@ -127,13 +122,6 @@
 
   function close() {
     closeSearchPanel(view);
-  }
-
-  export function focus() {
-    if (searchInput) {
-      searchInput.focus();
-      searchInput.select();
-    }
   }
 </script>
 
