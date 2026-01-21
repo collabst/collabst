@@ -11,6 +11,6 @@
   --typst-preview-background-color: var(--bg-preview);
 }
 
-#typst-app.negative > svg{
+[data-theme="dark"] #typst-app.negative > svg{
   filter: invert(1) hue-rotate(180deg);
 }

@@ -423,6 +423,7 @@
           workerReady = true;
           status = 'Compiler ready - waiting for iframe...';
           // The iframe will signal when the mock is ready via handleIframeMessage
+          syncFilesAndAssets();
           break;
 
         case 'compiled':
