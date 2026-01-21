@@ -168,26 +168,26 @@
 /* === Dark Theme === */
 [data-theme="dark"] {
   /* Background Colors - Monochromatic greys matching projects page */
-  --bg-primary: #1e1e1e;
+  --bg-primary: #1d1d1d;
   --bg-secondary: #252526;
   --bg-tertiary: #2d2d30;
   --bg-elevated: #323233;
   --bg-overlay: rgba(0, 0, 0, 0.8);
   --bg-canvas: #252526;
   /* Canvas - slightly lighter than primary */
-  --bg-input: #1e1e1e;
+  --bg-input: #1d1d1d;
   /* Input background */
 
   /* Specific Component Backgrounds - Lightest to Darkest */
   --bg-editor: #252526;
   /* Editor code - lightest */
-  --bg-file-panel: #181818;
+  --bg-file-panel: #161616;
   /* File list - darker than background */
-  --bg-top-bar: #1e1e1e;
+  --bg-top-bar: #1d1d1d;
   /* Top bar - same as file panel */
   --bg-comments-panel: #1a1a1a;
   /* Comments panel - darkest */
-  --bg-preview: #181818;
+  --bg-preview: #161616;
   /* Preview pane background */
   --bg-typst-doc: #ffffff;
   /* Typst document background */
@@ -204,7 +204,7 @@
   --text-secondary: #9d9d9d;
   --text-tertiary: #6e6e6e;
   --text-disabled: #5a5a5a;
-  --text-inverse: #1e1e1e;
+  --text-inverse: #1d1d1d;
   --text-active: #ffffff;
 
   /* Border Colors */
@@ -226,7 +226,7 @@
   --color-error-text: #fca5a5;
 
   /* Scrollbar colors for dark mode */
-  --scrollbar-track: #1e1e1e;
+  --scrollbar-track: #1d1d1d;
   --scrollbar-thumb: #3e3e42;
   --scrollbar-thumb-hover: #4a4a4e;
 
