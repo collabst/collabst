@@ -75,6 +75,7 @@
 
   .profile-btn:hover {
     color: var(--text-primary);
+    transform: scale(1.04);
   }
 
   .profile-btn:active {
