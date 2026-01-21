@@ -359,10 +359,6 @@
   --color-warning-glow: rgba(217, 119, 6, 0.5);
   --color-hint-glow: rgba(30, 58, 138, 0.4);
   --color-info-glow: rgba(30, 58, 138, 0.4);
-  --color-hint: #1e40af;
-  --color-info: #1e40af;
-  --color-warning: #92400e;
-  --color-error: #991b1b;
 
   /* Dropdown Menu Styling - Light Theme */
   --dropdown-transparency: 0.3;

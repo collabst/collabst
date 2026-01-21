@@ -57,19 +57,19 @@
   .notification-info {
     background: var(--color-info-bg);
     color: var(--color-info-text);
-    border: 1px solid var(--color-info);
+    border: 1px solid var(--color-info-text);
   }
 
   .notification-warning {
     background: var(--color-warning-bg);
     color: var(--color-warning-text);
-    border: 1px solid var(--color-warning);
+    border: 1px solid var(--color-warning-text);
   }
 
   .notification-error {
     background: var(--color-error-bg);
     color: var(--color-error-text);
-    border: 1px solid var(--color-error);
+    border: 1px solid var(--color-error-text);
   }
 
   .notification-close {
