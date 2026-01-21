@@ -22,19 +22,14 @@
   export let onSetPreview: (() => void) | undefined = undefined;
   export let onRename: ((newName: string) => Promise<void>) | null = null;
   export let onToggleFolder: (() => void) | undefined = undefined;
-  export let onMoveFile:
-    | ((fileId: number, targetFolderId: number | null) => void)
-    | undefined = undefined;
-  export let onMoveAsset:
-    | ((assetId: number, targetFolderId: number | null) => void)
-    | undefined = undefined;
+  export let onDragStart: (() => void) | undefined = undefined;
+  export let onDragEnd: (() => void) | undefined = undefined;
   export let usersViewing: { name: string; color: string }[] = [];
 
   let isEditing = false;
   let editingName = "";
   let inputElement: HTMLInputElement;
   let isSubmitting = false;
-  let isDragOver = false;
 
   function handleDragStart(e: DragEvent) {
     if (!e.dataTransfer) return;
@@ -54,63 +49,21 @@
     if (e.target instanceof HTMLElement) {
       e.target.classList.add("dragging");
     }
+
+    // Notify parent
+    if (onDragStart) {
+      onDragStart();
+    }
   }
 
   function handleDragEnd(e: DragEvent) {
     if (e.target instanceof HTMLElement) {
       e.target.classList.remove("dragging");
     }
-    isDragOver = false;
-  }
 
-  function handleDragOver(e: DragEvent) {
-    // Allow drop on any item (folders, files, or assets)
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = "move";
-    }
-    isDragOver = true;
-  }
-
-  function handleDragLeave() {
-    isDragOver = false;
-  }
-
-  function handleDrop(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation(); // Stop event from bubbling to parent
-    isDragOver = false;
-
-    if (!e.dataTransfer) return;
-
-    try {
-      const data = JSON.parse(e.dataTransfer.getData("application/json"));
-
-      // Don't allow dropping onto self
-      if (data.id === item.id && data.isAsset === isAsset(item)) return;
-
-      // Determine target parent:
-      // - If dropping on a folder: use the folder's id
-      // - If dropping on a file/asset: use the same parent (item.parent_id)
-      let targetParentId: number | null;
-      if ("is_folder" in item && item.is_folder) {
-        targetParentId = item.id;
-      } else {
-        targetParentId = "parent_id" in item ? item.parent_id : null;
-      }
-
-      // Move the file/folder/asset to the target parent
-      if (data.isAsset) {
-        if (onMoveAsset) {
-          onMoveAsset(data.id, targetParentId);
-        }
-      } else {
-        if (onMoveFile) {
-          onMoveFile(data.id, targetParentId);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to parse drag data:", error);
+    // Notify parent
+    if (onDragEnd) {
+      onDragEnd();
     }
   }
 
@@ -240,23 +193,18 @@
   class:active={isSelected}
   class:asset={isAsset(item)}
   class:folder={"is_folder" in item && item.is_folder}
-  class:drag-over={isDragOver}
   style="padding-left: {'level' in item
     ? `${item.level * 1.5 + 0.5}rem`
     : '0.5rem'}"
   draggable={!isEditing}
   on:dragstart={handleDragStart}
   on:dragend={handleDragEnd}
-  on:dragover={handleDragOver}
-  on:dragleave={handleDragLeave}
-  on:drop={handleDrop}
   on:click={() => {
-    // If it's a folder and has toggle handler, just toggle
+    // Always call onSelect to track last clicked item
+    onSelect();
+    // Additionally toggle folder if it's a folder
     if ("is_folder" in item && item.is_folder && onToggleFolder) {
       onToggleFolder();
-    } else {
-      // Otherwise select the file/asset
-      onSelect();
     }
   }}
   on:dblclick={handleDoubleClick}
@@ -297,7 +245,7 @@
               class="user-dot"
               style="background-color: {user.color}; color: {user.color};"
               title="{user.name} is viewing"
-            />
+            ></div>
           {/each}
         </div>
       {/if}
@@ -305,6 +253,20 @@
         <Tooltip text={isPreview ? "Preview enabled" : "Preview this file"}>
           <button class="preview-btn" on:click|stopPropagation={onSetPreview}>
             <svelte:component this={isPreview ? Eye : EyeOff} size={16} />
+          </button>
+        </Tooltip>
+      {/if}
+      {#if "is_folder" in item && item.is_folder}
+        <Tooltip text={item.isExpanded ? "Collapse folder" : "Expand folder"}>
+          <button
+            class="chevron-btn"
+            on:click|stopPropagation={() => onToggleFolder?.()}
+            aria-label={item.isExpanded ? "Collapse folder" : "Expand folder"}
+          >
+            <svelte:component
+              this={item.isExpanded ? ChevronDown : ChevronRight}
+              size={16}
+            />
           </button>
         </Tooltip>
       {/if}
@@ -353,37 +315,25 @@
     opacity: 0.5;
   }
 
-  .file-item.drag-over {
-    background: var(--primary-opacity-10);
-    outline: 2px solid var(--primary);
-    outline-offset: -2px;
-    border-radius: var(--radius-sm);
-  }
-
-  .chevron {
-    flex-shrink: 0;
+  .chevron-btn {
     background: transparent;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 0;
+    padding: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    border-radius: 50px;
   }
 
-  .chevron:hover {
-    background: var(--surface-hover);
+  .chevron-btn:hover {
     color: var(--text-primary);
   }
 
-  .chevron-spacer {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
+  .chevron-btn:active {
+    color: var(--text-active);
   }
 
   .icon {

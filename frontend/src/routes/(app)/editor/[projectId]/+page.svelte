@@ -1,63 +1,81 @@
 <script lang="ts">
-  import { mount, onMount, onDestroy } from 'svelte'
-  import { goto } from '$app/navigation'
-  import { page } from '$app/stores'
-  import { browser } from '$app/environment'
-  import { projectsApi, filesApi, assetsApi } from '$lib/services/api'
-  import { createProjectYjs, destroyYjsConnection, getFileText } from '$lib/yjs'
-  import { createProjectSync } from '$lib/projectSync'
-  import { auth } from '$lib/stores/auth'
-  import { notifications } from '$lib/stores/notifications'
-  import { theme } from '$lib/stores/theme'
-  import { ThemeToggle, ProfileMenu, IconButton, Tooltip, MenuBar } from '$lib/components/ui'
-  import Home from '@lucide/svelte/icons/home'
-  import ActivityBar from '$lib/components/editor/ActivityBar.svelte'
-  import FileTree from '$lib/components/editor/FileTree.svelte'
-  import PlaceholderPanel from '$lib/components/editor/PlaceholderPanel.svelte'
-  import SettingsPanel from '$lib/components/editor/SettingsPanel.svelte'
-  import EditorPane from '$lib/components/editor/EditorPane.svelte'
-  import CreateFileModal from '$lib/components/editor/CreateFileModal.svelte'
-  import CreateFolderModal from '$lib/components/editor/CreateFolderModal.svelte'
-  import DeleteConfirmModal from '$lib/components/editor/DeleteConfirmModal.svelte'
-  import UploadAssetModal from '$lib/components/editor/UploadAssetModal.svelte'
-  import CollaboratorsPanel from '$lib/components/editor/CollaboratorsPanel.svelte'
-  import UserPresence from '$lib/components/editor/UserPresence.svelte'
-  import type { Project, File as ProjectFile, Asset, Diagnostic } from '$lib/types'
-  import type { YjsConnection } from '$lib/yjs'
-  import PreviewPane from '$lib/components/editor/PreviewPane.svelte'
-  import { convertDiagnosticsToLint, parseRange } from '$lib/preview/diagnostics'
-  import { setDiagnostics } from '@codemirror/lint'
-  import IssuesPanel from '$lib/components/editor/IssuesPanel.svelte'
-  import SearchPanel from '$lib/components/editor/SearchPanel.svelte';
-  import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
+  import { mount, onMount, onDestroy } from "svelte";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { browser } from "$app/environment";
+  import { projectsApi, filesApi, assetsApi } from "$lib/services/api";
+  import {
+    createProjectYjs,
+    destroyYjsConnection,
+    getFileText,
+  } from "$lib/yjs";
+  import { createProjectSync } from "$lib/projectSync";
+  import { auth } from "$lib/stores/auth";
+  import { notifications } from "$lib/stores/notifications";
+  import { theme } from "$lib/stores/theme";
+  import {
+    ThemeToggle,
+    ProfileMenu,
+    Tooltip,
+    MenuBar,
+  } from "$lib/components/ui";
+  import Home from "@lucide/svelte/icons/home";
+  import ActivityBar from "$lib/components/editor/ActivityBar.svelte";
+  import FileTree from "$lib/components/editor/FileTree.svelte";
+  import PlaceholderPanel from "$lib/components/editor/PlaceholderPanel.svelte";
+  import SettingsPanel from "$lib/components/editor/SettingsPanel.svelte";
+  import EditorPane from "$lib/components/editor/EditorPane.svelte";
+  import DeleteConfirmModal from "$lib/components/editor/DeleteConfirmModal.svelte";
+  import UploadAssetModal from "$lib/components/editor/UploadAssetModal.svelte";
+  import CollaboratorsPanel from "$lib/components/editor/CollaboratorsPanel.svelte";
+  import UserPresence from "$lib/components/editor/UserPresence.svelte";
+  import type {
+    Project,
+    File as ProjectFile,
+    Asset,
+    Diagnostic,
+  } from "$lib/types";
+  import type { YjsConnection } from "$lib/yjs";
+  import PreviewPane from "$lib/components/editor/PreviewPane.svelte";
+  import {
+    convertDiagnosticsToLint,
+    parseRange,
+  } from "$lib/preview/diagnostics";
+  import { setDiagnostics } from "@codemirror/lint";
+  import IssuesPanel from "$lib/components/editor/IssuesPanel.svelte";
+  import SearchPanel from "$lib/components/editor/SearchPanel.svelte";
+  import { saveLayoutState, loadLayoutState } from "$lib/utils/layoutStorage";
   import {
     initAssetCache,
     getCachedAsset,
     cacheAsset,
     removeCachedAsset,
     createBlobUrl,
-    revokeBlobUrl
-  } from '$lib/utils/assetCache';
-  import SeparatePreview from '$lib/components/editor/SeparatePreview.svelte';
+    revokeBlobUrl,
+  } from "$lib/utils/assetCache";
+  import SeparatePreview from "$lib/components/editor/SeparatePreview.svelte";
 
-  let projectId = $derived($page.params.projectId)
+  let projectId = $derived($page.params.projectId);
 
-  let project = $state<Project | null>(null)
-  let files = $state<ProjectFile[]>([])
-  let assets = $state<Asset[]>([])
-  let selectedFile = $state<ProjectFile | null>(null)
-  let selectedAsset = $state<Asset | null>(null)
-  let previewFileId = $state<number | null>(null)
-  let showCreateFileModal = $state(false)
-  let showCreateFolderModal = $state(false)
-  let showUploadAssetModal = $state(false)
-  let showDeleteModal = $state(false)
-  let deleteTarget = $state<{ type: 'file' | 'asset'; id: number; name: string } | null>(null)
-  let showCollaborators = false
-  let fileTreeHasFocus = $state(false)
-  let isEditingProjectName = $state(false)
-  let editingProjectName = $state('')
-  let projectNameInput = $state<HTMLInputElement | undefined>()
+  let project = $state<Project | null>(null);
+  let files = $state<ProjectFile[]>([]);
+  let assets = $state<Asset[]>([]);
+  let selectedFile = $state<ProjectFile | null>(null);
+  let selectedAsset = $state<Asset | null>(null);
+  let previewFileId = $state<number | null>(null);
+  let showUploadAssetModal = $state(false);
+  let showDeleteModal = $state(false);
+  let deleteTarget = $state<{
+    type: "file" | "asset";
+    id: number;
+    name: string;
+    isFolder?: boolean;
+  } | null>(null);
+  let showCollaborators = false;
+  let fileTreeHasFocus = $state(false);
+  let isEditingProjectName = $state(false);
+  let editingProjectName = $state("");
+  let projectNameInput = $state<HTMLInputElement | undefined>();
   let renderSession: any = $state(null);
   let exportAsPDF = $state<() => void>(() => {});
   let exportAsPNG = $state<() => void>(() => {});
@@ -66,49 +84,51 @@
 
   // Load toggle states from localStorage with defaults
   let wrapLines = $state(
-    browser && localStorage.getItem('editor.wrapLines') !== null
-      ? localStorage.getItem('editor.wrapLines') === 'true'
-      : true
-  )
+    browser && localStorage.getItem("editor.wrapLines") !== null
+      ? localStorage.getItem("editor.wrapLines") === "true"
+      : true,
+  );
   let negativePreview = $state(
-    browser && localStorage.getItem('editor.negativePreview') !== null
-      ? localStorage.getItem('editor.negativePreview') === 'true'
-      : false
-  )
+    browser && localStorage.getItem("editor.negativePreview") !== null
+      ? localStorage.getItem("editor.negativePreview") === "true"
+      : false,
+  );
   let showToolbar = $state(
-    browser && localStorage.getItem('editor.showToolbar') !== null
-      ? localStorage.getItem('editor.showToolbar') === 'true'
-      : true
-  )
-  
+    browser && localStorage.getItem("editor.showToolbar") !== null
+      ? localStorage.getItem("editor.showToolbar") === "true"
+      : true,
+  );
+
   // Load layout state from localStorage
   const savedLayout = browser ? loadLayoutState() : null;
-  
+
   // Panel widths for resizable panels
-  let leftPanelWidth = $state(savedLayout?.leftPanelWidth ?? 250) // Default width in pixels
-  let editorPanelWidth = 0 // Will be calculated
-  let previewPanelWidth = $state(0) // Will be calculated
-  const MIN_PANEL_WIDTH = 200 // Minimum width for any panel
-  const ACTIVITY_BAR_WIDTH = 56 // Fixed activity bar width
-  
+  let leftPanelWidth = $state(savedLayout?.leftPanelWidth ?? 250); // Default width in pixels
+  let editorPanelWidth = 0; // Will be calculated
+  let previewPanelWidth = $state(0); // Will be calculated
+  const MIN_PANEL_WIDTH = 200; // Minimum width for any panel
+  const ACTIVITY_BAR_WIDTH = 56; // Fixed activity bar width
+
   // Initialize active panel based on saved state
-  let activePanel = $state<string | null>(savedLayout?.leftPanelVisible ? 'files' : null)
-  
-  let isResizingLeft = false
-  let isResizingRight = false
-  let resizeStartX = 0
-  let resizeStartWidth = 0
-  let editorPane: any = $state(null) // Reference to EditorPane component
+  let activePanel = $state<string | null>(
+    savedLayout?.leftPanelVisible ? "files" : null,
+  );
+
+  let isResizingLeft = false;
+  let isResizingRight = false;
+  let resizeStartX = 0;
+  let resizeStartWidth = 0;
+  let editorPane: any = $state(null); // Reference to EditorPane component
 
   function handleActivityClick(activityId: string) {
     // Toggle: if clicking the same panel, close it; otherwise open the new panel
     if (activePanel === activityId) {
-      activePanel = null
+      activePanel = null;
     } else {
-      activePanel = activityId
+      activePanel = activityId;
     }
   }
-  
+
   // Save left panel state when it changes
   $effect(() => {
     if (browser) {
@@ -118,348 +138,365 @@
       });
     }
   });
-  
+
   function handleLeftResizeStart(e: MouseEvent) {
-    if (!activePanel) return
-    isResizingLeft = true
-    resizeStartX = e.clientX
-    resizeStartWidth = leftPanelWidth
-    e.preventDefault()
+    if (!activePanel) return;
+    isResizingLeft = true;
+    resizeStartX = e.clientX;
+    resizeStartWidth = leftPanelWidth;
+    e.preventDefault();
   }
-  
+
   function handleRightResizeStart(e: MouseEvent) {
-    isResizingRight = true
-    resizeStartX = e.clientX
-    resizeStartWidth = previewPanelWidth
-    e.preventDefault()
+    isResizingRight = true;
+    resizeStartX = e.clientX;
+    resizeStartWidth = previewPanelWidth;
+    e.preventDefault();
   }
-  
+
   function handleMouseMove(e: MouseEvent) {
     if (isResizingLeft) {
-      const delta = e.clientX - resizeStartX
-      const newWidth = resizeStartWidth + delta
-      
+      const delta = e.clientX - resizeStartX;
+      const newWidth = resizeStartWidth + delta;
+
       // Calculate available space: total width - activity bar - left panel - preview panel - resize handles - right padding
-      const totalWidth = window.innerWidth
-      const usedWidth = ACTIVITY_BAR_WIDTH + newWidth + previewPanelWidth + 12 + 12 + 16 // 12px per resize handle + 16px right padding
-      const editorWidth = totalWidth - usedWidth
-      
+      const totalWidth = window.innerWidth;
+      const usedWidth =
+        ACTIVITY_BAR_WIDTH + newWidth + previewPanelWidth + 12 + 12 + 16; // 12px per resize handle + 16px right padding
+      const editorWidth = totalWidth - usedWidth;
+
       // Only allow resize if editor maintains minimum width
       if (editorWidth >= MIN_PANEL_WIDTH) {
-        leftPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth)
+        leftPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth);
       }
     } else if (isResizingRight) {
-      const delta = resizeStartX - e.clientX // Inverted for right panel
-      const newWidth = resizeStartWidth + delta
-      
+      const delta = resizeStartX - e.clientX; // Inverted for right panel
+      const newWidth = resizeStartWidth + delta;
+
       // Calculate available space: total width - activity bar - left panel - preview panel - resize handles - right padding
-      const totalWidth = window.innerWidth
-      const usedWidth = ACTIVITY_BAR_WIDTH + leftPanelWidth + newWidth + 12 + 12 + 16 // 12px per resize handle + 16px right padding
-      const editorWidth = totalWidth - usedWidth
-      
+      const totalWidth = window.innerWidth;
+      const usedWidth =
+        ACTIVITY_BAR_WIDTH + leftPanelWidth + newWidth + 12 + 12 + 16; // 12px per resize handle + 16px right padding
+      const editorWidth = totalWidth - usedWidth;
+
       // Only allow resize if editor maintains minimum width
       if (editorWidth >= MIN_PANEL_WIDTH) {
-        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth)
-        
+        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, newWidth);
+
         // Save editor/preview ratio
         if (browser) {
-          const availableWidth = totalWidth - ACTIVITY_BAR_WIDTH - (activePanel ? leftPanelWidth + 12 : 0) - 24 - 16;
+          const availableWidth =
+            totalWidth -
+            ACTIVITY_BAR_WIDTH -
+            (activePanel ? leftPanelWidth + 12 : 0) -
+            24 -
+            16;
           const ratio = (availableWidth - previewPanelWidth) / availableWidth;
           saveLayoutState({ editorPreviewRatio: ratio });
         }
       }
     }
   }
-  
+
   function handleMouseUp() {
-    isResizingLeft = false
-    isResizingRight = false
+    isResizingLeft = false;
+    isResizingRight = false;
   }
 
   // Editor action handlers
   function handleUndo() {
     if (editorPane && !selectedAsset) {
-      editorPane.undo()
+      editorPane.undo();
     }
   }
 
   function handleRedo() {
     if (editorPane && !selectedAsset) {
-      editorPane.redo()
+      editorPane.redo();
     }
   }
 
   function handleSelectAll() {
     if (editorPane && !selectedAsset) {
-      editorPane.selectAll()
+      editorPane.selectAll();
     }
   }
 
   function handleSearchReplace() {
     if (editorPane && !selectedAsset) {
-      editorPane.openSearch()
+      editorPane.openSearch();
     }
   }
 
   function handleToggleLineComment() {
     if (editorPane && !selectedAsset) {
-      editorPane.toggleLineComment()
+      editorPane.toggleLineComment();
     }
   }
 
   function handleToggleBlockComment() {
     if (editorPane && !selectedAsset) {
-      editorPane.toggleBlockComment()
+      editorPane.toggleBlockComment();
     }
   }
 
-  let isViewingAsset = $derived(!!selectedAsset)
+  let isViewingAsset = $derived(!!selectedAsset);
 
-  let yjsConnection = $state<YjsConnection | null>(null)
-  let projectSync: any = null
-  let isConnected = $state(false)
-  let isSynced = false
-  let isLocalSynced = false
-  let hasConnectedBefore = false
+  let yjsConnection = $state<YjsConnection | null>(null);
+  let projectSync: any = null;
+  let isConnected = $state(false);
+  let isSynced = false;
+  let isLocalSynced = false;
+  let hasConnectedBefore = false;
 
   // Watch connection status changes
   $effect(() => {
     if (browser) {
       if (isConnected && hasConnectedBefore) {
-        notifications.show('Reconnected. Syncing changes...', 'info')
+        notifications.show("Reconnected. Syncing changes...", "info");
       } else if (!isConnected && hasConnectedBefore) {
-        notifications.show('Connection lost. Changes will sync when reconnected.', 'warning')
+        notifications.show(
+          "Connection lost. Changes will sync when reconnected.",
+          "warning",
+        );
       }
-      
+
       if (isConnected) {
-        hasConnectedBefore = true
+        hasConnectedBefore = true;
       }
     }
-  })
+  });
 
   // Save toggle states to localStorage
   $effect(() => {
     if (browser) {
-      localStorage.setItem('editor.wrapLines', String(wrapLines))
+      localStorage.setItem("editor.wrapLines", String(wrapLines));
     }
-  })
+  });
 
   $effect(() => {
     if (browser) {
-      localStorage.setItem('editor.negativePreview', String(negativePreview))
+      localStorage.setItem("editor.negativePreview", String(negativePreview));
     }
-  })
+  });
 
   $effect(() => {
     if (browser) {
-      localStorage.setItem('editor.showToolbar', String(showToolbar))
+      localStorage.setItem("editor.showToolbar", String(showToolbar));
     }
-  })
+  });
 
   async function loadProject() {
     try {
-      project = await projectsApi.get(Number(projectId))
+      project = await projectsApi.get(Number(projectId));
     } catch (error) {
-      console.error('Failed to load project:', error)
+      console.error("Failed to load project:", error);
     }
   }
 
   async function loadFiles() {
     try {
-      const data = await filesApi.list(Number(projectId))
-      files = data
-      
+      const data = await filesApi.list(Number(projectId));
+      files = data;
+
       // If project has no files, create main.typ automatically
       if (data.length === 0) {
         try {
           const mainFile = await filesApi.create(
             Number(projectId),
-            'main.typ',
-            '/',
-            'typst',
-            '',
-            null
-          )
-          files = [mainFile]
-          selectedFile = mainFile
+            "main.typ",
+            "/",
+            "typst",
+            "",
+            null,
+          );
+          files = [mainFile];
+          selectedFile = mainFile;
           // Set it as the preview file
-          handleSetPreviewFile(mainFile.id)
-          return
+          handleSetPreviewFile(mainFile.id);
+          return;
         } catch (error) {
-          console.error('Failed to create initial main.typ file:', error)
+          console.error("Failed to create initial main.typ file:", error);
         }
       }
-      
+
       if (data.length > 0 && !selectedFile) {
         // Select preview file if set, otherwise select first file
         if (previewFileId) {
-          selectedFile = data.find(f => f.id === previewFileId) || data[0]
+          selectedFile = data.find((f) => f.id === previewFileId) || data[0];
         } else {
-          selectedFile = data[0]
+          selectedFile = data[0];
         }
       }
     } catch (error) {
-      console.error('Failed to load files:', error)
+      console.error("Failed to load files:", error);
     }
   }
 
   async function loadAssets() {
     try {
-      const data = await assetsApi.list(Number(projectId))
-      assets = data
+      const data = await assetsApi.list(Number(projectId));
+      assets = data;
     } catch (error) {
-      console.error('Failed to load assets:', error)
+      console.error("Failed to load assets:", error);
     }
   }
 
-  async function handleCreateFile(fileName: string) {
+  async function handleCreateFile(fileName: string, parentId: number | null) {
     try {
-      // Determine parent folder: use selected folder, or selected file's parent, or null (root)
-      const parentId = selectedFile?.is_folder
-        ? selectedFile.id
-        : selectedFile?.parent_id ?? null
-
       const newFile = await filesApi.create(
         Number(projectId),
         fileName,
-        '/',  // Path will be computed by backend
-        'typst',
-        '',
-        parentId
-      )
-      if (!files.find(f => f.id === newFile.id)) {
-        files = [...files, newFile]
+        "/", // Path will be computed by backend
+        "typst",
+        "",
+        parentId,
+      );
+      if (!files.find((f) => f.id === newFile.id)) {
+        files = [...files, newFile];
       }
-      selectedFile = newFile
-      selectedAsset = null
-      showCreateFileModal = false
+      selectedFile = newFile;
+      selectedAsset = null;
     } catch (error: any) {
-      console.error('Failed to create file:', error)
-      const message = error?.response?.data?.detail || 'Failed to create file'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to create file:", error);
+      const message = error?.response?.data?.detail || "Failed to create file";
+      notifications.show(message, "error", 5000);
+      // Re-throw to let FileTree know it failed
+      throw error;
     }
   }
 
-  async function handleCreateFolder(folderName: string) {
+  async function handleCreateFolder(
+    folderName: string,
+    parentId: number | null,
+  ) {
     try {
-      // Determine parent folder: use selected folder, or selected file's parent, or null (root)
-      const parentId = selectedFile?.is_folder
-        ? selectedFile.id
-        : selectedFile?.parent_id ?? null
-
       const newFolder = await filesApi.createFolder(
         Number(projectId),
         folderName,
-        parentId
-      )
-      if (!files.find(f => f.id === newFolder.id)) {
-        files = [...files, newFolder]
+        parentId,
+      );
+      if (!files.find((f) => f.id === newFolder.id)) {
+        files = [...files, newFolder];
       }
-      selectedFile = newFolder
-      selectedAsset = null
-      showCreateFolderModal = false
-      notifications.show('Folder created successfully', 'info')
+      // Don't select folder to prevent CodeMirror focus
+      notifications.show("Folder created successfully", "info");
     } catch (error: any) {
-      console.error('Failed to create folder:', error)
-      const message = error?.response?.data?.detail || 'Failed to create folder'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to create folder:", error);
+      const message =
+        error?.response?.data?.detail || "Failed to create folder";
+      notifications.show(message, "error", 5000);
+      // Re-throw to let FileTree know it failed
+      throw error;
     }
   }
 
   async function handleUploadAsset(file: File) {
     try {
-      // Determine parent folder: use selected folder, or selected file's parent, or null (root)
-      const parentId = selectedFile?.is_folder
-        ? selectedFile.id
-        : selectedFile?.parent_id ?? null
+      // Determine parent: if selected item is a folder, create inside it; otherwise create at root
+      const parentId = selectedFile?.is_folder ? selectedFile.id : null;
 
-      const asset = await assetsApi.upload(Number(projectId), file, parentId)
+      const asset = await assetsApi.upload(Number(projectId), file, parentId);
 
       // Cache the uploaded asset immediately
       const arrayBuffer = await file.arrayBuffer();
-      cacheAsset(Number(projectId), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
-        .catch(err => console.warn('Failed to cache uploaded asset:', err));
+      cacheAsset(
+        Number(projectId),
+        asset.id,
+        asset.storage_path,
+        asset.mime_type,
+        arrayBuffer,
+      ).catch((err) => console.warn("Failed to cache uploaded asset:", err));
 
-      if (!assets.find(a => a.id === asset.id)) {
-        assets = [...assets, asset]
+      if (!assets.find((a) => a.id === asset.id)) {
+        assets = [...assets, asset];
       }
-      showUploadAssetModal = false
-      notifications.show('Asset uploaded successfully', 'info')
+      showUploadAssetModal = false;
+      notifications.show("Asset uploaded successfully", "info");
     } catch (error: any) {
-      console.error('Failed to upload asset:', error)
-      const message = error?.response?.data?.detail || 'Failed to upload asset'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to upload asset:", error);
+      const message = error?.response?.data?.detail || "Failed to upload asset";
+      notifications.show(message, "error", 5000);
     }
   }
 
   function handleSelectFile(file: ProjectFile) {
-    selectedFile = file
-    // If it's a folder, just select it but don't load in editor
+    selectedFile = file;
+    // If it's a folder, don't clear selectedAsset to prevent editor from loading
     if (!file.is_folder) {
-      selectedAsset = null
+      selectedAsset = null;
     }
     // Awareness update handled by reactive statement
   }
 
   function handleSelectAsset(asset: Asset) {
-    selectedAsset = asset
+    selectedAsset = asset;
     // Keep selectedFile to prevent CodeEditor from being destroyed
     // Awareness update handled by reactive statement
   }
 
   function handleClearSelection() {
-    selectedFile = null
-    selectedAsset = null
+    selectedFile = null;
+    selectedAsset = null;
   }
 
   function handleSetPreviewFile(fileId: number) {
-    previewFileId = fileId
+    previewFileId = fileId;
     if (browser) {
-      localStorage.setItem(`preview-file-${projectId}`, String(fileId))
+      localStorage.setItem(`preview-file-${projectId}`, String(fileId));
     }
   }
 
   async function handleDeleteFile(fileId: number) {
-    const file = files.find(f => f.id === fileId)
-    if (!file) return
-    deleteTarget = { type: 'file', id: fileId, name: file.name }
-    showDeleteModal = true
+    const file = files.find((f) => f.id === fileId);
+    if (!file) return;
+    deleteTarget = {
+      type: "file",
+      id: fileId,
+      name: file.name,
+      isFolder: file.is_folder,
+    };
+    showDeleteModal = true;
   }
 
   async function handleDeleteAsset(assetId: number) {
-    const asset = assets.find(a => a.id === assetId)
-    if (!asset) return
-    deleteTarget = { type: 'asset', id: assetId, name: asset.filename }
-    showDeleteModal = true
+    const asset = assets.find((a) => a.id === assetId);
+    if (!asset) return;
+    deleteTarget = { type: "asset", id: assetId, name: asset.filename };
+    showDeleteModal = true;
   }
 
   async function handleRenameFile(fileId: number, newName: string) {
     try {
-      const updatedFile = await filesApi.update(Number(projectId), fileId, { name: newName })
-      files = files.map(f => f.id === fileId ? updatedFile : f)
+      const updatedFile = await filesApi.update(Number(projectId), fileId, {
+        name: newName,
+      });
+      files = files.map((f) => (f.id === fileId ? updatedFile : f));
       if (selectedFile?.id === fileId) {
-        selectedFile = updatedFile
+        selectedFile = updatedFile;
       }
     } catch (error: any) {
-      console.error('Failed to rename file:', error)
-      const message = error?.response?.data?.detail || 'Failed to rename file'
-      notifications.show(message, 'error', 5000)
-      throw error // Re-throw to let FileTreeItem know it failed
+      console.error("Failed to rename file:", error);
+      const message = error?.response?.data?.detail || "Failed to rename file";
+      notifications.show(message, "error", 5000);
+      throw error; // Re-throw to let FileTreeItem know it failed
     }
   }
 
   async function handleRenameAsset(assetId: number, newName: string) {
     try {
-      const updatedAsset = await assetsApi.update(Number(projectId), assetId, { filename: newName })
-      assets = assets.map(a => a.id === assetId ? updatedAsset : a)
+      const updatedAsset = await assetsApi.update(Number(projectId), assetId, {
+        filename: newName,
+      });
+      assets = assets.map((a) => (a.id === assetId ? updatedAsset : a));
       if (selectedAsset?.id === assetId) {
-        selectedAsset = updatedAsset
+        selectedAsset = updatedAsset;
       }
     } catch (error: any) {
-      console.error('Failed to rename asset:', error)
-      const message = error?.response?.data?.detail || 'Failed to rename asset'
-      notifications.show(message, 'error', 5000)
-      throw error // Re-throw to let FileTreeItem know it failed
+      console.error("Failed to rename asset:", error);
+      const message = error?.response?.data?.detail || "Failed to rename asset";
+      notifications.show(message, "error", 5000);
+      throw error; // Re-throw to let FileTreeItem know it failed
     }
   }
 
@@ -467,130 +504,159 @@
     // Trigger rename in FileTree for currently selected item
     if (selectedAsset || selectedFile) {
       // Dispatch custom event to trigger rename in FileTree
-      window.dispatchEvent(new CustomEvent('trigger-file-rename'))
+      window.dispatchEvent(new CustomEvent("trigger-file-rename"));
     }
+  }
+
+  function handleNewFileFromMenu() {
+    // Trigger inline file creation in FileTree
+    window.dispatchEvent(new CustomEvent("trigger-new-file"));
+  }
+
+  function handleNewFolderFromMenu() {
+    // Trigger inline folder creation in FileTree
+    window.dispatchEvent(new CustomEvent("trigger-new-folder"));
   }
 
   function handleDeleteSelectedItem() {
     // Delete currently selected file or asset
     if (selectedAsset) {
-      handleDeleteAsset(selectedAsset.id)
+      handleDeleteAsset(selectedAsset.id);
     } else if (selectedFile) {
-      handleDeleteFile(selectedFile.id)
+      handleDeleteFile(selectedFile.id);
     }
   }
   async function handleMoveFile(fileId: number, targetFolderId: number | null) {
     try {
-      const updatedFile = await filesApi.move(Number(projectId), fileId, targetFolderId)
-      files = files.map(f => f.id === fileId ? updatedFile : f)
+      const updatedFile = await filesApi.move(
+        Number(projectId),
+        fileId,
+        targetFolderId,
+      );
+      files = files.map((f) => (f.id === fileId ? updatedFile : f));
       if (selectedFile?.id === fileId) {
-        selectedFile = updatedFile
+        selectedFile = updatedFile;
       }
     } catch (error: any) {
-      console.error('Failed to move file:', error)
-      const message = error?.response?.data?.detail || 'Failed to move file'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to move file:", error);
+      const message = error?.response?.data?.detail || "Failed to move file";
+      notifications.show(message, "error", 5000);
     }
   }
 
-  async function handleMoveAsset(assetId: number, targetFolderId: number | null) {
+  async function handleMoveAsset(
+    assetId: number,
+    targetFolderId: number | null,
+  ) {
     try {
-      const updatedAsset = await assetsApi.move(Number(projectId), assetId, targetFolderId)
-      assets = assets.map(a => a.id === assetId ? updatedAsset : a)
+      const updatedAsset = await assetsApi.move(
+        Number(projectId),
+        assetId,
+        targetFolderId,
+      );
+      assets = assets.map((a) => (a.id === assetId ? updatedAsset : a));
       if (selectedAsset?.id === assetId) {
-        selectedAsset = updatedAsset
+        selectedAsset = updatedAsset;
       }
-      notifications.show('Asset moved successfully', 'info')
+      notifications.show("Asset moved successfully", "info");
     } catch (error: any) {
-      console.error('Failed to move asset:', error)
-      const message = error?.response?.data?.detail || 'Failed to move asset'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to move asset:", error);
+      const message = error?.response?.data?.detail || "Failed to move asset";
+      notifications.show(message, "error", 5000);
     }
   }
- 
 
   function handleProjectNameClick() {
-    isEditingProjectName = true
-    editingProjectName = project?.name || ''
+    isEditingProjectName = true;
+    editingProjectName = project?.name || "";
     setTimeout(() => {
-      projectNameInput?.select()
-    }, 0)
+      projectNameInput?.select();
+    }, 0);
   }
 
   async function handleProjectRenameSubmit() {
-    const trimmedName = editingProjectName.trim()
-    
+    const trimmedName = editingProjectName.trim();
+
     if (!project || !trimmedName || trimmedName === project.name) {
-      isEditingProjectName = false
-      return
+      isEditingProjectName = false;
+      return;
     }
 
     try {
-      const updatedProject = await projectsApi.update(Number(projectId), trimmedName)
-      project = updatedProject
-      isEditingProjectName = false
+      const updatedProject = await projectsApi.update(
+        Number(projectId),
+        trimmedName,
+      );
+      project = updatedProject;
+      isEditingProjectName = false;
     } catch (error: any) {
-      console.error('Failed to rename project:', error)
-      const message = error?.response?.data?.detail || 'Failed to rename project'
-      notifications.show(message, 'error', 5000)
+      console.error("Failed to rename project:", error);
+      const message =
+        error?.response?.data?.detail || "Failed to rename project";
+      notifications.show(message, "error", 5000);
       // Keep editing mode open on error
     }
   }
 
   function handleProjectRenameCancel() {
-    isEditingProjectName = false
-    editingProjectName = ''
+    isEditingProjectName = false;
+    editingProjectName = "";
   }
 
   function handleProjectRenameKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleProjectRenameSubmit()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      handleProjectRenameCancel()
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleProjectRenameSubmit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleProjectRenameCancel();
     }
   }
 
   async function confirmDelete() {
-    if (!deleteTarget) return
+    if (!deleteTarget) return;
 
-    const targetId = deleteTarget.id
-    const targetType = deleteTarget.type
+    const targetId = deleteTarget.id;
+    const targetType = deleteTarget.type;
 
     try {
-      if (targetType === 'file') {
-        await filesApi.delete(Number(projectId), targetId)
-        files = files.filter(f => f.id !== targetId)
+      if (targetType === "file") {
+        await filesApi.delete(Number(projectId), targetId);
+        files = files.filter((f) => f.id !== targetId);
         if (selectedFile?.id === targetId) {
-          selectedFile = files[0] || null
+          selectedFile = files[0] || null;
         }
       } else {
-        await assetsApi.delete(Number(projectId), targetId)
+        await assetsApi.delete(Number(projectId), targetId);
         // Remove from cache
-        removeCachedAsset(Number(projectId), targetId)
-          .catch(err => console.warn('Failed to remove asset from cache:', err));
-        assets = assets.filter(a => a.id !== targetId)
+        removeCachedAsset(Number(projectId), targetId).catch((err) =>
+          console.warn("Failed to remove asset from cache:", err),
+        );
+        assets = assets.filter((a) => a.id !== targetId);
         if (selectedAsset?.id === targetId) {
-          selectedAsset = null
+          selectedAsset = null;
         }
       }
     } catch (error) {
-      console.error('Failed to delete:', error)
+      console.error("Failed to delete:", error);
     } finally {
-      showDeleteModal = false
-      deleteTarget = null
+      showDeleteModal = false;
+      deleteTarget = null;
     }
   }
 
   async function handleGetAssetUrl(assetId: number): Promise<string> {
-    const { url } = await assetsApi.getUrl(Number(projectId), assetId)
-    return url
+    const { url } = await assetsApi.getUrl(Number(projectId), assetId);
+    return url;
   }
 
   async function handleGetAssetBlob(asset: Asset): Promise<string> {
     // Try cache first
-    const cached = await getCachedAsset(Number(projectId), asset.id, asset.storage_path);
+    const cached = await getCachedAsset(
+      Number(projectId),
+      asset.id,
+      asset.storage_path,
+    );
     if (cached) {
       return createBlobUrl(cached.blob, cached.mimeType);
     }
@@ -601,192 +667,231 @@
     const arrayBuffer = await response.arrayBuffer();
 
     // Cache for future use (fire and forget)
-    cacheAsset(Number(projectId), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
-      .catch(err => console.warn('Failed to cache asset:', err));
+    cacheAsset(
+      Number(projectId),
+      asset.id,
+      asset.storage_path,
+      asset.mime_type,
+      arrayBuffer,
+    ).catch((err) => console.warn("Failed to cache asset:", err));
 
     return createBlobUrl(arrayBuffer, asset.mime_type);
   }
 
   async function handleDownloadPDF() {
     // TODO: Implement PDF export with incremental compiler
-    notifications.show('PDF export coming soon', 'info')
+    notifications.show("PDF export coming soon", "info");
   }
 
   function onFileCreated(file: ProjectFile) {
-    if (!files.find(f => f.id === file.id)) {
-      files = [...files, file]
+    if (!files.find((f) => f.id === file.id)) {
+      files = [...files, file];
     }
     if (yjsConnection?.ydoc) {
-      const ytext = getFileText(yjsConnection.ydoc, file.id)
+      const ytext = getFileText(yjsConnection.ydoc, file.id);
       if (ytext && ytext.length === 0 && file.content) {
-        ytext.insert(0, file.content)
+        ytext.insert(0, file.content);
       }
     }
   }
 
   function onFileUpdated(file: ProjectFile) {
-    files = files.map(f => f.id === file.id ? file : f)
+    files = files.map((f) => (f.id === file.id ? file : f));
     if (selectedFile?.id === file.id) {
-      selectedFile = file
+      selectedFile = file;
     }
   }
 
   function onFileDeleted(fileId: number) {
-    files = files.filter(f => f.id !== fileId)
+    files = files.filter((f) => f.id !== fileId);
     if (selectedFile?.id === fileId) {
-      selectedFile = files[0] || null
+      selectedFile = files[0] || null;
     }
 
     // Clean up Yjs data for the deleted file
     if (yjsConnection?.ydoc) {
-      const ytext = yjsConnection.ydoc.getText(`file-${fileId}`)
+      const ytext = yjsConnection.ydoc.getText(`file-${fileId}`);
       if (ytext && ytext.length > 0) {
-        ytext.delete(0, ytext.length)
-        console.log(`[YJS] Cleared Y.Text for deleted file-${fileId}`)
+        ytext.delete(0, ytext.length);
+        console.log(`[YJS] Cleared Y.Text for deleted file-${fileId}`);
       }
     }
   }
 
   function onAssetCreated(asset: Asset) {
-    if (!assets.find(a => a.id === asset.id)) {
-      assets = [...assets, asset]
+    if (!assets.find((a) => a.id === asset.id)) {
+      assets = [...assets, asset];
     }
   }
 
   function onAssetUpdated(asset: Asset) {
-    assets = assets.map(a => a.id === asset.id ? asset : a)
+    assets = assets.map((a) => (a.id === asset.id ? asset : a));
     if (selectedAsset?.id === asset.id) {
-      selectedAsset = asset
+      selectedAsset = asset;
     }
   }
 
   function onAssetDeleted(assetId: number) {
     // Remove from cache
-    removeCachedAsset(Number(projectId), assetId)
-      .catch(err => console.warn('Failed to remove deleted asset from cache:', err));
-    assets = assets.filter(a => a.id !== assetId)
+    removeCachedAsset(Number(projectId), assetId).catch((err) =>
+      console.warn("Failed to remove deleted asset from cache:", err),
+    );
+    assets = assets.filter((a) => a.id !== assetId);
     if (selectedAsset?.id === assetId) {
-      selectedAsset = null
+      selectedAsset = null;
     }
   }
 
   function onProjectUpdated(updatedProject: Project) {
     if (project && updatedProject.id === project.id) {
-      project = { ...project, ...updatedProject }
+      project = { ...project, ...updatedProject };
     }
   }
 
-  onMount(async () => {
-    // Initialize asset cache
-    await initAssetCache();
+  onMount(() => {
+    // Initialize asset cache and load data asynchronously
+    (async () => {
+      await initAssetCache();
 
-    // Load preview file from localStorage first
-    if (browser) {
-      const savedPreviewId = localStorage.getItem(`preview-file-${projectId}`)
-      if (savedPreviewId) {
-        previewFileId = parseInt(savedPreviewId, 10)
+      // Load preview file from localStorage first
+      if (browser) {
+        const savedPreviewId = localStorage.getItem(
+          `preview-file-${projectId}`,
+        );
+        if (savedPreviewId) {
+          previewFileId = parseInt(savedPreviewId, 10);
+        }
+
+        // Initialize panel widths based on current window size and saved ratio
+        const windowWidth = window.innerWidth;
+        const availableWidth = windowWidth - ACTIVITY_BAR_WIDTH - 16; // 16px for padding
+
+        if (activePanel) {
+          // When left panel is open: split remaining space between editor and preview using saved ratio
+          const remainingWidth = availableWidth - leftPanelWidth - 24; // 24px for resize handles
+          const savedRatio = savedLayout?.editorPreviewRatio ?? 0.6;
+          previewPanelWidth = Math.max(
+            MIN_PANEL_WIDTH,
+            remainingWidth * (1 - savedRatio),
+          );
+        } else {
+          // When left panel is closed: split between editor and preview using saved ratio
+          const savedRatio = savedLayout?.editorPreviewRatio ?? 0.6;
+          previewPanelWidth = Math.max(
+            MIN_PANEL_WIDTH,
+            availableWidth * (1 - savedRatio),
+          );
+        }
       }
-      
-      // Initialize panel widths based on current window size and saved ratio
-      const windowWidth = window.innerWidth
-      const availableWidth = windowWidth - ACTIVITY_BAR_WIDTH - 16 // 16px for padding
-      
-      if (activePanel) {
-        // When left panel is open: split remaining space between editor and preview using saved ratio
-        const remainingWidth = availableWidth - leftPanelWidth - 24 // 24px for resize handles
-        const savedRatio = savedLayout?.editorPreviewRatio ?? 0.6;
-        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, remainingWidth * (1 - savedRatio))
-      } else {
-        // When left panel is closed: split between editor and preview using saved ratio
-        const savedRatio = savedLayout?.editorPreviewRatio ?? 0.6;
-        previewPanelWidth = Math.max(MIN_PANEL_WIDTH, availableWidth * (1 - savedRatio))
-      }
-    }
 
-    loadProject()
-    loadFiles()
-    loadAssets()
+      loadProject();
+      loadFiles();
+      loadAssets();
 
-    yjsConnection = createProjectYjs(Number(projectId), (status) => {
-      isConnected = status.isConnected
-      isSynced = status.isSynced
-      isLocalSynced = status.isLocalSynced
-    }, $auth.user)
+      yjsConnection = createProjectYjs(
+        Number(projectId),
+        (status) => {
+          isConnected = status.isConnected;
+          isSynced = status.isSynced;
+          isLocalSynced = status.isLocalSynced;
+        },
+        $auth.user,
+      );
 
-    projectSync = createProjectSync(Number(projectId), {
-      onFileCreated,
-      onFileUpdated,
-      onFileDeleted,
-      onAssetCreated,
-      onAssetUpdated,
-      onAssetDeleted,
-      onProjectUpdated,
-    })
-    
+      projectSync = createProjectSync(Number(projectId), {
+        onFileCreated,
+        onFileUpdated,
+        onFileDeleted,
+        onAssetCreated,
+        onAssetUpdated,
+        onAssetDeleted,
+        onProjectUpdated,
+      });
+    })();
+
     const handleBeforeUnload = () => {
       if (yjsConnection?.provider?.awareness) {
-        yjsConnection.provider.awareness.setLocalState(null)
+        yjsConnection.provider.awareness.setLocalState(null);
       }
-    }
-    
+    };
+
     // Handle keyboard shortcuts: Ctrl+S, Ctrl+N, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        notifications.show('All changes are saved automatically', 'info', 2000)
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !e.shiftKey && !e.altKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        notifications.show("All changes are saved automatically", "info", 2000);
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key === "n" &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
         // Ctrl+N for new file - be very specific to override browser
-        e.preventDefault()
-        e.stopPropagation()
-        e.stopImmediatePropagation()
-        showCreateFileModal = true
-        return false
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        handleNewFileFromMenu();
+        return false;
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key === "f" &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
         // Ctrl+F for CodeMirror in-file search
-        e.preventDefault()
-        e.stopPropagation()
-        handleSearchReplace()
-      } else if (e.key === 'F2') {
-        e.preventDefault()
-        handleRenameSelectedItem()
-      } else if (e.key === 'Delete' && (selectedFile || selectedAsset) && fileTreeHasFocus) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSearchReplace();
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        handleRenameSelectedItem();
+      } else if (
+        e.key === "Delete" &&
+        (selectedFile || selectedAsset) &&
+        fileTreeHasFocus
+      ) {
         // Only delete file/asset when file tree panel has focus
-        e.preventDefault()
-        handleDeleteSelectedItem()
-      } else if ((e.metaKey || e.ctrlKey) && (e.key === '/' || (e.shiftKey && e.key === ':'))) {
+        e.preventDefault();
+        handleDeleteSelectedItem();
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key === "/" || (e.shiftKey && e.key === ":"))
+      ) {
         // Ctrl+/ for line comment (including azerty support where / requires shift)
-        e.preventDefault()
-        e.stopPropagation()
-        handleToggleLineComment()
-      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleToggleLineComment();
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "A") {
         // Ctrl+Shift+A for block comment
-        e.preventDefault()
-        e.stopPropagation()
-        handleToggleBlockComment()
+        e.preventDefault();
+        e.stopPropagation();
+        handleToggleBlockComment();
       }
-    }
-    
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    window.addEventListener('keydown', handleKeyDown, true)  // Use capture phase to intercept Ctrl+N before browser
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-    
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("keydown", handleKeyDown, true); // Use capture phase to intercept Ctrl+N before browser
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.removeEventListener('keydown', handleKeyDown, true)
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  })
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  });
 
   onDestroy(() => {
-    if (yjsConnection) destroyYjsConnection(yjsConnection)
-    if (projectSync) projectSync.destroy()
-  })
+    if (yjsConnection) destroyYjsConnection(yjsConnection);
+    if (projectSync) projectSync.destroy();
+  });
 
-  let selectedYtext = $derived(selectedFile && yjsConnection?.ydoc
-    ? getFileText(yjsConnection.ydoc, selectedFile.id)
-    : null)
+  let selectedYtext = $derived(
+    selectedFile && yjsConnection?.ydoc
+      ? getFileText(yjsConnection.ydoc, selectedFile.id)
+      : null,
+  );
 
   // Track file observers for Yjs content changes
   let fileObservers = new Map<number, () => void>();
@@ -795,19 +900,19 @@
   // Initialize file content and set up observers
   $effect(() => {
     if (browser && yjsConnection?.ydoc && files.length > 0) {
-      const ydoc = yjsConnection.ydoc
+      const ydoc = yjsConnection.ydoc;
 
       // Clear old observers
-      fileObservers.forEach(unobserve => unobserve());
+      fileObservers.forEach((unobserve) => unobserve());
       fileObservers.clear();
 
       // Initialize file content and observe changes
-      files.forEach(file => {
-        const ytext = getFileText(ydoc, file.id)
+      files.forEach((file) => {
+        const ytext = getFileText(ydoc, file.id);
         if (ytext) {
           // Initialize if empty
           if (ytext.length === 0 && file.content) {
-            ytext.insert(0, file.content)
+            ytext.insert(0, file.content);
           }
 
           // Observe changes to trigger preview updates
@@ -819,35 +924,35 @@
         }
       });
     }
-  })
+  });
 
   // Clean up observers
   $effect(() => {
     return () => {
-      fileObservers.forEach(unobserve => unobserve());
+      fileObservers.forEach((unobserve) => unobserve());
       fileObservers.clear();
     };
   });
 
   // Prioritize asset when both are set (asset is what user is actually viewing)
-  let selectedItem = $derived(selectedAsset || selectedFile)
+  let selectedItem = $derived(selectedAsset || selectedFile);
 
   // Update awareness when selected item changes - prioritize asset when viewing
   $effect(() => {
     if (selectedAsset && yjsConnection?.provider?.awareness) {
-      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+      yjsConnection.provider.awareness.setLocalStateField("currentItem", {
         id: selectedAsset.id,
-        isAsset: true
-      })
+        isAsset: true,
+      });
     } else if (selectedFile && yjsConnection?.provider?.awareness) {
-      yjsConnection.provider.awareness.setLocalStateField('currentItem', {
+      yjsConnection.provider.awareness.setLocalStateField("currentItem", {
         id: selectedFile.id,
-        isAsset: false
-      })
+        isAsset: false,
+      });
     } else if (yjsConnection?.provider?.awareness) {
-      yjsConnection.provider.awareness.setLocalStateField('currentItem', null)
+      yjsConnection.provider.awareness.setLocalStateField("currentItem", null);
     }
-  })
+  });
 
   // Diagnostics state for linter and issues panel
   let diagnostics = $state<Diagnostic[]>([]);
@@ -872,12 +977,12 @@
   // Get preview file path
   let previewFile = $derived(
     previewFileId
-      ? filesWithContent.find(f => f.id === previewFileId)
-      : filesWithContent.find(f => f.name === 'main.typ') || filesWithContent.find(f => f.name.endsWith('.typ'))
+      ? filesWithContent.find((f) => f.id === previewFileId)
+      : filesWithContent.find((f) => f.name === "main.typ") ||
+          filesWithContent.find((f) => f.name.endsWith(".typ")),
   );
 
-  let previewFilePath = $derived(previewFile?.path || '/main.typ');
-
+  let previewFilePath = $derived(previewFile?.path || "/main.typ");
 
   // Handle diagnostics from PreviewPane
   function handleDiagnostics(diags: any[]) {
@@ -892,19 +997,23 @@
   }
 
   function gotoDiagnostic(diagnostic: Diagnostic) {
-    if (!diagnostic.range) return
+    if (!diagnostic.range) return;
 
     // Find the file by path
-    const diagnosticFile = files.find(f => {
-      const filePath = f.path.startsWith('/') ? f.path.slice(1) : f.path
-      const diagnosticPath = diagnostic.path ? (diagnostic.path.startsWith('/') ? diagnostic.path.slice(1) : diagnostic.path) : ''
-      return filePath === diagnosticPath || f.name === diagnostic.path
-    })
+    const diagnosticFile = files.find((f) => {
+      const filePath = f.path.startsWith("/") ? f.path.slice(1) : f.path;
+      const diagnosticPath = diagnostic.path
+        ? diagnostic.path.startsWith("/")
+          ? diagnostic.path.slice(1)
+          : diagnostic.path
+        : "";
+      return filePath === diagnosticPath || f.name === diagnostic.path;
+    });
 
     if (diagnosticFile) {
       // Select the file
-      selectedFile = diagnosticFile
-      selectedAsset = null
+      selectedFile = diagnosticFile;
+      selectedAsset = null;
 
       // Navigate to the diagnostic in the editor
       setTimeout(() => {
@@ -912,24 +1021,34 @@
           diagnostic.range!.start.line + 1,
           diagnostic.range!.start.character,
           diagnostic.range!.end.line + 1,
-          diagnostic.range!.end.character
-        )
-      }, 100)
+          diagnostic.range!.end.character,
+        );
+      }, 100);
     }
   }
 
-  function gotoMatch(filePath: string, startLine: number, startChar: number, endLine?: number, endChar?: number) {
+  function gotoMatch(
+    filePath: string,
+    startLine: number,
+    startChar: number,
+    endLine?: number,
+    endChar?: number,
+  ) {
     // Find the file by path
-    const matchFile = files.find(f => {
-      const filePathNormalized = f.path.startsWith('/') ? f.path.slice(1) : f.path
-      const targetPathNormalized = filePath.startsWith('/') ? filePath.slice(1) : filePath
-      return filePathNormalized === targetPathNormalized || f.name === filePath
-    })
+    const matchFile = files.find((f) => {
+      const filePathNormalized = f.path.startsWith("/")
+        ? f.path.slice(1)
+        : f.path;
+      const targetPathNormalized = filePath.startsWith("/")
+        ? filePath.slice(1)
+        : filePath;
+      return filePathNormalized === targetPathNormalized || f.name === filePath;
+    });
 
     if (matchFile) {
       // Select the file
-      selectedFile = matchFile
-      selectedAsset = null
+      selectedFile = matchFile;
+      selectedAsset = null;
 
       // Navigate to the match in the editor
       setTimeout(() => {
@@ -937,18 +1056,22 @@
           startLine + 1,
           startChar,
           endLine ? endLine + 1 : startLine + 1,
-          endChar ? endChar : startChar
-        )
-      }, 100)
+          endChar ? endChar : startChar,
+        );
+      }, 100);
     }
   }
 
   function updateLinter() {
-    const editorView = editorPane?.getEditorView?.()
+    const editorView = editorPane?.getEditorView?.();
     if (editorView) {
-      const lintDiagnostics = convertDiagnosticsToLint(diagnostics, editorView, selectedFile?.path || '')
-      const transaction = setDiagnostics(editorView.state, lintDiagnostics)
-      editorView.dispatch(transaction)
+      const lintDiagnostics = convertDiagnosticsToLint(
+        diagnostics,
+        editorView,
+        selectedFile?.path || "",
+      );
+      const transaction = setDiagnostics(editorView.state, lintDiagnostics);
+      editorView.dispatch(transaction);
     }
   }
 
@@ -961,16 +1084,22 @@
       return;
     }
 
-    separateWindow = window.open('', '', 'width=900,height=700');
+    separateWindow = window.open("", "", "width=900,height=700");
     if (!separateWindow) return;
 
     // Apply the current theme to the new window
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-    separateWindow.document.documentElement.setAttribute('data-theme', currentTheme);
+    const currentTheme =
+      document.documentElement.getAttribute("data-theme") || "light";
+    separateWindow.document.documentElement.setAttribute(
+      "data-theme",
+      currentTheme,
+    );
 
     // Copy all stylesheets from parent to new window
-    const stylesheets = document.querySelectorAll('link[rel="stylesheet"], style');
-    stylesheets.forEach(sheet => {
+    const stylesheets = document.querySelectorAll(
+      'link[rel="stylesheet"], style',
+    );
+    stylesheets.forEach((sheet) => {
       const clone = sheet.cloneNode(true);
       separateWindow!.document.head.appendChild(clone);
     });
@@ -978,21 +1107,21 @@
     // Mount SeparatePreview component in new window
     let separateProps = {
       separateWindow,
-      projectName: project?.name ?? '',
+      projectName: project?.name ?? "",
       onCloseSeparatePreview: closeSeparatePreview,
       onExportPDF: exportAsPDF,
       onExportPNG: exportAsPNG,
       onExportSVG: exportAsSVG,
-      onExportSourcesAsZip: exportSourcesAsZip
-    }
-    let container = separateWindow.document.createElement('div')
-    separateWindow.document.body.appendChild(container)
+      onExportSourcesAsZip: exportSourcesAsZip,
+    };
+    let container = separateWindow.document.createElement("div");
+    separateWindow.document.body.appendChild(container);
     mount(SeparatePreview, {
       target: container,
       props: separateProps,
-    })
+    });
 
-    separateWindow.addEventListener('beforeunload', closeSeparatePreview);
+    separateWindow.addEventListener("beforeunload", closeSeparatePreview);
   }
 
   function closeSeparatePreview() {
@@ -1004,7 +1133,7 @@
 </script>
 
 <svelte:head>
-  <title>{project?.name ? `${project.name} - Collabst` : 'Collabst'}</title>
+  <title>{project?.name ? `${project.name} - Collabst` : "Collabst"}</title>
 </svelte:head>
 
 {#if !project}
@@ -1029,29 +1158,36 @@
             onclick={(e) => e.stopPropagation()}
           />
         {:else}
-          <h1 onclick={handleProjectNameClick} title={project.name}>{project.name}</h1>
+          <button
+            class="project-name-button"
+            onclick={handleProjectNameClick}
+            title={project.name}
+          >
+            {project.name}
+          </button>
         {/if}
         <MenuBar
-          onNewFile={() => showCreateFileModal = true}
-          onUploadFile={() => showUploadAssetModal = true}
+          onNewFile={handleNewFileFromMenu}
+          onUploadFile={() => (showUploadAssetModal = true)}
           onRenameFile={handleRenameSelectedItem}
           onDeleteFile={handleDeleteSelectedItem}
           onExportPDF={handleDownloadPDF}
-          onExportPNG={() => console.log('Export PNG - to be implemented')}
-          onExportSVG={() => console.log('Export SVG - to be implemented')}
+          onExportPNG={() => console.log("Export PNG - to be implemented")}
+          onExportSVG={() => console.log("Export SVG - to be implemented")}
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSearchReplace={handleSearchReplace}
           onSelectAll={handleSelectAll}
           onToggleLineComment={handleToggleLineComment}
           onToggleBlockComment={handleToggleBlockComment}
-          onAddComment={() => console.log('Add comment - to be implemented')}
-          onShowToolbar={() => showToolbar = !showToolbar}
-          onScrollOnType={() => console.log('Scroll on type - to be implemented')}
-          onWrapLines={() => wrapLines = !wrapLines}
-          onThemeLight={() => theme.set('light')}
-          onThemeDark={() => theme.set('dark')}
-          onNegativePreview={() => negativePreview = !negativePreview}
+          onAddComment={() => console.log("Add comment - to be implemented")}
+          onShowToolbar={() => (showToolbar = !showToolbar)}
+          onScrollOnType={() =>
+            console.log("Scroll on type - to be implemented")}
+          onWrapLines={() => (wrapLines = !wrapLines)}
+          onThemeLight={() => theme.set("light")}
+          onThemeDark={() => theme.set("dark")}
+          onNegativePreview={() => (negativePreview = !negativePreview)}
           {wrapLines}
           {negativePreview}
           {showToolbar}
@@ -1077,20 +1213,18 @@
       </div>
     </header>
     <div class="main">
-      <ActivityBar {activePanel} onActivityClick={handleActivityClick} {diagnostics} />
+      <ActivityBar
+        {activePanel}
+        onActivityClick={handleActivityClick}
+        {diagnostics}
+      />
 
-      {#if activePanel === 'files'}
-        <div 
-          style="width: {leftPanelWidth}px;" 
-          tabindex="-1"
-          onfocus={() => fileTreeHasFocus = true}
-          onblur={() => fileTreeHasFocus = false}
-          onclick={() => fileTreeHasFocus = true}
-        >
+      {#if activePanel === "files"}
+        <div style="width: {leftPanelWidth}px;">
           <FileTree
             {files}
             {assets}
-            selectedItem={selectedItem}
+            {selectedItem}
             {previewFileId}
             onSelectFile={handleSelectFile}
             onSelectAsset={handleSelectAsset}
@@ -1099,38 +1233,60 @@
             onRenameAsset={handleRenameAsset}
             onMoveFile={handleMoveFile}
             onMoveAsset={handleMoveAsset}
+            onDeleteFile={handleDeleteFile}
+            onDeleteAsset={handleDeleteAsset}
             onClearSelection={handleClearSelection}
-            onCreateFile={() => showCreateFileModal = true}
-            onCreateFolder={() => showCreateFolderModal = true}
-            onUploadAsset={() => showUploadAssetModal = true}
+            onCreateFile={handleCreateFile}
+            onCreateFolder={handleCreateFolder}
+            onUploadAsset={() => (showUploadAssetModal = true)}
             provider={yjsConnection?.provider || null}
           />
         </div>
-      {:else if activePanel === 'search'}
+      {:else if activePanel === "search"}
         <div style="width: {leftPanelWidth}px;">
           <SearchPanel {files} ydoc={yjsConnection?.ydoc || null} {gotoMatch} />
         </div>
-      {:else if activePanel === 'outline'}
+      {:else if activePanel === "outline"}
         <div style="width: {leftPanelWidth}px;">
           <PlaceholderPanel title="Outline" />
         </div>
-      {:else if activePanel === 'issues'}
+      {:else if activePanel === "issues"}
         <div style="width: {leftPanelWidth}px;">
           <IssuesPanel {diagnostics} {gotoDiagnostic} />
         </div>
-      {:else if activePanel === 'comments'}
+      {:else if activePanel === "comments"}
         <div style="width: {leftPanelWidth}px;">
           <PlaceholderPanel title="Comments" />
         </div>
-      {:else if activePanel === 'settings'}
+      {:else if activePanel === "settings"}
         <div style="width: {leftPanelWidth}px;">
           <SettingsPanel />
         </div>
       {/if}
 
       {#if activePanel}
-        <div class="resize-handle" onmousedown={handleLeftResizeStart}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        <div
+          class="resize-handle"
+          role="separator"
+          aria-label="Resize left panel"
+          onmousedown={handleLeftResizeStart}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><circle cx="12" cy="12" r="1" /><circle
+              cx="12"
+              cy="5"
+              r="1"
+            /><circle cx="12" cy="19" r="1" /></svg
+          >
         </div>
       {/if}
 
@@ -1146,8 +1302,9 @@
         onGetAssetBlob={handleGetAssetBlob}
         ydoc={yjsConnection?.ydoc || null}
         currentUserId={$auth.user?.id || 0}
-        currentUserName={$auth.user?.username || 'Unknown'}
-        currentUserColor={yjsConnection?.provider?.awareness?.getLocalState()?.color || '#3b82f6'}
+        currentUserName={$auth.user?.username || "Unknown"}
+        currentUserColor={yjsConnection?.provider?.awareness?.getLocalState()
+          ?.color || "#3b82f6"}
         {diagnostics}
         {wrapLines}
         {showToolbar}
@@ -1155,11 +1312,36 @@
         {closeSeparatePreview}
       />
 
-      <div class="resize-handle" onmousedown={handleRightResizeStart} style={separateWindow ? 'visibility: hidden; position: absolute;' : ''}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      <div
+        class="resize-handle"
+        role="separator"
+        aria-label="Resize right panel"
+        onmousedown={handleRightResizeStart}
+        style={separateWindow ? "visibility: hidden; position: absolute;" : ""}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><circle cx="12" cy="12" r="1" /><circle
+            cx="12"
+            cy="5"
+            r="1"
+          /><circle cx="12" cy="19" r="1" /></svg
+        >
       </div>
 
-      <div style="width: {previewPanelWidth}px; flex: 0 0 auto; {separateWindow ? 'visibility: hidden; position: absolute;' : ''}">
+      <div
+        style="width: {previewPanelWidth}px; flex: 0 0 auto; {separateWindow
+          ? 'visibility: hidden; position: absolute;'
+          : ''}"
+      >
         <PreviewPane
           files={filesWithContent}
           {assets}
@@ -1167,40 +1349,33 @@
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
           {negativePreview}
-          bind:renderSession={renderSession}
+          bind:renderSession
           {showToolbar}
           {separateWindow}
           {openSeparatePreview}
-          bind:exportAsPDF={exportAsPDF}
-          bind:exportAsPNG={exportAsPNG}
-          bind:exportAsSVG={exportAsSVG}
-          bind:exportSourcesAsZip={exportSourcesAsZip}
+          bind:exportAsPDF
+          bind:exportAsPNG
+          bind:exportAsSVG
+          bind:exportSourcesAsZip
         />
       </div>
     </div>
 
-    <CreateFileModal
-      show={showCreateFileModal}
-      onClose={() => showCreateFileModal = false}
-      onSubmit={handleCreateFile}
-    />
-
-    <CreateFolderModal
-      show={showCreateFolderModal}
-      onClose={() => showCreateFolderModal = false}
-      onSubmit={handleCreateFolder}
-    />
-
     <DeleteConfirmModal
       show={showDeleteModal}
-      message={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ''}
-      onClose={() => { showDeleteModal = false; deleteTarget = null }}
+      message={deleteTarget
+        ? `Are you sure you want to delete the ${deleteTarget.isFolder ? "folder" : deleteTarget.type === "file" ? "file" : "asset"} "${deleteTarget.name}"?${deleteTarget.isFolder ? " All its content will be permanently deleted." : " This action cannot be undone."}`
+        : ""}
+      onClose={() => {
+        showDeleteModal = false;
+        deleteTarget = null;
+      }}
       onConfirm={confirmDelete}
     />
 
     <UploadAssetModal
       show={showUploadAssetModal}
-      onClose={() => showUploadAssetModal = false}
+      onClose={() => (showUploadAssetModal = false)}
       onUpload={handleUploadAsset}
     />
   </div>
@@ -1278,7 +1453,7 @@
     transform: scale(0.95);
   }
 
-  h1 {
+  .project-name-button {
     font-size: 16px;
     font-weight: 600;
     margin: 0;
@@ -1294,9 +1469,12 @@
     text-overflow: ellipsis;
     line-height: 22px;
     vertical-align: middle;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
   }
 
-  h1:hover {
+  .project-name-button:hover {
     outline: 2px solid var(--color-primary-500);
     cursor: text;
   }
@@ -1311,7 +1489,6 @@
     padding: 2px 8px;
     font-family: inherit;
     min-width: 100px;
-    max-width: 180px;
     box-sizing: border-box;
     line-height: 22px;
   }
@@ -1321,7 +1498,7 @@
     outline: 2px solid var(--color-primary-500);
     outline-offset: 0px;
     background: var(--surface-hover);
-    max-width: 180px;
+    min-width: 200px;
   }
 
   .main {
@@ -1330,18 +1507,18 @@
     overflow: hidden;
     padding-right: 12px;
   }
-  
+
   .main > :global(.activity-bar) {
     flex-shrink: 0;
     width: 56px;
   }
-  
+
   .main > :global(.file-tree),
   .main > :global(.placeholder-panel) {
     width: 100%;
     height: 100%;
   }
-  
+
   .main > div:has(> :global(.file-tree)),
   .main > div:has(> :global(.placeholder-panel)) {
     display: flex;
@@ -1350,18 +1527,18 @@
     flex-shrink: 0;
     min-width: 200px;
   }
-  
+
   .main > :global(.editor-pane) {
     flex: 1;
     min-width: 200px;
   }
-  
+
   .main > :global(.preview-pane) {
     min-width: 200px;
     height: 100%;
     width: 100%;
   }
-  
+
   .main > div:has(> :global(.preview-pane)) {
     height: 100%;
     overflow: visible;
@@ -1377,7 +1554,9 @@
     user-select: none;
     overflow: visible;
     opacity: 0.4;
-    transition: opacity 0.15s, color 0.15s;
+    transition:
+      opacity 0.15s,
+      color 0.15s;
   }
 
   .resize-handle svg {
@@ -1388,7 +1567,7 @@
     color: var(--text-secondary);
     opacity: 0.8;
   }
-  
+
   .resize-handle:active {
     color: var(--primary);
     opacity: 1;
