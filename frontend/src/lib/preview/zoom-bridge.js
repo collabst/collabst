@@ -147,7 +147,7 @@ const setZoom = (/** @type {number} */ zoom) => {
 }
 
 // Scale down factor to ensure fit modes do not cause scrollbars and make it look better
-const fitDownScaleFactor = 0.95;
+const fitDownScaleFactor = 0.90;
 
 // Zoom to fit width of the container
 const zoomFitWidth = () => {
