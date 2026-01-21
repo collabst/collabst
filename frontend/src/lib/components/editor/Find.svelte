@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte'
+  import { onMount, tick } from "svelte";
   import {
     SearchQuery,
     setSearchQuery,
@@ -11,45 +11,45 @@
     getSearchQuery,
     closeSearchPanel,
     searchPanelOpen,
-  } from '@codemirror/search'
-  import type { EditorView } from '@codemirror/view'
-  import CaseSensitive from '@lucide/svelte/icons/case-sensitive'
-  import WholeWord from '@lucide/svelte/icons/whole-word'
-  import Regex from '@lucide/svelte/icons/regex'
-  import ChevronDown from '@lucide/svelte/icons/chevron-down'
-  import ChevronUp from '@lucide/svelte/icons/chevron-up'
-  import AlignJustify from '@lucide/svelte/icons/align-justify'
-  import Replace from '@lucide/svelte/icons/replace'
-  import ReplaceAll from '@lucide/svelte/icons/replace-all'
-  import X from '@lucide/svelte/icons/x'
-  import IconButton from '../ui/IconButton.svelte'
-  import ToolButton from '../ui/ToolButton.svelte'
-  import Tooltip from '../ui/Tooltip.svelte'
+  } from "@codemirror/search";
+  import type { EditorView } from "@codemirror/view";
+  import CaseSensitive from "@lucide/svelte/icons/case-sensitive";
+  import WholeWord from "@lucide/svelte/icons/whole-word";
+  import Regex from "@lucide/svelte/icons/regex";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import ChevronUp from "@lucide/svelte/icons/chevron-up";
+  import AlignJustify from "@lucide/svelte/icons/align-justify";
+  import Replace from "@lucide/svelte/icons/replace";
+  import ReplaceAll from "@lucide/svelte/icons/replace-all";
+  import X from "@lucide/svelte/icons/x";
+  import IconButton from "../ui/IconButton.svelte";
+  import ToolButton from "../ui/ToolButton.svelte";
+  import Tooltip from "../ui/Tooltip.svelte";
 
   interface FindProps {
-    view: EditorView
+    view: EditorView;
   }
 
-  let { view }: FindProps = $props()
+  let { view }: FindProps = $props();
 
-  let searchInput: HTMLInputElement | undefined
-  let replaceInput: HTMLInputElement | undefined
-  let searchTerm = $state('')
-  let replaceTerm = $state('')
-  let caseSensitive = $state(false)
-  let wholeWord = $state(false)
-  let regex = $state(false)
+  let searchInput: HTMLInputElement | undefined;
+  let replaceInput: HTMLInputElement | undefined;
+  let searchTerm = $state("");
+  let replaceTerm = $state("");
+  let caseSensitive = $state(false);
+  let wholeWord = $state(false);
+  let regex = $state(false);
 
   // Pre-populate search term from current selection
-  let query = getSearchQuery(view.state)
-  searchTerm = query.search
+  let query = getSearchQuery(view.state);
+  searchTerm = query.search;
 
   // Select search input content on mount
   onMount(() => {
     tick().then(() => {
-      searchInput?.select()
-    })
-  })
+      searchInput?.select();
+    });
+  });
 
   // Update search when any parameter changes
   $effect(() => {
@@ -59,69 +59,69 @@
       caseSensitive,
       wholeWord,
       regexp: regex,
-    })
+    });
     view.dispatch({
       effects: setSearchQuery.of(query),
-    })
-  })
+    });
+  });
 
   function handleSearchKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       if (searchPanelOpen(view.state)) {
-        closeSearchPanel(view)
+        closeSearchPanel(view);
       }
-      return
+      return;
     }
-    if (e.key === 'Enter') {
-      e.preventDefault()
+    if (e.key === "Enter") {
+      e.preventDefault();
       if (e.shiftKey) {
-        prev()
+        prev();
       } else {
-        next()
+        next();
       }
-      return
+      return;
     }
-    if (e.key === 'Tab' && !e.shiftKey) {
-      e.preventDefault()
-      replaceInput?.focus()
+    if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      replaceInput?.focus();
     }
   }
 
   function handleReplaceKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       if (searchPanelOpen(view.state)) {
-        closeSearchPanel(view)
+        closeSearchPanel(view);
       }
-      return
+      return;
     }
-    if (e.key === 'Tab' && e.shiftKey) {
-      e.preventDefault()
-      searchInput?.focus()
+    if (e.key === "Tab" && e.shiftKey) {
+      e.preventDefault();
+      searchInput?.focus();
     }
   }
 
   function next() {
-    findNext(view)
+    findNext(view);
   }
 
   function prev() {
-    findPrevious(view)
+    findPrevious(view);
   }
 
   function all() {
-    selectMatches(view)
+    selectMatches(view);
   }
 
   function replace() {
-    replaceNext(view)
+    replaceNext(view);
   }
 
   function _replaceAll() {
-    replaceAll(view)
+    replaceAll(view);
   }
 
   function close() {
-    closeSearchPanel(view)
+    closeSearchPanel(view);
   }
 </script>
 
@@ -167,25 +167,13 @@
     </div>
     <div class="button-group">
       <Tooltip text="Next" shortcut="Enter" position="top">
-        <ToolButton
-          icon={ChevronDown}
-          onclick={next}
-          position="first"
-        />
+        <ToolButton icon={ChevronDown} onclick={next} position="first" />
       </Tooltip>
       <Tooltip text="Previous" shortcut="Shift Enter" position="top">
-        <ToolButton
-          icon={ChevronUp}
-          onclick={prev}
-          position="middle"
-        />
+        <ToolButton icon={ChevronUp} onclick={prev} position="middle" />
       </Tooltip>
       <Tooltip text="Select All" position="top">
-        <ToolButton
-          icon={AlignJustify}
-          onclick={all}
-          position="last"
-        />
+        <ToolButton icon={AlignJustify} onclick={all} position="last" />
       </Tooltip>
     </div>
     <Tooltip text="Close" position="top">
@@ -213,18 +201,10 @@
     </div>
     <div class="button-group">
       <Tooltip text="Replace" position="top">
-        <ToolButton
-          icon={Replace}
-          onclick={replace}
-          position="first"
-        />
+        <ToolButton icon={Replace} onclick={replace} position="first" />
       </Tooltip>
       <Tooltip text="Replace All" position="top">
-        <ToolButton
-          icon={ReplaceAll}
-          onclick={_replaceAll}
-          position="last"
-        />
+        <ToolButton icon={ReplaceAll} onclick={_replaceAll} position="last" />
       </Tooltip>
     </div>
     <div class="spacer"></div>
@@ -307,5 +287,4 @@
   :global(.find-panel .close-btn) {
     font-size: 18px;
   }
-
 </style>
