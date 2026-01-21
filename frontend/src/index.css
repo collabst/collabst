@@ -72,12 +72,13 @@ a:hover {
   z-index: 100;
 }
 
-.ͼ1 .cm-ySelectionInfo{
+.ͼ1 .cm-ySelectionInfo {
   position: absolute;
   pointer-events: none;
   z-index: 200;
   font-size: 1em;
 }
+
 .yRemoteSelectionHead::after {
   position: absolute;
   content: attr(data-name);
@@ -96,4 +97,5 @@ a:hover {
 
 .cm-scroller {
   overflow: auto;
+  overflow-clip-margin: 0;
 }
