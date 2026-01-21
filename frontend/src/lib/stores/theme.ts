@@ -20,6 +20,14 @@ function getInitialTheme(): Theme {
   return 'light'
 }
 
+function setDataTheme(theme: Theme) {
+  document.documentElement.setAttribute('data-theme', theme)
+  const previewFrame = document.getElementById('preview-iframe') as HTMLIFrameElement | null
+  if (previewFrame && previewFrame.contentWindow) {
+    previewFrame.contentWindow.postMessage({ type: 'typst-update-theme' }, '*')
+  }
+}
+
 function createThemeStore() {
   const { subscribe, set, update } = writable<Theme>(getInitialTheme())
 
@@ -28,7 +36,7 @@ function createThemeStore() {
     set: (value: Theme) => {
       if (browser) {
         localStorage.setItem('theme', value)
-        document.documentElement.setAttribute('data-theme', value)
+        setDataTheme(value)
       }
       set(value)
     },
@@ -37,7 +45,7 @@ function createThemeStore() {
         const newTheme = current === 'dark' ? 'light' : 'dark'
         if (browser) {
           localStorage.setItem('theme', newTheme)
-          document.documentElement.setAttribute('data-theme', newTheme)
+          setDataTheme(newTheme)
         }
         return newTheme
       })
@@ -45,7 +53,7 @@ function createThemeStore() {
     init: () => {
       if (browser) {
         const theme = getInitialTheme()
-        document.documentElement.setAttribute('data-theme', theme)
+        setDataTheme(theme)
         set(theme)
       }
     }
