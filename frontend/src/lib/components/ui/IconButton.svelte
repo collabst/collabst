@@ -9,7 +9,7 @@
     | "danger"
     | "success"
     | "flat";
-  type ButtonSize = "sm" | "md" | "lg" | "top-bar";
+  type ButtonSize = "sm" | "md" | "lg" | "top-bar" | "find-toggle";
 
   interface IconButtonProps {
     icon: Component;
@@ -40,6 +40,7 @@
     md: 20,
     lg: 24,
     "top-bar": 18,
+    "find-toggle": 16,
   };
 </script>
 
@@ -91,6 +92,21 @@
   .icon-btn-top-bar {
     width: 32px;
     height: 32px;
+  }
+
+  .icon-btn-find-toggle {
+    width: 26px;
+    height: 26px;
+    background: none !important;
+  }
+
+  .icon-btn-find-toggle:hover:not(:disabled) {
+    background: none !important;
+  }
+
+  .icon-btn-find-toggle:active:not(:disabled) {
+    background: none !important;
+    transform: scale(0.9);
   }
 
   /* Variants */
