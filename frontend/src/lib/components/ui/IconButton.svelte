@@ -106,7 +106,7 @@
 
   .icon-btn-find-toggle:active:not(:disabled) {
     background: none !important;
-    transform: scale(0.9);
+    transform: scaleY(0.8) scaleX(1.15);
   }
 
   /* Variants */

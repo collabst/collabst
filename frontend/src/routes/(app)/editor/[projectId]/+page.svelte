@@ -581,6 +581,13 @@
 
   async function handleMoveFile(fileId: number, targetFolderId: number | null) {
     try {
+      // Check if already in target location
+      const fileToMove = files.find(f => f.id === fileId);
+      if (fileToMove && fileToMove.parent_id === targetFolderId) {
+        // Already in target location, don't move
+        return;
+      }
+
       const updatedFile = await filesApi.move(
         Number(projectId),
         fileId,
@@ -590,6 +597,7 @@
       if (selectedFile?.id === fileId) {
         selectedFile = updatedFile;
       }
+      notifications.show("File moved successfully", "info");
     } catch (error: any) {
       console.error("Failed to move file:", error);
       const message = error?.response?.data?.detail || "Failed to move file";
@@ -602,6 +610,13 @@
     targetFolderId: number | null,
   ) {
     try {
+      // Check if already in target location
+      const assetToMove = assets.find(a => a.id === assetId);
+      if (assetToMove && assetToMove.parent_id === targetFolderId) {
+        // Already in target location, don't move
+        return;
+      }
+
       const updatedAsset = await assetsApi.move(
         Number(projectId),
         assetId,

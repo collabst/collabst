@@ -301,8 +301,4 @@
   .spacer {
     width: 34px; /* Match close button width */
   }
-
-  :global(.find-panel .close-btn) {
-    font-size: 18px;
-  }
 </style>

@@ -279,7 +279,7 @@
         <IconButton
           variant="flat"
           icon={CaseSensitive}
-          size="sm"
+          size="find-toggle"
           onclick={caseSensitiveToggle}
           title="Case Sensitive"
           selected={caseSensitive}
@@ -287,7 +287,7 @@
         <IconButton
           variant="flat"
           icon={WholeWord}
-          size="sm"
+          size="find-toggle"
           onclick={wholeWordToggle}
           title="Match Whole Word"
           selected={wholeWord}
@@ -295,7 +295,7 @@
         <IconButton
           variant="flat"
           icon={Regex}
-          size="sm"
+          size="find-toggle"
           onclick={regexToggle}
           title="Use Regular Expressions"
           selected={regex}
