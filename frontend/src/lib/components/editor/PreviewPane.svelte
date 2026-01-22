@@ -645,6 +645,12 @@
       title="Typst Preview"
       src="/api/typst-preview">
     </iframe>
+    <svg class="corner left" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 0 0 V 1 A 1 1 0 0 1 1 0 Z"/>
+    </svg>
+    <svg class="corner right" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 1 0 V 1 A 1 1 0 0 0 0 0 Z"/>
+    </svg>
     {#if !isPreviewZoomInitialized}
       <div class="preview-loading-overlay">
         <p>Loading preview...</p>
@@ -686,8 +692,6 @@
     position: relative;
     width: 100%;
     height: 100%;
-    border-top-left-radius: var(--radius-lg);
-    border-top-right-radius: var(--radius-lg);
     overflow: hidden;
   }
 
@@ -695,6 +699,23 @@
     height: 100%;
     width: 100%;
     border: none;
+  }
+
+  .corner {
+    position: absolute;
+    top: 0;
+    width: var(--radius-lg);
+    height: var(--radius-lg);
+    fill: var(--bg-primary);
+    pointer-events: none;
+  }
+
+  .left {
+    left: 0;
+  }
+
+  .right {
+    right: 0;
   }
 
   .preview-loading-overlay {
