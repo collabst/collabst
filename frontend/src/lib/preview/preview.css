@@ -9,11 +9,12 @@
 
 #typst-app {
   --typst-preview-background-color: var(--bg-preview);
+  box-sizing: border-box;
+  padding: var(--space-12);
 }
 
-#typst-app svg {
-  box-sizing: border-box;
-  padding: 2%;
+.typst-page-inner {
+  filter: drop-shadow(0 0 1000px rgba(0, 0, 0, 0.3));
 }
 
 [data-theme="dark"] #typst-app.negative > svg{
