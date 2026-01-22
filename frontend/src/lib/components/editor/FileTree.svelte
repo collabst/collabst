@@ -1070,7 +1070,6 @@
   .tree-header {
     padding: var(--space-4);
     padding-right: var(--space-4);
-    border-bottom: 1px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;

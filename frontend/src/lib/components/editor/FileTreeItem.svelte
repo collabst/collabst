@@ -288,11 +288,20 @@
   }
 
   .file-item:hover {
-    background: var(--surface-hover);
+    background: var(--surface-secondary);
+    box-shadow: inset 0 0 0 2px var(--border-secondary);
+    border-radius: 2px;
   }
 
   .file-item.active {
     background: var(--surface-hover);
+  }
+
+  .file-item:active:not(:has(.preview-btn:active)):not(.folder) {
+    background: var(--surface-hover);
+    transform: scaleX(0.95);
+    /* transition: transform 0.05s ease; */
+    border-radius: 4px;
   }
 
   .file-item.asset {
@@ -301,6 +310,16 @@
 
   .file-item.folder {
     font-weight: var(--font-medium);
+  }
+
+  .file-item.folder:active .icon {
+    transform: scaleY(0.8) scaleX(1.1);
+    transition: transform 0.1s ease;
+  }
+
+  .file-item.folder:active {
+    color: var(--text-active);
+    background: var(--border-secondary);
   }
 
   .file-item[draggable="true"] {
@@ -318,7 +337,7 @@
   .chevron-btn {
     background: transparent;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     cursor: pointer;
     padding: 4px;
     display: flex;
@@ -423,5 +442,6 @@
 
   .preview-btn:active {
     color: var(--text-active);
+    transform: scaleY(0.9) scaleX(1.1);
   }
 </style>

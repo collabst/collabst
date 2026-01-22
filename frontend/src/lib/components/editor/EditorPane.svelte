@@ -459,9 +459,13 @@
   }
 
   // Reset dimensions when asset changes
+  let lastAssetId = $state<number | null>(null);
   $effect(() => {
-    if (selectedAsset) {
+    if (selectedAsset && selectedAsset.id !== lastAssetId) {
       imageDimensions = null;
+      lastAssetId = selectedAsset.id;
+    } else if (!selectedAsset) {
+      lastAssetId = null;
     }
   });
 
@@ -1462,10 +1466,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     padding: var(--space-8) var(--space-12);
-    padding-top: 15vh;
     gap: var(--space-6);
+  }
+
+  .preview-content > :first-child {
+    margin-top: max(-10vh, calc(-1 * (100vh - var(--space-8) * 2 - var(--space-6) - 60vh - 8rem) / 2));
   }
 
   .asset-display {
