@@ -65,10 +65,10 @@
     sendCommandToIframe('zoom-out');
   }
 
-  function setZoom(zoom: number, mode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom' = 'custom') {
+  function setZoom(zoom: number) {
     currentZoomValue = zoom;
-    currentZoomMode = mode;
-    sendCommandToIframe('set-zoom', { zoom, mode });
+    currentZoomMode = 'custom';
+    sendCommandToIframe('set-zoom', { zoom, mode: 'custom' });
   }
 
   function fitToWidth() {
@@ -89,6 +89,23 @@
     sendCommandToIframe('fit-page');
   }
 
+  function reapplyCurrentZoomMode() {
+    switch (currentZoomMode) {
+      case 'fit-width':
+        fitToWidth();
+        break;
+      case 'fit-height':
+        fitToHeight();
+        break;
+      case 'fit-page':
+        fitToPage();
+        break;
+      case 'custom':
+        setZoom(currentZoomValue);
+        break;
+    }
+  }
+
   // Send a command to the iframe
   function sendCommandToIframe(command: string, payload?: any) {
     if (previewIframe?.contentWindow) {
@@ -104,12 +121,12 @@
     { label: "Fit to width", icon: MoveHorizontal, onclick: fitToWidth },
     { label: "Fit to height", icon: MoveVertical, onclick: fitToHeight },
     { label: "Fit to page", icon: File, onclick: fitToPage, separator: true },
-    { label: "25%", onclick: () => setZoom(0.25, 'custom') },
-    { label: "50%", onclick: () => setZoom(0.5, 'custom') },
-    { label: "75%", onclick: () => setZoom(0.75, 'custom') },
-    { label: "100%", onclick: () => setZoom(1, 'custom') },
-    { label: "200%", onclick: () => setZoom(2, 'custom') },
-    { label: "300%", onclick: () => setZoom(3, 'custom') },
+    { label: "25%", onclick: () => setZoom(0.25) },
+    { label: "50%", onclick: () => setZoom(0.5) },
+    { label: "75%", onclick: () => setZoom(0.75) },
+    { label: "100%", onclick: () => setZoom(1) },
+    { label: "200%", onclick: () => setZoom(2) },
+    { label: "300%", onclick: () => setZoom(3) },
   ];
 
   const exportItems = [
@@ -178,6 +195,8 @@
       sendVectorDataToIframe(msg.data, msg.isFirstCompile);
     }
     messageQueue = [];
+
+    reapplyCurrentZoomMode();
 
     // Request current state from main window after iframe is ready
     // This triggers a recompile in the main window
@@ -315,7 +334,7 @@
     flex: 1;
     width: 100%;
     border: none;
-    border-top-left-radius: var(--radius-md);
-    border-top-right-radius: var(--radius-md);
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
   }
 </style>

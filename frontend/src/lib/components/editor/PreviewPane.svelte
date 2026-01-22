@@ -90,10 +90,10 @@
       sendCommandToIframe('zoom-out');
     }
 
-    function setZoom(zoom: number, mode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom' = 'custom') {
+    function setZoom(zoom: number) {
       currentZoomValue = zoom;
-      currentZoomMode = mode;
-      sendCommandToIframe('set-zoom', { zoom, mode });
+      currentZoomMode = 'custom';
+      sendCommandToIframe('set-zoom', { zoom, mode: 'custom' });
     }
 
     function fitToWidth() {
@@ -114,6 +114,23 @@
       sendCommandToIframe('fit-page');
     }
 
+    function reapplyCurrentZoomMode() {
+      switch (currentZoomMode) {
+        case 'fit-width':
+          fitToWidth();
+          break;
+        case 'fit-height':
+          fitToHeight();
+          break;
+        case 'fit-page':
+          fitToPage();
+          break;
+        case 'custom':
+          setZoom(currentZoomValue);
+          break;
+      }
+    }
+
     // Send a command to the iframe
     function sendCommandToIframe(command: string, payload?: any) {
       if (previewIframe?.contentWindow) {
@@ -129,12 +146,12 @@
       { label: "Fit to width", icon: MoveHorizontal, onclick: fitToWidth },
       { label: "Fit to height", icon: MoveVertical, onclick: fitToHeight },
       { label: "Fit to page", icon: File, onclick: fitToPage, separator: true },
-      { label: "25%", onclick: () => setZoom(0.25, 'custom') },
-      { label: "50%", onclick: () => setZoom(0.5, 'custom') },
-      { label: "75%", onclick: () => setZoom(0.75, 'custom') },
-      { label: "100%", onclick: () => setZoom(1, 'custom') },
-      { label: "200%", onclick: () => setZoom(2, 'custom') },
-      { label: "300%", onclick: () => setZoom(3, 'custom') },
+      { label: "25%", onclick: () => setZoom(0.25) },
+      { label: "50%", onclick: () => setZoom(0.5) },
+      { label: "75%", onclick: () => setZoom(0.75) },
+      { label: "100%", onclick: () => setZoom(1) },
+      { label: "200%", onclick: () => setZoom(2) },
+      { label: "300%", onclick: () => setZoom(3) },
     ];
 
     exportAsPDF = () => {
@@ -244,7 +261,6 @@
       case 'typst-request-current':
         // Iframe is requesting current state - trigger a recompile
         syncFilesAndAssets();
-        compile();
         break;
     }
   }
@@ -261,7 +277,6 @@
         }
         // Iframe is requesting current state - trigger a recompile
         syncFilesAndAssets();
-        compile();
       }
     }
   }
@@ -422,8 +437,10 @@
         case 'initialized':
           workerReady = true;
           status = 'Compiler ready - waiting for iframe...';
-          // The iframe will signal when the mock is ready via handleIframeMessage
+
+          // Force a sync of files and assets to start compilation
           syncFilesAndAssets();
+          reapplyCurrentZoomMode();
           break;
 
         case 'compiled':
@@ -566,6 +583,12 @@
       sendCommandToIframe('typst-set-pixelperpt', { pixelPerPt });
     }
   }
+
+  // Handle separate preview button click
+  function handleSeparatePreview() {
+    openSeparatePreview();
+
+  }
 </script>
 
 <div class="preview-wrapper">
@@ -592,7 +615,7 @@
     </div>
     <div class="separate-preview-control">
       <Tooltip text="Show preview in popup" position="bottom">
-        <ToolButton icon={PictureInPicture} onclick={openSeparatePreview} position="standalone" />
+        <ToolButton icon={PictureInPicture} onclick={handleSeparatePreview} position="standalone" />
       </Tooltip>
     </div>
     <div class="download-controls">
@@ -652,8 +675,8 @@
     flex: 1;
     width: 100%;
     border: none;
-    border-top-left-radius: var(--radius-md);
-    border-top-right-radius: var(--radius-md);
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
   }
 
   /* Typst text selection and positioning */
