@@ -1523,14 +1523,14 @@
     background: transparent;
     border: none;
     box-shadow: none;
-    /* box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); */
   }
 
   .list-action-buttons .action-btn:hover {
     transform: scale(1.3);
-    transition: all 0.1s;
+    transition: none;
   }
   .list-action-buttons .action-btn:active {
-    transform: scale(1.1);
+    transform: scaleY(1.1) scaleX(1.5);
+    transition: none;
   }
 </style>
