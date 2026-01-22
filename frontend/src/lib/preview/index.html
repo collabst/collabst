@@ -145,30 +145,42 @@
       previewToolbarBgColor
     );
   </script>
-  <script type="module" crossorigin>(function polyfill() {
+  <script type="module" crossorigin>var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var _a, _b;
+(function polyfill() {
   const relList = document.createElement("link").relList;
-  if (relList && relList.supports && relList.supports("modulepreload")) return;
-  for (const link of document.querySelectorAll('link[rel="modulepreload"]')) processPreload(link);
+  if (relList && relList.supports && relList.supports("modulepreload")) {
+    return;
+  }
+  for (const link of document.querySelectorAll('link[rel="modulepreload"]')) {
+    processPreload(link);
+  }
   new MutationObserver((mutations) => {
     for (const mutation of mutations) {
-      if (mutation.type !== "childList") continue;
-      for (const node of mutation.addedNodes) if (node.tagName === "LINK" && node.rel === "modulepreload") processPreload(node);
+      if (mutation.type !== "childList") {
+        continue;
+      }
+      for (const node of mutation.addedNodes) {
+        if (node.tagName === "LINK" && node.rel === "modulepreload")
+          processPreload(node);
+      }
     }
-  }).observe(document, {
-    childList: true,
-    subtree: true
-  });
+  }).observe(document, { childList: true, subtree: true });
   function getFetchOpts(link) {
     const fetchOpts = {};
     if (link.integrity) fetchOpts.integrity = link.integrity;
     if (link.referrerPolicy) fetchOpts.referrerPolicy = link.referrerPolicy;
-    if (link.crossOrigin === "use-credentials") fetchOpts.credentials = "include";
+    if (link.crossOrigin === "use-credentials")
+      fetchOpts.credentials = "include";
     else if (link.crossOrigin === "anonymous") fetchOpts.credentials = "omit";
     else fetchOpts.credentials = "same-origin";
     return fetchOpts;
   }
   function processPreload(link) {
-    if (link.ep) return;
+    if (link.ep)
+      return;
     link.ep = true;
     const fetchOpts = getFetchOpts(link);
     fetch(link.href, fetchOpts);
@@ -180,72 +192,73 @@ var PreviewMode$1 = /* @__PURE__ */ ((PreviewMode2) => {
   return PreviewMode2;
 })(PreviewMode$1 || {});
 let TypstDocumentContext$1 = class TypstDocumentContext {
-  hookedElem;
-  windowElem;
-  kModule;
-  opts;
-  modes = [];
-  /// Configuration fields
-  /// enable partial rendering
-  partialRendering = true;
-  /// underlying renderer
-  renderMode = "svg";
-  r = void 0;
-  /// preview mode
-  previewMode = 0;
-  /// whether this is a content preview
-  isContentPreview = false;
-  /// whether this content preview will mix outline titles
-  isMixinOutline = false;
-  /// background color
-  backgroundColor = "black";
-  /// default page color (empty string means transparent)
-  pageColor = "white";
-  /// pixel per pt
-  pixelPerPt = 3;
-  /// customized way to retrieving dom state
-  retrieveDOMState;
-  /// State fields
-  /// whether svg is updating (in triggerSvgUpdate)
-  isRendering = false;
-  /// whether kModule is initialized
-  moduleInitialized = false;
-  /// patch queue for updating data.
-  patchQueue = [];
-  /// resources to dispose
-  disposeList = [];
-  /// There are two scales in this class: The real scale is to adjust the size
-  /// of `hookedElem` to fit the svg. The virtual scale (scale ratio) is to let
-  /// user zoom in/out the svg. For example:
-  /// + the default value of virtual scale is 1, which means the svg is totally
-  ///   fit in `hookedElem`.
-  /// + if user set virtual scale to 0.5, then the svg will be zoomed out to fit
-  ///   in half width of `hookedElem`. "real" current scale of `hookedElem`
-  currentRealScale = 1;
-  /// "virtual" current scale of `hookedElem`
-  currentScaleRatio = 1;
-  /// timeout for delayed viewport change
-  vpTimeout = void 0;
-  /// sampled by last render time.
-  sampledRenderTime = 0;
-  /// page to partial render
-  partialRenderPage = 0;
-  /// outline data
-  outline = void 0;
-  /// cursor position in form of [page, x, y]
-  cursorPosition = void 0;
-  // id: number = rnd++;
-  /// Cache fields
-  /// cached state of container, default to retrieve state from `this.hookedElem`
-  cachedDOMState = {
-    width: 0,
-    height: 0,
-    boundingRect: {
-      left: 0,
-      top: 0
-    }
-  };
   constructor(opts) {
+    __publicField(this, "hookedElem");
+    __publicField(this, "windowElem");
+    __publicField(this, "kModule");
+    __publicField(this, "opts");
+    __publicField(this, "modes", []);
+    /// Configuration fields
+    /// enable partial rendering
+    __publicField(this, "partialRendering", true);
+    /// underlying renderer
+    __publicField(this, "renderMode", "svg");
+    __publicField(this, "r");
+    /// preview mode
+    __publicField(this, "previewMode", 0);
+    /// whether this is a content preview
+    __publicField(this, "isContentPreview", false);
+    /// whether this content preview will mix outline titles
+    __publicField(this, "isMixinOutline", false);
+    /// background color
+    __publicField(this, "backgroundColor", "black");
+    /// default page color (empty string means transparent)
+    __publicField(this, "pageColor", "white");
+    /// pixel per pt
+    __publicField(this, "pixelPerPt", 3);
+    /// customized way to retrieving dom state
+    __publicField(this, "retrieveDOMState");
+    /// State fields
+    /// whether svg is updating (in triggerSvgUpdate)
+    __publicField(this, "isRendering", false);
+    /// whether kModule is initialized
+    __publicField(this, "moduleInitialized", false);
+    /// patch queue for updating data.
+    __publicField(this, "patchQueue", []);
+    /// resources to dispose
+    __publicField(this, "disposeList", []);
+    /// There are two scales in this class: The real scale is to adjust the size
+    /// of `hookedElem` to fit the svg. The virtual scale (scale ratio) is to let
+    /// user zoom in/out the svg. For example:
+    /// + the default value of virtual scale is 1, which means the svg is totally
+    ///   fit in `hookedElem`.
+    /// + if user set virtual scale to 0.5, then the svg will be zoomed out to fit
+    ///   in half width of `hookedElem`. "real" current scale of `hookedElem`
+    __publicField(this, "currentRealScale", 1);
+    /// "virtual" current scale of `hookedElem`
+    __publicField(this, "currentScaleRatio", 1);
+    /// timeout for delayed viewport change
+    __publicField(this, "vpTimeout");
+    /// sampled by last render time.
+    __publicField(this, "sampledRenderTime", 0);
+    /// page to partial render
+    __publicField(this, "partialRenderPage", 0);
+    /// outline data
+    __publicField(this, "outline");
+    /// cursor position in form of [page, x, y]
+    __publicField(this, "cursorPosition");
+    // id: number = rnd++;
+    /// Cache fields
+    /// cached state of container, default to retrieve state from `this.hookedElem`
+    __publicField(this, "cachedDOMState", {
+      width: 0,
+      height: 0,
+      boundingRect: {
+        left: 0,
+        top: 0
+      }
+    });
+    var _a2, _b2;
     this.windowElem = opts.windowElem;
     this.hookedElem = opts.hookedElem;
     this.kModule = opts.kModule;
@@ -268,10 +281,10 @@ let TypstDocumentContext$1 = class TypstDocumentContext {
       );
     }
     this.hookedElem.classList.add("hide-scrollbar-x");
-    this.hookedElem.parentElement?.classList.add("hide-scrollbar-x");
+    (_a2 = this.hookedElem.parentElement) == null ? void 0 : _a2.classList.add("hide-scrollbar-x");
     if (this.previewMode === 1) {
       this.hookedElem.classList.add("hide-scrollbar-y");
-      this.hookedElem.parentElement?.classList.add("hide-scrollbar-y");
+      (_b2 = this.hookedElem.parentElement) == null ? void 0 : _b2.classList.add("hide-scrollbar-y");
     }
     this.installRescaleHandler();
   }
@@ -334,6 +347,7 @@ let TypstDocumentContext$1 = class TypstDocumentContext {
       10
     ];
     const doRescale = (scrollDirection, pageX, pageY) => {
+      var _a2, _b2, _c, _d;
       const prevScaleRatio = this.currentScaleRatio;
       if (scrollDirection === -1) {
         if (this.currentScaleRatio >= factors.at(-1)) {
@@ -353,17 +367,17 @@ let TypstDocumentContext$1 = class TypstDocumentContext {
       const scrollFactor = this.currentScaleRatio / prevScaleRatio;
       if (Math.abs(this.currentScaleRatio - 1) < 1e-5) {
         this.hookedElem.classList.add("hide-scrollbar-x");
-        this.hookedElem.parentElement?.classList.add("hide-scrollbar-x");
+        (_a2 = this.hookedElem.parentElement) == null ? void 0 : _a2.classList.add("hide-scrollbar-x");
         if (this.previewMode === 1) {
           this.hookedElem.classList.add("hide-scrollbar-y");
-          this.hookedElem.parentElement?.classList.add("hide-scrollbar-y");
+          (_b2 = this.hookedElem.parentElement) == null ? void 0 : _b2.classList.add("hide-scrollbar-y");
         }
       } else {
         this.hookedElem.classList.remove("hide-scrollbar-x");
-        this.hookedElem.parentElement?.classList.remove("hide-scrollbar-x");
+        (_c = this.hookedElem.parentElement) == null ? void 0 : _c.classList.remove("hide-scrollbar-x");
         if (this.previewMode === 1) {
           this.hookedElem.classList.remove("hide-scrollbar-y");
-          this.hookedElem.parentElement?.classList.remove("hide-scrollbar-y");
+          (_d = this.hookedElem.parentElement) == null ? void 0 : _d.classList.remove("hide-scrollbar-y");
         }
       }
       const svg = this.hookedElem.firstElementChild;
@@ -559,16 +573,16 @@ let TypstDocumentContext$1 = class TypstDocumentContext {
 };
 function provideDoc$1(Base) {
   return class TypstDocument {
-    impl;
-    kModule;
     constructor(options) {
+      __publicField(this, "impl");
+      __publicField(this, "kModule");
       if (options.isContentPreview) {
         options.renderMode = "canvas";
       }
       this.kModule = options.kModule;
       this.impl = new Base(options);
       if (!this.impl.r) {
-        throw new Error(`mode is not supported, ${options?.renderMode}`);
+        throw new Error(`mode is not supported, ${options == null ? void 0 : options.renderMode}`);
       }
       if (options.isContentPreview) {
         this.impl.partialRendering = true;
@@ -614,10 +628,10 @@ function composeDoc$1(Base, ...mixins) {
   return mixins.reduce((acc, mixin) => mixin(acc), Base);
 }
 let TypstCancellationToken$1 = class TypstCancellationToken {
-  isCancellationRequested = false;
-  _onCancelled;
-  _onCancelledResolveResolved;
   constructor() {
+    __publicField(this, "isCancellationRequested", false);
+    __publicField(this, "_onCancelled");
+    __publicField(this, "_onCancelledResolveResolved");
     let resolveT = void 0;
     let resolveX = void 0;
     this._onCancelled = new Promise((resolve) => {
@@ -991,6 +1005,7 @@ function initOrPatchSvgHeader(svg) {
   document.body.prepend(resourceHeader);
 }
 function patchSvgHeader(prev, next) {
+  var _a2;
   for (let i = 0; i < SVG_HEADER_LENGTH; i++) {
     const prevChild = prev.children[i];
     const nextChild = next.firstElementChild;
@@ -1011,7 +1026,7 @@ function patchSvgHeader(prev, next) {
         for (const rule of currentSvgSheet.cssRules) {
           rules.add(rule.cssText);
         }
-        const rulesToInsert = styleElement.sheet?.cssRules || [];
+        const rulesToInsert = ((_a2 = styleElement.sheet) == null ? void 0 : _a2.cssRules) || [];
         for (const rule of rulesToInsert) {
           if (rules.has(rule.cssText)) {
             continue;
@@ -1274,17 +1289,17 @@ function provideDebugJumpDoc(Base) {
 }
 function provideSvgDoc(Base) {
   return class SvgDocument extends Base {
-    /// canvas render ctoken
-    canvasRenderCToken;
     constructor(...args) {
       super(...args);
+      /// canvas render ctoken
+      __publicField(this, "canvasRenderCToken");
+      /// cursor path is a list of element point from root to leaf
+      __publicField(this, "cursorPaths");
       this.registerMode("svg");
     }
     shouldMixinCanvas() {
       return !!this.feat$canvas;
     }
-    /// cursor path is a list of element point from root to leaf
-    cursorPaths = void 0;
     setCursorPaths(paths) {
       this.cursorPaths = paths;
       this.addViewportChange();
@@ -1339,17 +1354,17 @@ function provideSvgDoc(Base) {
           if (foundUse !== void 0) {
             const g = leaf[0];
             const rectBase = foundUse.getBBox();
-            const rectNextBase = foundUseNext?.getBBox();
+            const rectNextBase = foundUseNext == null ? void 0 : foundUseNext.getBBox();
             const rect = {
               // Some char does not have position so they are resolved to 0
-              right: rectBase.width !== 0 ? rectBase.x + rectBase.width : rectNextBase?.x || 0
+              right: rectBase.width !== 0 ? rectBase.x + rectBase.width : (rectNextBase == null ? void 0 : rectNextBase.x) || 0
               // todo: have bug
               // top: textBase.height / 2,
             };
             const mat = g.getScreenCTM();
             let rx = 5;
             let ry = 5;
-            const matInv = mat?.inverse();
+            const matInv = mat == null ? void 0 : mat.inverse();
             if (matInv) {
               const sx = matInv.a;
               const ky = matInv.b;
@@ -1406,10 +1421,11 @@ function provideSvgDoc(Base) {
       });
     }
     fetchSvgDataByDocMode() {
+      var _a2;
       const { revScale, left, top, width, height } = this.statSvgFromDom();
       let patchStr;
       if (this.partialRendering) {
-        const ch = this.hookedElem.firstElementChild?.children;
+        const ch = (_a2 = this.hookedElem.firstElementChild) == null ? void 0 : _a2.children;
         let topEstimate = top - 1, bottomEstimate = top + height + 1;
         if (ch) {
           const pages = Array.from(ch).filter((x) => x.classList.contains("typst-page"));
@@ -1511,6 +1527,7 @@ function provideSvgDoc(Base) {
       }
     }
     decorateSvgElement(svg, mode) {
+      var _a2;
       const container = this.cachedDOMState;
       const kShouldMixinCanvas = this.previewMode === PreviewMode$1.Doc && this.shouldMixinCanvas();
       const INNER_RECT_UNIT = 100;
@@ -1653,7 +1670,7 @@ function provideSvgDoc(Base) {
         accumulatedHeight = calculatedPaddedY + pageHeightEnd;
       }
       if (kShouldMixinCanvas) {
-        for (const prev of this.hookedElem.firstElementChild?.children || []) {
+        for (const prev of ((_a2 = this.hookedElem.firstElementChild) == null ? void 0 : _a2.children) || []) {
           if (!prev.classList.contains("typst-page")) {
             continue;
           }
@@ -1661,7 +1678,7 @@ function provideSvgDoc(Base) {
             continue;
           }
           const ch = prev.querySelector(".typst-svg-mixin-canvas");
-          if (ch?.tagName === "foreignObject") {
+          if ((ch == null ? void 0 : ch.tagName) === "foreignObject") {
             const canvasDiv = ch.firstElementChild;
             const pageNumber = Number.parseInt(canvasDiv.getAttribute("data-page-number"));
             const pageInfo = n2CMapping.get(pageNumber);
@@ -1751,9 +1768,9 @@ function provideSvgDoc(Base) {
 const renderCanvasWhenIdle = "requestIdleCallback" in window ? requestIdleCallback : (cb, { timeout }) => setTimeout(cb, timeout);
 function provideCanvasDoc(Base) {
   return class CanvasDocument extends Base {
-    feat$canvas = true;
     constructor(...args) {
       super(...args);
+      __publicField(this, "feat$canvas", true);
       this.registerMode("canvas");
     }
     shouldMixinOutline() {
@@ -1797,7 +1814,7 @@ function provideCanvasDoc(Base) {
         if (!pageInfo.container.parentElement) {
           if (pageInfo.inserter) {
             pageInfo.inserter(pageInfo);
-          } else if (opts?.defaultInserter) {
+          } else if (opts == null ? void 0 : opts.defaultInserter) {
             opts.defaultInserter(pageInfo);
           } else {
             throw new Error("pageInfo.inserter is not defined");
@@ -1825,14 +1842,14 @@ function provideCanvasDoc(Base) {
       return cached;
     }
     async updateCanvas(pages, opts) {
-      const tok = opts?.cancel || void 0;
+      const tok = (opts == null ? void 0 : opts.cancel) || void 0;
       const perf = performance.now();
       console.log("updateCanvas start");
       this.kModule.backgroundColor = "#ffffff";
       this.kModule.pixelPerPt = this.pixelPerPt;
       const waitABit = async () => {
         return new Promise((resolve) => {
-          if (opts?.lazy && "requestIdleCallback" in window) {
+          if ((opts == null ? void 0 : opts.lazy) && "requestIdleCallback" in window) {
             requestIdleCallback(() => resolve(void 0), { timeout: 100 });
           } else {
             resolve(void 0);
@@ -1840,7 +1857,7 @@ function provideCanvasDoc(Base) {
         });
       };
       for (const pageInfo of pages) {
-        if (tok?.isCancelRequested()) {
+        if (tok == null ? void 0 : tok.isCancelRequested()) {
           await tok.consume();
           console.log("updateCanvas cancelled", performance.now() - perf);
           return;
@@ -1868,7 +1885,7 @@ function provideCanvasDoc(Base) {
         await waitABit();
       }
       console.log("updateCanvas done", performance.now() - perf);
-      await tok?.consume();
+      await (tok == null ? void 0 : tok.consume());
     }
     rescaleOne(docDiv) {
       const { width: cwRaw, height: ch } = this.cachedDOMState;
@@ -2010,11 +2027,11 @@ function provideCanvasDoc(Base) {
 }
 class GenElem {
   constructor(tag, container, additions) {
+    __publicField(this, "children", []);
     this.tag = tag;
     this.container = container;
     this.additions = additions;
   }
-  children = [];
   push(child) {
     this.children.push(child);
     this.container.append(child.container);
@@ -2045,17 +2062,17 @@ function replaceStubToRealCanvas(t) {
 }
 class GenContext {
   constructor(pages, windowElem2) {
+    __publicField(this, "populateCnt", 1);
+    __publicField(this, "insertionPoint");
+    __publicField(this, "parent");
+    __publicField(this, "lastVisit");
+    __publicField(this, "allElemList", []);
+    __publicField(this, "windowElem");
     this.pages = pages;
     this.insertionPoint = new GenElem("outline", document.createElement("div"));
     this.parent = this.insertionPoint;
     this.windowElem = windowElem2;
   }
-  populateCnt = 1;
-  insertionPoint;
-  parent;
-  lastVisit;
-  allElemList = [];
-  windowElem;
   /// Populate canvas stubs from `this.populateCnt` to `until` (exclusive).
   spliceCanvas(next, until) {
     until = Math.min(until, this.pages.length + 1);
@@ -2066,13 +2083,14 @@ class GenContext {
   }
   /// Generate outline node for `item` and its children.
   generate(item, level) {
+    var _a2;
     const id = `span:${item.span},title:${item.title}`;
     const outlineDiv = document.createElement("div");
     outlineDiv.classList.add("typst-outline");
     outlineDiv.setAttribute("data-title", item.title);
     tagPatchId(outlineDiv, "outline:" + id);
     const outlineNode = new GenElem("outline", outlineDiv, {});
-    let pos = item.position?.page_no || 0;
+    let pos = ((_a2 = item.position) == null ? void 0 : _a2.page_no) || 0;
     this.spliceCanvas(this.insertionPoint, pos);
     const titleDiv = document.createElement("div");
     titleDiv.classList.add("typst-outline-title", "level-" + level);
@@ -2137,7 +2155,7 @@ function patchOutlineEntry(prev, pages, items, windowElem2) {
     patchOutlineChildren(ctx, prev, next.container);
   }
   for (const page of pages) {
-    page.inserter ||= replaceStubToRealCanvas;
+    page.inserter || (page.inserter = replaceStubToRealCanvas);
   }
 }
 function reuseOrPatchOutlineElem(ctx, prev, next) {
@@ -2176,6 +2194,7 @@ function patchOutlineChildren(ctx, prev, next) {
   runOriginViewInstructionsOnOutline(ctx, prev, originView);
 }
 function runOriginViewInstructionsOnOutline(ctx, prev, originView) {
+  var _a2;
   for (const [op, off, fr] of originView) {
     const elem = prev.children[off];
     switch (op) {
@@ -2186,7 +2205,7 @@ function runOriginViewInstructionsOnOutline(ctx, prev, originView) {
         prev.insertBefore(prev.children[fr], elem);
         break;
       case "remove":
-        if (elem?.classList?.contains("typst-page")) {
+        if ((_a2 = elem == null ? void 0 : elem.classList) == null ? void 0 : _a2.contains("typst-page")) {
           const pageNumber = Number.parseInt(elem.getAttribute("data-page-number"));
           if (pageNumber < ctx.pages.length) {
             const page = ctx.pages[pageNumber];
@@ -2226,47 +2245,71 @@ const seen = {};
 const __vitePreload = function preload(baseModule, deps, importerUrl) {
   let promise = Promise.resolve();
   if (deps && deps.length > 0) {
-    let allSettled = function(promises$2) {
-      return Promise.all(promises$2.map((p) => Promise.resolve(p).then((value$1) => ({
-        status: "fulfilled",
-        value: value$1
-      }), (reason) => ({
-        status: "rejected",
-        reason
-      }))));
+    let allSettled2 = function(promises) {
+      return Promise.all(
+        promises.map(
+          (p) => Promise.resolve(p).then(
+            (value) => ({ status: "fulfilled", value }),
+            (reason) => ({ status: "rejected", reason })
+          )
+        )
+      );
     };
     const links = document.getElementsByTagName("link");
-    const cspNonceMeta = document.querySelector("meta[property=csp-nonce]");
-    const cspNonce = cspNonceMeta?.nonce || cspNonceMeta?.getAttribute("nonce");
-    promise = allSettled(deps.map((dep) => {
-      dep = assetsURL(dep, importerUrl);
-      if (dep in seen) return;
-      seen[dep] = true;
-      const isCss = dep.endsWith(".css");
-      const cssSelector = isCss ? '[rel="stylesheet"]' : "";
-      if (!!importerUrl) for (let i$1 = links.length - 1; i$1 >= 0; i$1--) {
-        const link$1 = links[i$1];
-        if (link$1.href === dep && (!isCss || link$1.rel === "stylesheet")) return;
-      }
-      else if (document.querySelector(`link[href="${dep}"]${cssSelector}`)) return;
-      const link = document.createElement("link");
-      link.rel = isCss ? "stylesheet" : scriptRel;
-      if (!isCss) link.as = "script";
-      link.crossOrigin = "";
-      link.href = dep;
-      if (cspNonce) link.setAttribute("nonce", cspNonce);
-      document.head.appendChild(link);
-      if (isCss) return new Promise((res, rej) => {
-        link.addEventListener("load", res);
-        link.addEventListener("error", () => rej(/* @__PURE__ */ new Error(`Unable to preload CSS for ${dep}`)));
-      });
-    }));
+    const cspNonceMeta = document.querySelector(
+      "meta[property=csp-nonce]"
+    );
+    const cspNonce = (cspNonceMeta == null ? void 0 : cspNonceMeta.nonce) || (cspNonceMeta == null ? void 0 : cspNonceMeta.getAttribute("nonce"));
+    promise = allSettled2(
+      deps.map((dep) => {
+        dep = assetsURL(dep, importerUrl);
+        if (dep in seen) return;
+        seen[dep] = true;
+        const isCss = dep.endsWith(".css");
+        const cssSelector = isCss ? '[rel="stylesheet"]' : "";
+        const isBaseRelative = !!importerUrl;
+        if (isBaseRelative) {
+          for (let i = links.length - 1; i >= 0; i--) {
+            const link2 = links[i];
+            if (link2.href === dep && (!isCss || link2.rel === "stylesheet")) {
+              return;
+            }
+          }
+        } else if (document.querySelector(`link[href="${dep}"]${cssSelector}`)) {
+          return;
+        }
+        const link = document.createElement("link");
+        link.rel = isCss ? "stylesheet" : scriptRel;
+        if (!isCss) {
+          link.as = "script";
+        }
+        link.crossOrigin = "";
+        link.href = dep;
+        if (cspNonce) {
+          link.setAttribute("nonce", cspNonce);
+        }
+        document.head.appendChild(link);
+        if (isCss) {
+          return new Promise((res, rej) => {
+            link.addEventListener("load", res);
+            link.addEventListener(
+              "error",
+              () => rej(new Error(`Unable to preload CSS for ${dep}`))
+            );
+          });
+        }
+      })
+    );
   }
-  function handlePreloadError(err$2) {
-    const e$1 = new Event("vite:preloadError", { cancelable: true });
-    e$1.payload = err$2;
-    window.dispatchEvent(e$1);
-    if (!e$1.defaultPrevented) throw err$2;
+  function handlePreloadError(err) {
+    const e = new Event("vite:preloadError", {
+      cancelable: true
+    });
+    e.payload = err;
+    window.dispatchEvent(e);
+    if (!e.defaultPrevented) {
+      throw err;
+    }
   }
   return promise.then((res) => {
     for (const item of res || []) {
@@ -2276,22 +2319,22 @@ const __vitePreload = function preload(baseModule, deps, importerUrl) {
     return baseModule().catch(handlePreloadError);
   });
 };
-const kObject = /* @__PURE__ */ Symbol.for("reflexo-obj");
+const kObject = Symbol.for("reflexo-obj");
 var TypstDefaultParams;
 (function(TypstDefaultParams2) {
   TypstDefaultParams2[TypstDefaultParams2["PIXEL_PER_PT"] = 3] = "PIXEL_PER_PT";
 })(TypstDefaultParams || (TypstDefaultParams = {}));
 class RenderView {
-  pageInfos;
-  loadPageCount;
-  imageScaleFactor;
-  container;
-  canvasList;
-  textLayerList;
-  commonList;
-  textLayerParentList;
-  semanticLayerList;
   constructor(pageInfos, container, options) {
+    __publicField(this, "pageInfos");
+    __publicField(this, "loadPageCount");
+    __publicField(this, "imageScaleFactor");
+    __publicField(this, "container");
+    __publicField(this, "canvasList");
+    __publicField(this, "textLayerList");
+    __publicField(this, "commonList");
+    __publicField(this, "textLayerParentList");
+    __publicField(this, "semanticLayerList");
     this.pageInfos = pageInfos;
     this.imageScaleFactor = options.pixelPerPt ?? TypstDefaultParams.PIXEL_PER_PT;
     container.innerHTML = "";
@@ -2379,9 +2422,9 @@ const once = (fn) => {
   };
 };
 class LazyWasmModule {
-  wasmBin;
-  initOnce;
   constructor(initFn) {
+    __publicField(this, "wasmBin");
+    __publicField(this, "initOnce");
     if (typeof initFn !== "function") {
       throw new Error("initFn is not a function");
     }
@@ -2395,14 +2438,16 @@ class LazyWasmModule {
   }
 }
 class ComponentBuilder {
-  loadedFonts = /* @__PURE__ */ new Set();
-  fetcher = fetch;
+  constructor() {
+    __publicField(this, "loadedFonts", /* @__PURE__ */ new Set());
+    __publicField(this, "fetcher", fetch);
+  }
   setFetcher(fetcher) {
     this.fetcher = fetcher;
   }
   async loadFonts(builder, fonts) {
     const escapeImport = new Function("m", "return import(m)");
-    const fetcher = this.fetcher ||= await (async function() {
+    const fetcher = this.fetcher || (this.fetcher = await (async function() {
       const { fetchBuilder, FileSystemCache } = await escapeImport("node-fetch-cache");
       const cache = new FileSystemCache({
         /// By default, we don't have a complicated cache policy.
@@ -2417,7 +2462,7 @@ class ComponentBuilder {
           clearTimeout(timeout);
         });
       };
-    })();
+    })());
     const fontsToLoad = fonts.filter((font) => {
       if (font instanceof Uint8Array || typeof font === "object" && "info" in font) {
         return true;
@@ -2448,7 +2493,7 @@ class ComponentBuilder {
   }
   async build(options, builder, hooks) {
     const buildCtx = { ref: this, builder, hooks };
-    for (const fn of options?.beforeBuild ?? []) {
+    for (const fn of (options == null ? void 0 : options.beforeBuild) ?? []) {
       await fn(void 0, buildCtx);
     }
     if (hooks.latelyBuild) {
@@ -2458,7 +2503,8 @@ class ComponentBuilder {
   }
 }
 async function buildComponent(options, gModule, Builder, hooks) {
-  await gModule.init(options?.getModule?.());
+  var _a2;
+  await gModule.init((_a2 = options == null ? void 0 : options.getModule) == null ? void 0 : _a2.call(options));
   return await new ComponentBuilder().build(options, new Builder(), hooks);
 }
 function loadFontSync(font) {
@@ -2479,78 +2525,79 @@ var PreviewMode;
   PreviewMode2[PreviewMode2["Slide"] = 1] = "Slide";
 })(PreviewMode || (PreviewMode = {}));
 class TypstDocumentContext2 {
-  hookedElem;
-  kModule;
-  opts;
-  modes = [];
-  /// Configuration fields
-  /// enable partial rendering
-  partialRendering = true;
-  /// underlying renderer
-  renderMode = "svg";
-  r = void 0;
-  /// preview mode
-  previewMode = PreviewMode.Doc;
-  /// whether this is a content preview
-  isContentPreview = false;
-  /// whether this content preview will mix outline titles
-  isMixinOutline = false;
-  /// background color
-  backgroundColor = "black";
-  /// default page color (empty string means transparent)
-  pageColor = "white";
-  /// pixel per pt
-  pixelPerPt = 3;
-  /// customized way to retrieving dom state
-  retrieveDOMState;
-  /// State fields
-  /// whether svg is updating (in triggerSvgUpdate)
-  isRendering = false;
-  /// whether kModule is initialized
-  moduleInitialized = false;
-  /// patch queue for updating data.
-  patchQueue = [];
-  /// resources to dispose
-  disposeList = [];
-  /// canvas render ctoken
-  canvasRenderCToken;
-  /// There are two scales in this class: The real scale is to adjust the size
-  /// of `hookedElem` to fit the svg. The virtual scale (scale ratio) is to let
-  /// user zoom in/out the svg. For example:
-  /// + the default value of virtual scale is 1, which means the svg is totally
-  ///   fit in `hookedElem`.
-  /// + if user set virtual scale to 0.5, then the svg will be zoomed out to fit
-  ///   in half width of `hookedElem`. "real" current scale of `hookedElem`
-  currentRealScale = 1;
-  /// "virtual" current scale of `hookedElem`
-  currentScaleRatio = 1;
-  /// timeout for delayed viewport change
-  vpTimeout = void 0;
-  /// sampled by last render time.
-  sampledRenderTime = 0;
-  /// page to partial render
-  partialRenderPage = 0;
-  /// outline data
-  outline = void 0;
-  /// cursor position in form of [page, x, y]
-  cursorPosition = void 0;
-  // id: number = rnd++;
-  /// Cache fields
-  /// cached state of container, default to retrieve state from `this.hookedElem`
-  cachedDOMState = {
-    width: 0,
-    height: 0,
-    window: {
-      innerWidth: 0,
-      innerHeight: 0
-    },
-    boundingRect: {
-      left: 0,
-      top: 0,
-      right: 0
-    }
-  };
   constructor(opts) {
+    __publicField(this, "hookedElem");
+    __publicField(this, "kModule");
+    __publicField(this, "opts");
+    __publicField(this, "modes", []);
+    /// Configuration fields
+    /// enable partial rendering
+    __publicField(this, "partialRendering", true);
+    /// underlying renderer
+    __publicField(this, "renderMode", "svg");
+    __publicField(this, "r");
+    /// preview mode
+    __publicField(this, "previewMode", PreviewMode.Doc);
+    /// whether this is a content preview
+    __publicField(this, "isContentPreview", false);
+    /// whether this content preview will mix outline titles
+    __publicField(this, "isMixinOutline", false);
+    /// background color
+    __publicField(this, "backgroundColor", "black");
+    /// default page color (empty string means transparent)
+    __publicField(this, "pageColor", "white");
+    /// pixel per pt
+    __publicField(this, "pixelPerPt", 3);
+    /// customized way to retrieving dom state
+    __publicField(this, "retrieveDOMState");
+    /// State fields
+    /// whether svg is updating (in triggerSvgUpdate)
+    __publicField(this, "isRendering", false);
+    /// whether kModule is initialized
+    __publicField(this, "moduleInitialized", false);
+    /// patch queue for updating data.
+    __publicField(this, "patchQueue", []);
+    /// resources to dispose
+    __publicField(this, "disposeList", []);
+    /// canvas render ctoken
+    __publicField(this, "canvasRenderCToken");
+    /// There are two scales in this class: The real scale is to adjust the size
+    /// of `hookedElem` to fit the svg. The virtual scale (scale ratio) is to let
+    /// user zoom in/out the svg. For example:
+    /// + the default value of virtual scale is 1, which means the svg is totally
+    ///   fit in `hookedElem`.
+    /// + if user set virtual scale to 0.5, then the svg will be zoomed out to fit
+    ///   in half width of `hookedElem`. "real" current scale of `hookedElem`
+    __publicField(this, "currentRealScale", 1);
+    /// "virtual" current scale of `hookedElem`
+    __publicField(this, "currentScaleRatio", 1);
+    /// timeout for delayed viewport change
+    __publicField(this, "vpTimeout");
+    /// sampled by last render time.
+    __publicField(this, "sampledRenderTime", 0);
+    /// page to partial render
+    __publicField(this, "partialRenderPage", 0);
+    /// outline data
+    __publicField(this, "outline");
+    /// cursor position in form of [page, x, y]
+    __publicField(this, "cursorPosition");
+    // id: number = rnd++;
+    /// Cache fields
+    /// cached state of container, default to retrieve state from `this.hookedElem`
+    __publicField(this, "cachedDOMState", {
+      width: 0,
+      height: 0,
+      window: {
+        innerWidth: 0,
+        innerHeight: 0
+      },
+      boundingRect: {
+        left: 0,
+        top: 0,
+        right: 0
+      }
+    });
+    var _a2, _b2;
     this.hookedElem = opts.hookedElem;
     this.kModule = opts.kModule;
     this.opts = opts || {};
@@ -2574,10 +2621,10 @@ class TypstDocumentContext2 {
       this.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue("--typst-preview-background-color");
     }
     this.hookedElem.classList.add("hide-scrollbar-x");
-    this.hookedElem.parentElement?.classList.add("hide-scrollbar-x");
+    (_a2 = this.hookedElem.parentElement) == null ? void 0 : _a2.classList.add("hide-scrollbar-x");
     if (this.previewMode === PreviewMode.Slide) {
       this.hookedElem.classList.add("hide-scrollbar-y");
-      this.hookedElem.parentElement?.classList.add("hide-scrollbar-y");
+      (_b2 = this.hookedElem.parentElement) == null ? void 0 : _b2.classList.add("hide-scrollbar-y");
     }
     this.installCtrlWheelHandler();
   }
@@ -2639,6 +2686,7 @@ class TypstDocumentContext2 {
       10
     ];
     const wheelEventHandler = (event) => {
+      var _a2, _b2, _c, _d;
       if (event.ctrlKey) {
         event.preventDefault();
         this.cachedDOMState = this.retrieveDOMState();
@@ -2666,17 +2714,17 @@ class TypstDocumentContext2 {
         const scrollY = event.pageY * (scrollFactor - 1);
         if (Math.abs(this.currentScaleRatio - 1) < 1e-5) {
           this.hookedElem.classList.add("hide-scrollbar-x");
-          this.hookedElem.parentElement?.classList.add("hide-scrollbar-x");
+          (_a2 = this.hookedElem.parentElement) == null ? void 0 : _a2.classList.add("hide-scrollbar-x");
           if (this.previewMode === PreviewMode.Slide) {
             this.hookedElem.classList.add("hide-scrollbar-y");
-            this.hookedElem.parentElement?.classList.add("hide-scrollbar-y");
+            (_b2 = this.hookedElem.parentElement) == null ? void 0 : _b2.classList.add("hide-scrollbar-y");
           }
         } else {
           this.hookedElem.classList.remove("hide-scrollbar-x");
-          this.hookedElem.parentElement?.classList.remove("hide-scrollbar-x");
+          (_c = this.hookedElem.parentElement) == null ? void 0 : _c.classList.remove("hide-scrollbar-x");
           if (this.previewMode === PreviewMode.Slide) {
             this.hookedElem.classList.remove("hide-scrollbar-y");
-            this.hookedElem.parentElement?.classList.remove("hide-scrollbar-y");
+            (_d = this.hookedElem.parentElement) == null ? void 0 : _d.classList.remove("hide-scrollbar-y");
           }
         }
         const svg = this.hookedElem.firstElementChild;
@@ -2825,16 +2873,16 @@ class TypstDocumentContext2 {
 }
 function provideDoc(Base) {
   return class TypstDocument {
-    impl;
-    kModule;
     constructor(options) {
+      __publicField(this, "impl");
+      __publicField(this, "kModule");
       if (options.isContentPreview) {
         options.renderMode = "canvas";
       }
       this.kModule = options.kModule;
       this.impl = new Base(options);
       if (!this.impl.r) {
-        throw new Error(`mode is not supported, ${options?.renderMode}`);
+        throw new Error(`mode is not supported, ${options == null ? void 0 : options.renderMode}`);
       }
       if (options.isContentPreview) {
         this.impl.partialRendering = true;
@@ -2885,10 +2933,10 @@ function composeDoc(Base, ...mixins) {
   return mixins.reduce((acc, mixin) => mixin(acc), Base);
 }
 class TypstCancellationToken2 {
-  isCancellationRequested = false;
-  _onCancelled;
-  _onCancelledResolveResolved;
   constructor() {
+    __publicField(this, "isCancellationRequested", false);
+    __publicField(this, "_onCancelled");
+    __publicField(this, "_onCancelledResolveResolved");
     let resolveT = void 0;
     let resolveX = void 0;
     this._onCancelled = new Promise((resolve) => {
@@ -2934,29 +2982,29 @@ var RepaintStage;
 })(RepaintStage || (RepaintStage = {}));
 function provideDomDoc(Base) {
   return class DomDocument extends Base {
-    /// The template element for creating DOM by string.
-    tmpl = document.createElement("template");
-    /// The stub element for replacing an invisible element.
-    stub = this.createElement("<stub></stub>");
-    /// Typescript side of lib.
-    plugin;
-    /// Rust side of kernel.
-    docKernel;
-    /// The element to track.
-    resourceHeader = void 0;
-    /// Expected exact state of the current DOM.
-    /// Initially it is empty meaning no any page is rendered.
-    pages = [];
-    /// The virtual scale of the document.
-    domScale = 1;
-    /// Track mode.
-    track_mode = TrackMode.Doc;
-    /// Current executing task.
-    current_task = void 0;
-    /// The currently maintained viewport.
-    viewport;
     constructor(...args) {
       super(...args);
+      /// The template element for creating DOM by string.
+      __publicField(this, "tmpl", document.createElement("template"));
+      /// The stub element for replacing an invisible element.
+      __publicField(this, "stub", this.createElement("<stub></stub>"));
+      /// Typescript side of lib.
+      __publicField(this, "plugin");
+      /// Rust side of kernel.
+      __publicField(this, "docKernel");
+      /// The element to track.
+      __publicField(this, "resourceHeader");
+      /// Expected exact state of the current DOM.
+      /// Initially it is empty meaning no any page is rendered.
+      __publicField(this, "pages", []);
+      /// The virtual scale of the document.
+      __publicField(this, "domScale", 1);
+      /// Track mode.
+      __publicField(this, "track_mode", TrackMode.Doc);
+      /// Current executing task.
+      __publicField(this, "current_task");
+      /// The currently maintained viewport.
+      __publicField(this, "viewport");
       this.registerMode("dom");
       this.disposeList.push(() => {
         this.dispose();
@@ -3118,16 +3166,16 @@ function provideDomDoc(Base) {
 }
 class TypstDomDocument extends provideDoc(composeDoc(TypstDocumentContext2, provideDomDoc)) {
 }
-let RenderSession$1 = class RenderSession {
-  plugin;
-  /**
-   * @internal
-   */
-  [kObject];
+let RenderSession$1 = (_a = kObject, class RenderSession {
   /**
    * @internal
    */
   constructor(plugin, o) {
+    __publicField(this, "plugin");
+    /**
+     * @internal
+     */
+    __publicField(this, _a);
     this.plugin = plugin;
     this[kObject] = o;
   }
@@ -3293,23 +3341,31 @@ let RenderSession$1 = class RenderSession {
       data
     });
   }
-};
+});
 var ManageStatus;
 (function(ManageStatus2) {
   ManageStatus2[ManageStatus2["Delete"] = 0] = "Delete";
   ManageStatus2[ManageStatus2["New"] = 1] = "New";
   ManageStatus2[ManageStatus2["Update"] = 2] = "Update";
 })(ManageStatus || (ManageStatus = {}));
-let TypstWorker$1 = class TypstWorker {
-  plugin;
-  /**
-   * @internal
-   */
-  [kObject];
+let TypstWorker$1 = (_b = kObject, class TypstWorker {
   /**
    * @internal
    */
   constructor(plugin, o) {
+    __publicField(this, "plugin");
+    /**
+     * @internal
+     */
+    __publicField(this, _b);
+    /**
+     * @internal
+     */
+    __publicField(this, "managedCanvasElemList", /* @__PURE__ */ new Map());
+    /**
+     * @internal
+     */
+    __publicField(this, "canvasCounter", Math.random());
     this.plugin = plugin;
     this[kObject] = o;
   }
@@ -3319,14 +3375,6 @@ let TypstWorker$1 = class TypstWorker {
   manipulateData(action, data) {
     return this[kObject].manipulate_data(action, data);
   }
-  /**
-   * @internal
-   */
-  managedCanvasElemList = /* @__PURE__ */ new Map();
-  /**
-   * @internal
-   */
-  canvasCounter = Math.random();
   /**
    * You must submit all canvas in pages to ensure synchronization with the background worker
    *
@@ -3381,7 +3429,7 @@ let TypstWorker$1 = class TypstWorker {
     }
     return pageInfos;
   }
-};
+});
 const gRendererModule = (module) => new LazyWasmModule(async (bin) => {
   return await module.default(bin);
 });
@@ -3394,12 +3442,13 @@ async function rendererBuildInfo() {
 }
 let warnOnceCanvasSet = true;
 class TypstRendererDriver {
-  renderer;
-  rendererJs;
   constructor() {
+    __publicField(this, "renderer");
+    __publicField(this, "rendererJs");
   }
   async init(options) {
-    this.rendererJs = await (options?.getWrapper?.() || __vitePreload(() => Promise.resolve().then(() => wasmPackShim), true ? void 0 : void 0, import.meta.url));
+    var _a2;
+    this.rendererJs = await (((_a2 = options == null ? void 0 : options.getWrapper) == null ? void 0 : _a2.call(options)) || __vitePreload(() => Promise.resolve().then(() => wasmPackShim), true ? void 0 : void 0, import.meta.url));
     const TypstRendererBuilder2 = this.rendererJs.TypstRendererBuilder;
     this.renderer = await buildComponent(options, gRendererModule(this.rendererJs), TypstRendererBuilder2, {});
   }
@@ -3935,7 +3984,7 @@ var Subscription = (function() {
     this._finalizers = null;
   }
   Subscription2.prototype.unsubscribe = function() {
-    var e_1, _a, e_2, _b;
+    var e_1, _a2, e_2, _b2;
     var errors;
     if (!this.closed) {
       this.closed = true;
@@ -3952,7 +4001,7 @@ var Subscription = (function() {
             e_1 = { error: e_1_1 };
           } finally {
             try {
-              if (_parentage_1_1 && !_parentage_1_1.done && (_a = _parentage_1.return)) _a.call(_parentage_1);
+              if (_parentage_1_1 && !_parentage_1_1.done && (_a2 = _parentage_1.return)) _a2.call(_parentage_1);
             } finally {
               if (e_1) throw e_1.error;
             }
@@ -3990,7 +4039,7 @@ var Subscription = (function() {
           e_2 = { error: e_2_1 };
         } finally {
           try {
-            if (_finalizers_1_1 && !_finalizers_1_1.done && (_b = _finalizers_1.return)) _b.call(_finalizers_1);
+            if (_finalizers_1_1 && !_finalizers_1_1.done && (_b2 = _finalizers_1.return)) _b2.call(_finalizers_1);
           } finally {
             if (e_2) throw e_2.error;
           }
@@ -4002,7 +4051,7 @@ var Subscription = (function() {
     }
   };
   Subscription2.prototype.add = function(teardown) {
-    var _a;
+    var _a2;
     if (teardown && teardown !== this) {
       if (this.closed) {
         execFinalizer(teardown);
@@ -4013,7 +4062,7 @@ var Subscription = (function() {
           }
           teardown._addParent(this);
         }
-        (this._finalizers = (_a = this._finalizers) !== null && _a !== void 0 ? _a : []).push(teardown);
+        (this._finalizers = (_a2 = this._finalizers) !== null && _a2 !== void 0 ? _a2 : []).push(teardown);
       }
     }
   };
@@ -4260,7 +4309,7 @@ var Observable = (function() {
     var _this = this;
     var subscriber = isSubscriber(observerOrNext) ? observerOrNext : new SafeSubscriber(observerOrNext, error, complete);
     errorContext(function() {
-      var _a = _this, operator = _a.operator, source = _a.source;
+      var _a2 = _this, operator = _a2.operator, source = _a2.source;
       subscriber.add(operator ? operator.call(subscriber, source) : source ? _this._subscribe(subscriber) : _this._trySubscribe(subscriber));
     });
     return subscriber;
@@ -4292,8 +4341,8 @@ var Observable = (function() {
     });
   };
   Observable2.prototype._subscribe = function(subscriber) {
-    var _a;
-    return (_a = this.source) === null || _a === void 0 ? void 0 : _a.subscribe(subscriber);
+    var _a2;
+    return (_a2 = this.source) === null || _a2 === void 0 ? void 0 : _a2.subscribe(subscriber);
   };
   Observable2.prototype[observable] = function() {
     return this;
@@ -4325,8 +4374,8 @@ var Observable = (function() {
   return Observable2;
 })();
 function getPromiseCtor(promiseCtor) {
-  var _a;
-  return (_a = promiseCtor !== null && promiseCtor !== void 0 ? promiseCtor : config.Promise) !== null && _a !== void 0 ? _a : Promise;
+  var _a2;
+  return (_a2 = promiseCtor !== null && promiseCtor !== void 0 ? promiseCtor : config.Promise) !== null && _a2 !== void 0 ? _a2 : Promise;
 }
 function isObserver(value) {
   return value && isFunction(value.next) && isFunction(value.error) && isFunction(value.complete);
@@ -4366,14 +4415,14 @@ var Subject = (function(_super) {
   Subject2.prototype.next = function(value) {
     var _this = this;
     errorContext(function() {
-      var e_1, _a;
+      var e_1, _a2;
       _this._throwIfClosed();
       if (!_this.isStopped) {
         if (!_this.currentObservers) {
           _this.currentObservers = Array.from(_this.observers);
         }
         try {
-          for (var _b = __values(_this.currentObservers), _c = _b.next(); !_c.done; _c = _b.next()) {
+          for (var _b2 = __values(_this.currentObservers), _c = _b2.next(); !_c.done; _c = _b2.next()) {
             var observer = _c.value;
             observer.next(value);
           }
@@ -4381,7 +4430,7 @@ var Subject = (function(_super) {
           e_1 = { error: e_1_1 };
         } finally {
           try {
-            if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+            if (_c && !_c.done && (_a2 = _b2.return)) _a2.call(_b2);
           } finally {
             if (e_1) throw e_1.error;
           }
@@ -4422,8 +4471,8 @@ var Subject = (function(_super) {
   };
   Object.defineProperty(Subject2.prototype, "observed", {
     get: function() {
-      var _a;
-      return ((_a = this.observers) === null || _a === void 0 ? void 0 : _a.length) > 0;
+      var _a2;
+      return ((_a2 = this.observers) === null || _a2 === void 0 ? void 0 : _a2.length) > 0;
     },
     enumerable: false,
     configurable: true
@@ -4439,7 +4488,7 @@ var Subject = (function(_super) {
   };
   Subject2.prototype._innerSubscribe = function(subscriber) {
     var _this = this;
-    var _a = this, hasError = _a.hasError, isStopped = _a.isStopped, observers = _a.observers;
+    var _a2 = this, hasError = _a2.hasError, isStopped = _a2.isStopped, observers = _a2.observers;
     if (hasError || isStopped) {
       return EMPTY_SUBSCRIPTION;
     }
@@ -4451,7 +4500,7 @@ var Subject = (function(_super) {
     });
   };
   Subject2.prototype._checkFinalizedStatuses = function(subscriber) {
-    var _a = this, hasError = _a.hasError, thrownError = _a.thrownError, isStopped = _a.isStopped;
+    var _a2 = this, hasError = _a2.hasError, thrownError = _a2.thrownError, isStopped = _a2.isStopped;
     if (hasError) {
       subscriber.error(thrownError);
     } else if (isStopped) {
@@ -4477,20 +4526,20 @@ var AnonymousSubject = (function(_super) {
     return _this;
   }
   AnonymousSubject2.prototype.next = function(value) {
-    var _a, _b;
-    (_b = (_a = this.destination) === null || _a === void 0 ? void 0 : _a.next) === null || _b === void 0 ? void 0 : _b.call(_a, value);
+    var _a2, _b2;
+    (_b2 = (_a2 = this.destination) === null || _a2 === void 0 ? void 0 : _a2.next) === null || _b2 === void 0 ? void 0 : _b2.call(_a2, value);
   };
   AnonymousSubject2.prototype.error = function(err) {
-    var _a, _b;
-    (_b = (_a = this.destination) === null || _a === void 0 ? void 0 : _a.error) === null || _b === void 0 ? void 0 : _b.call(_a, err);
+    var _a2, _b2;
+    (_b2 = (_a2 = this.destination) === null || _a2 === void 0 ? void 0 : _a2.error) === null || _b2 === void 0 ? void 0 : _b2.call(_a2, err);
   };
   AnonymousSubject2.prototype.complete = function() {
-    var _a, _b;
-    (_b = (_a = this.destination) === null || _a === void 0 ? void 0 : _a.complete) === null || _b === void 0 ? void 0 : _b.call(_a);
+    var _a2, _b2;
+    (_b2 = (_a2 = this.destination) === null || _a2 === void 0 ? void 0 : _a2.complete) === null || _b2 === void 0 ? void 0 : _b2.call(_a2);
   };
   AnonymousSubject2.prototype._subscribe = function(subscriber) {
-    var _a, _b;
-    return (_b = (_a = this.source) === null || _a === void 0 ? void 0 : _a.subscribe(subscriber)) !== null && _b !== void 0 ? _b : EMPTY_SUBSCRIPTION;
+    var _a2, _b2;
+    return (_b2 = (_a2 = this.source) === null || _a2 === void 0 ? void 0 : _a2.subscribe(subscriber)) !== null && _b2 !== void 0 ? _b2 : EMPTY_SUBSCRIPTION;
   };
   return AnonymousSubject2;
 })(Subject);
@@ -4524,7 +4573,7 @@ var ReplaySubject = (function(_super) {
     return _this;
   }
   ReplaySubject2.prototype.next = function(value) {
-    var _a = this, isStopped = _a.isStopped, _buffer = _a._buffer, _infiniteTimeWindow = _a._infiniteTimeWindow, _timestampProvider = _a._timestampProvider, _windowTime = _a._windowTime;
+    var _a2 = this, isStopped = _a2.isStopped, _buffer = _a2._buffer, _infiniteTimeWindow = _a2._infiniteTimeWindow, _timestampProvider = _a2._timestampProvider, _windowTime = _a2._windowTime;
     if (!isStopped) {
       _buffer.push(value);
       !_infiniteTimeWindow && _buffer.push(_timestampProvider.now() + _windowTime);
@@ -4536,7 +4585,7 @@ var ReplaySubject = (function(_super) {
     this._throwIfClosed();
     this._trimBuffer();
     var subscription = this._innerSubscribe(subscriber);
-    var _a = this, _infiniteTimeWindow = _a._infiniteTimeWindow, _buffer = _a._buffer;
+    var _a2 = this, _infiniteTimeWindow = _a2._infiniteTimeWindow, _buffer = _a2._buffer;
     var copy = _buffer.slice();
     for (var i = 0; i < copy.length && !subscriber.closed; i += _infiniteTimeWindow ? 1 : 2) {
       subscriber.next(copy[i]);
@@ -4545,7 +4594,7 @@ var ReplaySubject = (function(_super) {
     return subscription;
   };
   ReplaySubject2.prototype._trimBuffer = function() {
-    var _a = this, _bufferSize = _a._bufferSize, _timestampProvider = _a._timestampProvider, _buffer = _a._buffer, _infiniteTimeWindow = _a._infiniteTimeWindow;
+    var _a2 = this, _bufferSize = _a2._bufferSize, _timestampProvider = _a2._timestampProvider, _buffer = _a2._buffer, _infiniteTimeWindow = _a2._infiniteTimeWindow;
     var adjustedBufferSize = (_infiniteTimeWindow ? 1 : 2) * _bufferSize;
     _bufferSize < Infinity && adjustedBufferSize < _buffer.length && _buffer.splice(0, _buffer.length - adjustedBufferSize);
     if (!_infiniteTimeWindow) {
@@ -4648,7 +4697,7 @@ var WebSocketSubject = (function(_super) {
   };
   WebSocketSubject2.prototype._connectSocket = function() {
     var _this = this;
-    var _a = this._config, WebSocketCtor = _a.WebSocketCtor, protocol = _a.protocol, url = _a.url, binaryType = _a.binaryType;
+    var _a2 = this._config, WebSocketCtor = _a2.WebSocketCtor, protocol = _a2.protocol, url = _a2.url, binaryType = _a2.binaryType;
     var observer = this._output;
     var socket = null;
     try {
@@ -4826,11 +4875,11 @@ var OperatorSubscriber = (function(_super) {
     return _this;
   }
   OperatorSubscriber2.prototype.unsubscribe = function() {
-    var _a;
+    var _a2;
     if (!this.shouldUnsubscribe || this.shouldUnsubscribe()) {
       var closed_1 = this.closed;
       _super.prototype.unsubscribe.call(this);
-      !closed_1 && ((_a = this.onFinalize) === null || _a === void 0 ? void 0 : _a.call(this));
+      !closed_1 && ((_a2 = this.onFinalize) === null || _a2 === void 0 ? void 0 : _a2.call(this));
     }
   };
   return OperatorSubscriber2;
@@ -4868,7 +4917,7 @@ var AsyncAction = (function(_super) {
     return _this;
   }
   AsyncAction2.prototype.schedule = function(state, delay) {
-    var _a;
+    var _a2;
     if (delay === void 0) {
       delay = 0;
     }
@@ -4883,7 +4932,7 @@ var AsyncAction = (function(_super) {
     }
     this.pending = true;
     this.delay = delay;
-    this.id = (_a = this.id) !== null && _a !== void 0 ? _a : this.requestAsyncId(scheduler, this.id, delay);
+    this.id = (_a2 = this.id) !== null && _a2 !== void 0 ? _a2 : this.requestAsyncId(scheduler, this.id, delay);
     return this;
   };
   AsyncAction2.prototype.requestAsyncId = function(scheduler, _id, delay) {
@@ -4932,7 +4981,7 @@ var AsyncAction = (function(_super) {
   };
   AsyncAction2.prototype.unsubscribe = function() {
     if (!this.closed) {
-      var _a = this, id = _a.id, scheduler = _a.scheduler;
+      var _a2 = this, id = _a2.id, scheduler = _a2.scheduler;
       var actions = scheduler.actions;
       this.work = this.state = this.scheduler = null;
       this.pending = false;
@@ -5025,29 +5074,29 @@ function isIterable(input) {
 }
 function readableStreamLikeToAsyncGenerator(readableStream) {
   return __asyncGenerator(this, arguments, function readableStreamLikeToAsyncGenerator_1() {
-    var reader, _a, value, done;
-    return __generator(this, function(_b) {
-      switch (_b.label) {
+    var reader, _a2, value, done;
+    return __generator(this, function(_b2) {
+      switch (_b2.label) {
         case 0:
           reader = readableStream.getReader();
-          _b.label = 1;
+          _b2.label = 1;
         case 1:
-          _b.trys.push([1, , 9, 10]);
-          _b.label = 2;
+          _b2.trys.push([1, , 9, 10]);
+          _b2.label = 2;
         case 2:
           return [4, __await(reader.read())];
         case 3:
-          _a = _b.sent(), value = _a.value, done = _a.done;
+          _a2 = _b2.sent(), value = _a2.value, done = _a2.done;
           if (!done) return [3, 5];
           return [4, __await(void 0)];
         case 4:
-          return [2, _b.sent()];
+          return [2, _b2.sent()];
         case 5:
           return [4, __await(value)];
         case 6:
-          return [4, _b.sent()];
+          return [4, _b2.sent()];
         case 7:
-          _b.sent();
+          _b2.sent();
           return [3, 2];
         case 8:
           return [3, 10];
@@ -5120,7 +5169,7 @@ function fromPromise(promise) {
 }
 function fromIterable(iterable) {
   return new Observable(function(subscriber) {
-    var e_1, _a;
+    var e_1, _a2;
     try {
       for (var iterable_1 = __values(iterable), iterable_1_1 = iterable_1.next(); !iterable_1_1.done; iterable_1_1 = iterable_1.next()) {
         var value = iterable_1_1.value;
@@ -5133,7 +5182,7 @@ function fromIterable(iterable) {
       e_1 = { error: e_1_1 };
     } finally {
       try {
-        if (iterable_1_1 && !iterable_1_1.done && (_a = iterable_1.return)) _a.call(iterable_1);
+        if (iterable_1_1 && !iterable_1_1.done && (_a2 = iterable_1.return)) _a2.call(iterable_1);
       } finally {
         if (e_1) throw e_1.error;
       }
@@ -5153,40 +5202,40 @@ function fromReadableStreamLike(readableStream) {
 }
 function process$1(asyncIterable, subscriber) {
   var asyncIterable_1, asyncIterable_1_1;
-  var e_2, _a;
+  var e_2, _a2;
   return __awaiter(this, void 0, void 0, function() {
     var value, e_2_1;
-    return __generator(this, function(_b) {
-      switch (_b.label) {
+    return __generator(this, function(_b2) {
+      switch (_b2.label) {
         case 0:
-          _b.trys.push([0, 5, 6, 11]);
+          _b2.trys.push([0, 5, 6, 11]);
           asyncIterable_1 = __asyncValues(asyncIterable);
-          _b.label = 1;
+          _b2.label = 1;
         case 1:
           return [4, asyncIterable_1.next()];
         case 2:
-          if (!(asyncIterable_1_1 = _b.sent(), !asyncIterable_1_1.done)) return [3, 4];
+          if (!(asyncIterable_1_1 = _b2.sent(), !asyncIterable_1_1.done)) return [3, 4];
           value = asyncIterable_1_1.value;
           subscriber.next(value);
           if (subscriber.closed) {
             return [2];
           }
-          _b.label = 3;
+          _b2.label = 3;
         case 3:
           return [3, 1];
         case 4:
           return [3, 11];
         case 5:
-          e_2_1 = _b.sent();
+          e_2_1 = _b2.sent();
           e_2 = { error: e_2_1 };
           return [3, 11];
         case 6:
-          _b.trys.push([6, , 9, 10]);
-          if (!(asyncIterable_1_1 && !asyncIterable_1_1.done && (_a = asyncIterable_1.return))) return [3, 8];
-          return [4, _a.call(asyncIterable_1)];
+          _b2.trys.push([6, , 9, 10]);
+          if (!(asyncIterable_1_1 && !asyncIterable_1_1.done && (_a2 = asyncIterable_1.return))) return [3, 8];
+          return [4, _a2.call(asyncIterable_1)];
         case 7:
-          _b.sent();
-          _b.label = 8;
+          _b2.sent();
+          _b2.label = 8;
         case 8:
           return [3, 10];
         case 9:
@@ -5316,11 +5365,11 @@ function fromEvent(target, eventName, options, resultSelector) {
   if (resultSelector) {
     return fromEvent(target, eventName, options).pipe(mapOneOrManyArgs(resultSelector));
   }
-  var _a = __read(isEventTarget(target) ? eventTargetMethods.map(function(methodName) {
+  var _a2 = __read(isEventTarget(target) ? eventTargetMethods.map(function(methodName) {
     return function(handler) {
       return target[methodName](eventName, handler, options);
     };
-  }) : isNodeStyleEventEmitter(target) ? nodeEventEmitterMethods.map(toCommonHandlerRegistry(target, eventName)) : isJQueryStyleEventEmitter(target) ? jqueryMethods.map(toCommonHandlerRegistry(target, eventName)) : [], 2), add = _a[0], remove = _a[1];
+  }) : isNodeStyleEventEmitter(target) ? nodeEventEmitterMethods.map(toCommonHandlerRegistry(target, eventName)) : isJQueryStyleEventEmitter(target) ? jqueryMethods.map(toCommonHandlerRegistry(target, eventName)) : [], 2), add = _a2[0], remove = _a2[1];
   if (!add) {
     if (isArrayLike(target)) {
       return mergeMap(function(subTarget) {
@@ -5425,29 +5474,29 @@ function debounceTime(dueTime, scheduler) {
 function tap(observerOrNext, error, complete) {
   var tapObserver = isFunction(observerOrNext) || error || complete ? { next: observerOrNext, error, complete } : observerOrNext;
   return tapObserver ? operate(function(source, subscriber) {
-    var _a;
-    (_a = tapObserver.subscribe) === null || _a === void 0 ? void 0 : _a.call(tapObserver);
+    var _a2;
+    (_a2 = tapObserver.subscribe) === null || _a2 === void 0 ? void 0 : _a2.call(tapObserver);
     var isUnsub = true;
     source.subscribe(createOperatorSubscriber(subscriber, function(value) {
-      var _a2;
-      (_a2 = tapObserver.next) === null || _a2 === void 0 ? void 0 : _a2.call(tapObserver, value);
+      var _a3;
+      (_a3 = tapObserver.next) === null || _a3 === void 0 ? void 0 : _a3.call(tapObserver, value);
       subscriber.next(value);
     }, function() {
-      var _a2;
+      var _a3;
       isUnsub = false;
-      (_a2 = tapObserver.complete) === null || _a2 === void 0 ? void 0 : _a2.call(tapObserver);
+      (_a3 = tapObserver.complete) === null || _a3 === void 0 ? void 0 : _a3.call(tapObserver);
       subscriber.complete();
     }, function(err) {
-      var _a2;
+      var _a3;
       isUnsub = false;
-      (_a2 = tapObserver.error) === null || _a2 === void 0 ? void 0 : _a2.call(tapObserver, err);
+      (_a3 = tapObserver.error) === null || _a3 === void 0 ? void 0 : _a3.call(tapObserver, err);
       subscriber.error(err);
     }, function() {
-      var _a2, _b;
+      var _a3, _b2;
       if (isUnsub) {
-        (_a2 = tapObserver.unsubscribe) === null || _a2 === void 0 ? void 0 : _a2.call(tapObserver);
+        (_a3 = tapObserver.unsubscribe) === null || _a3 === void 0 ? void 0 : _a3.call(tapObserver);
       }
-      (_b = tapObserver.finalize) === null || _b === void 0 ? void 0 : _b.call(tapObserver);
+      (_b2 = tapObserver.finalize) === null || _b2 === void 0 ? void 0 : _b2.call(tapObserver);
     }));
   }) : identity;
 }
@@ -5470,8 +5519,9 @@ async function wsMain({ url, previewMode, isContentPreview }) {
   let $ws = void 0;
   const subsribes = [];
   function createSvgDocument(kModule) {
+    var _a2;
     const hookedElem = document.getElementById("typst-app");
-    if (hookedElem.firstElementChild?.tagName !== "svg") {
+    if (((_a2 = hookedElem.firstElementChild) == null ? void 0 : _a2.tagName) !== "svg") {
       hookedElem.innerHTML = "";
     }
     const resizeTarget = document.getElementById("typst-container-main");
@@ -5574,8 +5624,15 @@ async function wsMain({ url, previewMode, isContentPreview }) {
         help.classList.add("hidden");
       }
     };
+    const toggleTheme = () => {
+      const typstApp = document.getElementById("typst-app");
+      console.log("toggleTheme", typstApp);
+      if (typstApp) {
+        typstApp.classList.toggle("invert-colors");
+      }
+    };
     const helpButton = document.getElementById("typst-top-help-button");
-    helpButton?.addEventListener("click", toggleHelp);
+    helpButton == null ? void 0 : helpButton.addEventListener("click", toggleHelp);
     window.addEventListener("keydown", (e) => {
       let handled = true;
       switch (e.key) {
@@ -5621,6 +5678,9 @@ async function wsMain({ url, previewMode, isContentPreview }) {
           blurInput();
           handled = false;
           break;
+        case "t":
+          toggleTheme();
+          break;
         default:
           handled = false;
       }
@@ -5649,7 +5709,7 @@ async function wsMain({ url, previewMode, isContentPreview }) {
       closeObserver: {
         next: (e) => {
           console.log("WebSocket connection closed", e);
-          $ws?.unsubscribe();
+          $ws == null ? void 0 : $ws.unsubscribe();
           if (!disposed) {
             setTimeout(() => setupSocket(svgDoc), 1e3);
           }
@@ -5667,7 +5727,7 @@ async function wsMain({ url, previewMode, isContentPreview }) {
       for (const sub of subsribes.splice(0, subsribes.length)) {
         sub.unsubscribe();
       }
-      $ws?.complete();
+      $ws == null ? void 0 : $ws.complete();
     };
     $ws.subscribe({
       next: (data) => batchMessageChannel.next(data),
@@ -5687,6 +5747,7 @@ async function wsMain({ url, previewMode, isContentPreview }) {
       })
     );
     function processMessage(data) {
+      var _a2, _b2;
       if (!(data instanceof ArrayBuffer)) {
         if (data === NOT_AVAILABLE) {
           return;
@@ -5708,12 +5769,12 @@ async function wsMain({ url, previewMode, isContentPreview }) {
         }
       }
       if (message[0] === "jump" || message[0] === "viewport") {
-        const rootElem = document.getElementById("typst-app")?.firstElementChild;
+        const rootElem = (_a2 = document.getElementById("typst-app")) == null ? void 0 : _a2.firstElementChild;
         let currentPageNumber = 1;
         if (previewMode === PreviewMode$1.Slide) {
           currentPageNumber = svgDoc.getPartialPageNumber();
         } else if (rootElem) {
-          currentPageNumber = windowElem2.currentPosition(rootElem)?.page || 1;
+          currentPageNumber = ((_b2 = windowElem2.currentPosition(rootElem)) == null ? void 0 : _b2.page) || 1;
         }
         let positions = dec.decode(message[1].buffer).split(",").map((t) => t.trim()).filter((t) => t.length > 0);
         const [page, x, y] = positions.reduce(
@@ -5807,13 +5868,13 @@ function ensureInvertColors(root, strategy) {
         console.warn("Unknown invert-colors strategy:", strategy2);
         return false;
       case "auto":
-        return (autoDecision ||= { value: determineInvertColor() }).value;
+        return (autoDecision || (autoDecision = { value: determineInvertColor() })).value;
       case "always":
         return true;
     }
   };
-  root.classList.toggle("invert-colors", decide(strategy?.rest || "never"));
-  root.classList.toggle("normal-image", !decide(strategy?.image || strategy?.rest || "never"));
+  root.classList.toggle("invert-colors", decide((strategy == null ? void 0 : strategy.rest) || "never"));
+  root.classList.toggle("normal-image", !decide((strategy == null ? void 0 : strategy.image) || (strategy == null ? void 0 : strategy.rest) || "never"));
   function determineInvertColor() {
     const vscodeAPI = typeof acquireVsCodeApi !== "undefined";
     if (vscodeAPI) {
@@ -5859,11 +5920,12 @@ function setupDrag() {
     return true;
   };
   const mouseUpHandler = function() {
+    var _a2;
     document.removeEventListener("mousemove", mouseMoveHandler);
     document.removeEventListener("mouseup", mouseUpHandler);
     if (!goodDrag(containerElement)) return;
     if (!moved) {
-      document.getSelection()?.removeAllRanges();
+      (_a2 = document.getSelection()) == null ? void 0 : _a2.removeAllRanges();
     }
     containerElement.style.cursor = "grab";
   };
@@ -5933,14 +5995,14 @@ function buildWs() {
     }
     app.classList.remove("mode-slide");
     app.classList.remove("mode-doc");
-    helpPanel?.classList.remove("mode-slide");
-    helpPanel?.classList.remove("mode-doc");
+    helpPanel == null ? void 0 : helpPanel.classList.remove("mode-slide");
+    helpPanel == null ? void 0 : helpPanel.classList.remove("mode-doc");
     if (mode === PreviewMode$1.Slide) {
       app.classList.add("mode-slide");
-      helpPanel?.classList.add("mode-slide");
+      helpPanel == null ? void 0 : helpPanel.classList.add("mode-slide");
     } else if (mode === PreviewMode$1.Doc) {
       app.classList.add("mode-doc");
-      helpPanel?.classList.add("mode-doc");
+      helpPanel == null ? void 0 : helpPanel.classList.add("mode-doc");
     } else {
       throw new Error(`Unknown preview mode: ${mode}`);
     }
@@ -5948,10 +6010,10 @@ function buildWs() {
 }
 function setupVscodeChannel(nextWs) {
   const vscodeAPI = typeof acquireVsCodeApi !== "undefined" && acquireVsCodeApi();
-  if (vscodeAPI?.postMessage) {
+  if (vscodeAPI == null ? void 0 : vscodeAPI.postMessage) {
     vscodeAPI.postMessage({ type: "started" });
   }
-  if (vscodeAPI?.setState && window.vscode_state) {
+  if ((vscodeAPI == null ? void 0 : vscodeAPI.setState) && window.vscode_state) {
     vscodeAPI.setState(window.vscode_state);
   }
   window.addEventListener("message", (event) => {
@@ -6116,6 +6178,7 @@ windowElem.currentPosition = function(elem) {
   return result;
 };
 windowElem.handleTypstLocation = function(elem, pageNo, x, y) {
+  var _a2;
   const docRoot = findAncestor(elem, "typst-doc");
   if (!docRoot) {
     console.warn("no typst-doc found", elem);
@@ -6178,7 +6241,7 @@ windowElem.handleTypstLocation = function(elem, pageNo, x, y) {
         width: svgRectBase.width,
         height: svgRectBase.height
       };
-      const transform = page.transform.baseVal.consolidate()?.matrix;
+      const transform = (_a2 = page.transform.baseVal.consolidate()) == null ? void 0 : _a2.matrix;
       if (transform) {
         svgRect.left += transform.e / dataWidth * svgRect.width;
         svgRect.top += transform.f / dataHeight * svgRect.height;
@@ -9324,6 +9387,9 @@ path.outline_glyph {
               <div class="key-binding-desc">/</div>
               <div class="key-binding-box">l</div>
             </div>
+            <div class="key-binding-row">
+              <div class="key-binding-box">t</div>
+            </div>
             <div class="key-binding-row slide-specific">
               <div class="key-binding-box">g</div>
             </div>
@@ -9353,6 +9419,7 @@ path.outline_glyph {
             </div>
             <div class="key-binding-desc">Scroll down</div>
             <div class="key-binding-desc">Scroll up</div>
+            <div class="key-binding-desc">Toggle between dark/light theme.</div>
             <div class="key-binding-desc slide-specific">Goto the page by number.</div>
             <div class="key-binding-desc slide-specific">
               Switch to next animation or slide.
