@@ -592,7 +592,6 @@
   // Handle separate preview button click
   function handleSeparatePreview() {
     openSeparatePreview();
-
   }
 </script>
 
