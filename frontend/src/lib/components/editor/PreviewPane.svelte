@@ -730,6 +730,8 @@
     justify-content: center;
     font-size: var(--font-size-lg);
     color: var(--text-muted);
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
   }
 
   /* Typst text selection and positioning */
