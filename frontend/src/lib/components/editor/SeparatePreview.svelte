@@ -45,6 +45,7 @@
   let currentZoomValue = $state(savedLayout?.zoomScale ?? 1);
   let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>(savedLayout?.zoomMode ?? 'custom');
   let inhibNextZoomChange = false;
+  let isPreviewZoomInitialized = $state(false);
 
   // Save zoom state to localStorage when it changes
   $effect(() => {
@@ -155,6 +156,10 @@
           currentZoomValue = zoom;
           currentZoomMode = mode ?? 'custom';
         }
+        break;
+
+      case 'typst-zoom-initialized':
+        isPreviewZoomInitialized = true;
         break;
     }
   }
@@ -286,13 +291,20 @@
       </Tooltip>
     </div>
   </div>
-  <iframe
-    bind:this={previewIframe}
-    id="preview-iframe"
-    class="preview-iframe"
-    title="Typst Preview"
-    src="/api/typst-preview">
-  </iframe>
+  <div class="preview-iframe-wrapper">
+    <iframe
+      bind:this={previewIframe}
+      id="preview-iframe"
+      class="preview-iframe"
+      title="Typst Preview"
+      src="/api/typst-preview">
+    </iframe>
+    {#if !isPreviewZoomInitialized}
+      <div class="preview-loading-overlay">
+        <p>Loading preview...</p>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -330,11 +342,32 @@
     display: flex;
   }
 
-  .preview-iframe {
-    flex: 1;
+  .preview-iframe-wrapper {
+    position: relative;
     width: 100%;
-    border: none;
+    height: 100%;
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .preview-iframe {
+    height: 100%;
+    width: 100%;
+    border: none;
+  }
+
+  .preview-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-preview);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
   }
 </style>
