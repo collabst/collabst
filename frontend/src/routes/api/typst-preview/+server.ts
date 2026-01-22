@@ -15,7 +15,7 @@ export async function GET({ fetch, url }) {
   const thisFile = fileURLToPath(import.meta.url);
   const repoHtmlPath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/typst-preview-frontend/dist/index.html"
+    "../../../lib/preview/index.html"
   );
   let html = await readFile(repoHtmlPath, "utf-8");
 
