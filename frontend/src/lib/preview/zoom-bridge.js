@@ -96,24 +96,40 @@ const notifyZoomChange = () => {
       return;
     }
 
-    // Zoom level did not change but viewport changed - reapply current zoom mode
-    inhibNextZoomChange = true;
-    switch (currentZoomMode) {
-      case 'fit-width':
-        zoomFitWidth();
-        break;
-      case 'fit-height':
-        zoomFitHeight();
-        break;
-      case 'fit-page':
-        zoomFitPage();
-        break;
-      case 'custom':
-        setZoom(currentZoomValue);
-        break;
-      default:
-        break;
-    }
+    reapplyCurrentZoomMode();
+  }
+};
+
+// Reapply the current zoom mode to adjust to container size changes
+const reapplyCurrentZoomMode = () => {
+  inhibNextZoomChange = true;
+  switch (currentZoomMode) {
+    case 'fit-width':
+      zoomFitWidth();
+      break;
+    case 'fit-height':
+      zoomFitHeight();
+      break;
+    case 'fit-page':
+      zoomFitPage();
+      break;
+    case 'custom':
+      setZoom(currentZoomValue);
+      break;
+    default:
+      break;
+  }
+};
+
+// Initialize zoom settings on load
+const initializeZoom = () => {
+  const typstApp = document.querySelector('#typst-app .typst-page-outer');
+  const pageWidthAttr = typstApp?.getAttribute('data-page-width');
+  if (pageWidthAttr) {
+    reapplyCurrentZoomMode();
+  } else {
+    // Retry if not ready yet
+    setTimeout(initializeZoom, 100);
   }
 };
 
@@ -121,22 +137,24 @@ const notifyZoomChange = () => {
 const setupZoomHook = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   if (doc?.impl) {
-    const originalAddViewportChange = doc.impl.addViewportChange;
+    doc.impl.originalAddViewportChange = doc.impl.addViewportChange;
     doc.impl.addViewportChange = function () {
-      if (originalAddViewportChange) {
-        originalAddViewportChange.call(this);
+      if (doc.impl.originalAddViewportChange) {
+        doc.impl.originalAddViewportChange.call(this);
       }
       notifyZoomChange();
     };
   }
+  initializeZoom();
 };
 
 // Set the scale ratio directly
 const setScale = (/** @type {number} */ scale) => {
+  if (scale <= 0) return;
   const doc = document.getElementById('typst-container')?.documents?.[0];
   if (doc?.impl) {
     doc.impl.currentScaleRatio = scale;
-    doc.impl.addViewportChange();
+    doc.impl.originalAddViewportChange?.call(doc.impl);
   }
 };
 
@@ -144,6 +162,8 @@ const setScale = (/** @type {number} */ scale) => {
 const setZoom = (/** @type {number} */ zoom) => {
   const scale = zoomToScale(zoom);
   setScale(scale);
+  currentZoomMode = 'custom';
+  currentZoomValue = zoom;
 }
 
 // Scale down factor to ensure fit modes do not cause scrollbars and make it look better

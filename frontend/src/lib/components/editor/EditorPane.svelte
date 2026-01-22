@@ -1375,12 +1375,12 @@
   }
 
   .editor-wrapper {
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
   }
 
   .asset-preview {
-    border-top-left-radius: 8px;
+    border-top-left-radius: var(--radius-lg);
   }
 
   .editor-wrapper.hidden {
