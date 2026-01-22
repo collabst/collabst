@@ -268,11 +268,6 @@
     border: 2px solid var(--text-tertiary);
   }
 
-  .search-area:active,
-  .replace-area:active {
-    border: 2px solid var(--text-secondary);
-  }
-
   .search-input,
   .replace-input {
     flex: 1 1 0%;

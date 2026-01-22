@@ -74,7 +74,7 @@
         & > :global(svg),
         & > :global(span),
         & > :global(i) {
-            transform: scale(0.85);
+            transform: scaleY(0.9) scaleX(1.15);
         }
     }
 </style>

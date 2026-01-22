@@ -287,21 +287,19 @@
     color: var(--text-primary);
   }
 
-  .file-item:hover {
-    background: var(--surface-secondary);
-    box-shadow: inset 0 0 0 2px var(--border-secondary);
-    border-radius: 2px;
-  }
-
   .file-item.active {
     background: var(--surface-hover);
   }
 
+  .file-item:hover {
+    background: color-mix(in srgb, var(--color-primary-500) 30%, var(--surface-secondary));
+  }
+
   .file-item:active:not(:has(.preview-btn:active)):not(.folder) {
-    background: var(--surface-hover);
-    transform: scaleX(0.95);
-    /* transition: transform 0.05s ease; */
-    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-primary-500) 40%, var(--surface-secondary));
+  }
+  .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon{
+    transform: translateY(-3px) scaleX(0.8) scaleY(1.1);
   }
 
   .file-item.asset {
@@ -319,7 +317,8 @@
 
   .file-item.folder:active {
     color: var(--text-active);
-    background: var(--border-secondary);
+    background: color-mix(in srgb, var(--color-primary-500) 40%, var(--surface-secondary));
+    transition: none;
   }
 
   .file-item[draggable="true"] {
@@ -337,7 +336,7 @@
   .chevron-btn {
     background: transparent;
     border: none;
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 4px;
     display: flex;
@@ -345,14 +344,6 @@
     justify-content: center;
     flex-shrink: 0;
     border-radius: 50px;
-  }
-
-  .chevron-btn:hover {
-    color: var(--text-primary);
-  }
-
-  .chevron-btn:active {
-    color: var(--text-active);
   }
 
   .icon {
