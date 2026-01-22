@@ -6,6 +6,7 @@ const setupBridge = () => {
     setupZoomHook();
     updateThemeFromParent();
     updateNegativePreviewFromStorage();
+    window.parent.postMessage({ type: 'typst-preview-ready' }, '*');
   } else {
     // Retry if document not ready yet
     setTimeout(setupBridge, 100);
