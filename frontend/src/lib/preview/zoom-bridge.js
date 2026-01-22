@@ -127,6 +127,7 @@ const initializeZoom = () => {
   const pageWidthAttr = typstApp?.getAttribute('data-page-width');
   if (pageWidthAttr) {
     reapplyCurrentZoomMode();
+    window.parent.postMessage({ type: 'typst-zoom-initialized', }, '*');
   } else {
     // Retry if not ready yet
     setTimeout(initializeZoom, 100);
