@@ -13,7 +13,7 @@
   padding: var(--space-12);
 }
 
-.typst-page-inner {
+[data-theme="light"] .typst-page-inner {
   filter: drop-shadow(0 0 1000px rgba(0, 0, 0, 0.15));
 }
 
