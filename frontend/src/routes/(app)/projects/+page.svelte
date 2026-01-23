@@ -1484,6 +1484,15 @@
     border-radius: 0px;
   }
 
+  .list-row:active:not(:has(.list-action-buttons .action-btn:active)) {
+    background: color-mix(
+      in srgb,
+      var(--color-secondary-500) 50%,
+      transparent 95%
+    );
+    transition: background 0.02s ease-out;
+  }
+
   .list-row-link {
     position: absolute;
     inset: 0;

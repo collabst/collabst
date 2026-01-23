@@ -294,21 +294,27 @@
   .file-item:hover {
     background: color-mix(
       in srgb,
+      var(--color-tertiary-500) 30%,
+      var(--surface-secondary)
+    );
+  }
+
+  .file-item:hover.folder {
+    background: color-mix(
+      in srgb,
       var(--color-primary-500) 30%,
       var(--surface-secondary)
     );
   }
 
-  .file-item:active:not(:has(.preview-btn:active)):not(.folder) {
+  .file-item:active:not(:has(.preview-btn:active)) {
     background: color-mix(
       in srgb,
-      var(--color-primary-500) 40%,
+      var(--color-secondary-500) 40%,
       var(--surface-secondary)
     );
+    transition: background 0.02s ease-out;
   }
-  /* .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon{
-    transform: translateY(-3px) scaleX(0.8) scaleY(1.1);
-  } */
 
   .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon {
     animation: jumpAnimation 0.2s ease-out;
@@ -329,16 +335,6 @@
   .file-item.folder:active .icon {
     transform: scaleY(0.8) scaleX(1.1);
     transition: transform 0.1s ease;
-  }
-
-  .file-item.folder:active {
-    color: var(--text-active);
-    background: color-mix(
-      in srgb,
-      var(--color-primary-500) 40%,
-      var(--surface-secondary)
-    );
-    transition: none;
   }
 
   .file-item[draggable="true"] {
