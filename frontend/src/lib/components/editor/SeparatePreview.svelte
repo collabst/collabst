@@ -297,7 +297,7 @@
       id="preview-iframe"
       class="preview-iframe"
       title="Typst Preview"
-      src="/api/typst-preview">
+      src="/typst-preview">
     </iframe>
     <svg class="corner left" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
       <path d="M 0 0 V 1 A 1 1 0 0 1 1 0 Z"/>

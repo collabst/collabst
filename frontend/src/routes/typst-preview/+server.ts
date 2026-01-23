@@ -15,49 +15,49 @@ export async function GET({ fetch, url }) {
   const thisFile = fileURLToPath(import.meta.url);
   const repoHtmlPath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/preview/index.html"
+    "../../lib/preview/index.html"
   );
   let html = await readFile(repoHtmlPath, "utf-8");
 
   // Load the WebSocket mock script
   const repoMockPath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/preview/websocket-mock.js"
+    "../../lib/preview/websocket-mock.js"
   );
   const websocketMockScript = await readFile(repoMockPath, "utf-8");
 
   // Load the zoom bridge script to sync zoom between iframe and parent
   const repoZoomBridgePath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/preview/zoom-bridge.js"
+    "../../lib/preview/zoom-bridge.js"
   );
   const zoomBridgeScript = await readFile(repoZoomBridgePath, "utf-8");
 
   // Load the setup script
   const repoSetupPath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/preview/setup.js"
+    "../../lib/preview/setup.js"
   );
   const setupScript = await readFile(repoSetupPath, "utf-8");
 
   // Load utils script
   const repoUtilsPath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/preview/utils.js"
+    "../../lib/preview/utils.js"
   );
   const utilsScript = await readFile(repoUtilsPath, "utf-8");
 
   // Load the theme css
   const repoThemePath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/styles/theme.css"
+    "../../lib/styles/theme.css"
   );
   const themeCss = await readFile(repoThemePath, "utf-8");
 
   // Load the preview css
   const repoCssPath = path.resolve(
     path.dirname(thisFile),
-    "../../../lib/preview/preview.css"
+    "../../lib/preview/preview.css"
   );
   const previewCss = await readFile(repoCssPath, "utf-8");
 
