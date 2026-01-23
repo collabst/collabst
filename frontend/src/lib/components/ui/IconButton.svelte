@@ -136,17 +136,17 @@
 
   .icon-btn-ghost:hover:not(:disabled) {
     background: var(--bg-editor);
-    color: var(--text-primary);
+    color: var(--color-primary-500);
     border-color: var(--border-secondary);
-    border-bottom: 4px solid var(--border-secondary);
+    border-bottom: 3px solid var(--border-secondary);
   }
 
   .icon-btn-ghost:active:not(:disabled) {
-    background: var(--border-secondary);
-    color: var(--color-primary-500);
+    background: var(--surface-hover);
     border: 1px solid var(--surface-active);
-    border-top: 2px solid var(--surface-active);
-    transform: scaleY(0.94) translateY(1px);
+  }
+  .icon-btn-ghost:active:not(:disabled) :global(svg){
+    transform: scaleY(0.95) scaleX(1.05);
   }
 
   .icon-btn-danger {
