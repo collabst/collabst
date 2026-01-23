@@ -160,8 +160,8 @@
   }
 
   function createDragOverlay() {
-    if (dragOverlay) return
-    dragOverlay = document.createElement('div')
+    if (dragOverlay) return;
+    dragOverlay = document.createElement("div");
     dragOverlay.style.cssText = `
       position: fixed;
       top: 0;
@@ -169,16 +169,16 @@
       right: 0;
       bottom: 0;
       z-index: 10000;
-      cursor: ${isResizingLeft ? 'col-resize' : 'col-resize'};
-    `
-    document.body.appendChild(dragOverlay)
+      cursor: ${isResizingLeft ? "col-resize" : "col-resize"};
+    `;
+    document.body.appendChild(dragOverlay);
   }
 
   function removeDragOverlay() {
     if (dragOverlay && dragOverlay.parentNode) {
-      dragOverlay.parentNode.removeChild(dragOverlay)
+      dragOverlay.parentNode.removeChild(dragOverlay);
     }
-    dragOverlay = undefined
+    dragOverlay = undefined;
   }
 
   function handleMouseMove(e: MouseEvent) {
@@ -556,15 +556,20 @@
   }
 
   // Build path breadcrumb from parent_id chain
-  function buildItemPath(item: ProjectFile | Asset | null): { folders: string[], filename: string } {
-    if (!item) return { folders: [], filename: '' };
-    
+  function buildItemPath(item: ProjectFile | Asset | null): {
+    folders: string[];
+    filename: string;
+  } {
+    if (!item) return { folders: [], filename: "" };
+
     const folders: string[] = [];
-    let currentParentId = 'parent_id' in item ? item.parent_id : null;
-    
+    let currentParentId = "parent_id" in item ? item.parent_id : null;
+
     // Find parent folders by traversing the parent chain
     while (currentParentId !== null) {
-      const parentFolder = files.find(f => f.id === currentParentId && f.is_folder);
+      const parentFolder = files.find(
+        (f) => f.id === currentParentId && f.is_folder,
+      );
       if (parentFolder) {
         folders.unshift(parentFolder.name);
         currentParentId = parentFolder.parent_id;
@@ -572,8 +577,8 @@
         break;
       }
     }
-    
-    const filename = 'filename' in item ? item.filename : item.name;
+
+    const filename = "filename" in item ? item.filename : item.name;
     return { folders, filename };
   }
 
@@ -583,7 +588,7 @@
   async function handleMoveFile(fileId: number, targetFolderId: number | null) {
     try {
       // Check if already in target location
-      const fileToMove = files.find(f => f.id === fileId);
+      const fileToMove = files.find((f) => f.id === fileId);
       if (fileToMove && fileToMove.parent_id === targetFolderId) {
         // Already in target location, don't move
         return;
@@ -612,7 +617,7 @@
   ) {
     try {
       // Check if already in target location
-      const assetToMove = assets.find(a => a.id === assetId);
+      const assetToMove = assets.find((a) => a.id === assetId);
       if (assetToMove && assetToMove.parent_id === targetFolderId) {
         // Already in target location, don't move
         return;
@@ -882,7 +887,7 @@
       if (yjsConnection?.provider?.awareness) {
         yjsConnection.provider.awareness.setLocalState(null);
       }
-      closeSeparatePreview()
+      closeSeparatePreview();
     };
 
     // Handle keyboard shortcuts: Ctrl+S, Ctrl+N, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
@@ -1194,13 +1199,21 @@
     separateWindow.addEventListener("beforeunload", closeSeparatePreview);
 
     // Subscribe to theme changes to update separate window
-    theme.subscribe(value => {
+    theme.subscribe((value) => {
       if (separateWindow && !separateWindow.closed) {
-        separateWindow.document.documentElement.setAttribute('data-theme', value);
+        separateWindow.document.documentElement.setAttribute(
+          "data-theme",
+          value,
+        );
 
         // Also set theme for preview iframe if it exists
-        const previewIFrame = separateWindow.document.getElementById('preview-iframe') as HTMLIFrameElement | null;
-        previewIFrame?.contentDocument?.documentElement.setAttribute('data-theme', value);
+        const previewIFrame = separateWindow.document.getElementById(
+          "preview-iframe",
+        ) as HTMLIFrameElement | null;
+        previewIFrame?.contentDocument?.documentElement.setAttribute(
+          "data-theme",
+          value,
+        );
       }
     });
   }
@@ -1216,25 +1229,31 @@
     negativePreview = !negativePreview;
 
     // Apply negative class to preview svg
-    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
-    const typstApp = previewIframe?.contentDocument?.querySelector('#typst-app')
+    const previewIframe = document.getElementById(
+      "preview-iframe",
+    ) as HTMLIFrameElement | null;
+    const typstApp =
+      previewIframe?.contentDocument?.querySelector("#typst-app");
     if (typstApp) {
       if (negativePreview) {
-        typstApp.classList.add('negative');
+        typstApp.classList.add("negative");
       } else {
-        typstApp.classList.remove('negative');
+        typstApp.classList.remove("negative");
       }
     }
 
     // Apply negative class to separate window if open
     if (separateWindow && !separateWindow.closed) {
-      const previewIframe = separateWindow.document.getElementById('preview-iframe') as HTMLIFrameElement | null;
-      const typstApp = previewIframe?.contentDocument?.querySelector('#typst-app');
+      const previewIframe = separateWindow.document.getElementById(
+        "preview-iframe",
+      ) as HTMLIFrameElement | null;
+      const typstApp =
+        previewIframe?.contentDocument?.querySelector("#typst-app");
       if (typstApp) {
         if (negativePreview) {
-          typstApp.classList.add('negative');
+          typstApp.classList.add("negative");
         } else {
-          typstApp.classList.remove('negative');
+          typstApp.classList.remove("negative");
         }
       }
     }
@@ -1253,11 +1272,7 @@
       <div class="header-left">
         <Tooltip text="Back to dashboard" position="bottom">
           <a href="/projects" class="home-link">
-            <IconButton
-              icon={Home}
-              variant="top-bar"
-              size="top-bar"
-            />
+            <IconButton icon={Home} variant="top-bar" size="md" />
           </a>
         </Tooltip>
         {#if isEditingProjectName}
@@ -1293,12 +1308,13 @@
           onSelectAll={handleSelectAll}
           onToggleLineComment={handleToggleLineComment}
           onToggleBlockComment={handleToggleBlockComment}
-          onAddComment={() => console.log('Add comment - to be implemented')}
-          onShowToolbar={() => showToolbar = !showToolbar}
-          onScrollOnType={() => console.log('Scroll on type - to be implemented')}
-          onWrapLines={() => wrapLines = !wrapLines}
-          onThemeLight={() => theme.set('light')}
-          onThemeDark={() => theme.set('dark')}
+          onAddComment={() => console.log("Add comment - to be implemented")}
+          onShowToolbar={() => (showToolbar = !showToolbar)}
+          onScrollOnType={() =>
+            console.log("Scroll on type - to be implemented")}
+          onWrapLines={() => (wrapLines = !wrapLines)}
+          onThemeLight={() => theme.set("light")}
+          onThemeDark={() => theme.set("dark")}
           onNegativePreview={toggleNegativePreview}
           {wrapLines}
           {negativePreview}

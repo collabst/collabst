@@ -35,7 +35,6 @@
 <style>
   .theme-toggle-wrapper {
     margin-left: 0.75rem;
-    margin-right: 0.25rem;
   }
 
   /* Light theme - show dark theme preview on hover */
@@ -65,11 +64,10 @@
       transform: translateY(-8px) scaleX(0.8) scaleY(1.1);
     }
     80% {
-      transform: translateY(2px) scaleX(1.1) scaleY(0.95);
+      transform: translateY(1px) scaleX(1.2) scaleY(0.95);
     }
     100% {
       transform: none;
     }
   }
-
 </style>
