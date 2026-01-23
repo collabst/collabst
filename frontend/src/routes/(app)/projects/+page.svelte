@@ -1053,6 +1053,19 @@
     transform: translateY(-4px);
   }
 
+  .project-card:hover .file-icon{
+    animation: jiggleAnimation 0.4s ease;
+  }
+
+  @keyframes jiggleAnimation {
+    0% {
+      transform: scaleX(0.96) scaleY(1.04);
+    }
+    100% {
+      transform: none;
+    }
+  }
+
   .card-link {
     position: absolute;
     inset: 0;
