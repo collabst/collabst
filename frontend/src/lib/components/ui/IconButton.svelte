@@ -8,7 +8,8 @@
     | "ghost"
     | "danger"
     | "success"
-    | "flat";
+    | "flat"
+    | "top-bar";
   type ButtonSize = "sm" | "md" | "lg" | "top-bar" | "find-toggle";
 
   interface IconButtonProps {
@@ -39,7 +40,7 @@
     sm: 16,
     md: 20,
     lg: 24,
-    "top-bar": 18,
+    "top-bar": 20,
     "find-toggle": 16,
   };
 </script>
@@ -90,8 +91,8 @@
   }
 
   .icon-btn-top-bar {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
   }
 
   .icon-btn-find-toggle {
@@ -145,7 +146,7 @@
     background: var(--surface-hover);
     border: 1px solid var(--surface-active);
   }
-  .icon-btn-ghost:active:not(:disabled) :global(svg){
+  .icon-btn-ghost:active:not(:disabled) :global(svg) {
     transform: scaleY(0.95) scaleX(1.05);
   }
 
@@ -180,6 +181,43 @@
   .icon-btn-flat:active:not(:disabled) {
     background: var(--surface-active);
     color: var(--text-primary);
+  }
+
+  .icon-btn-top-bar {
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 20px;
+  }
+
+  .icon-btn-top-bar:hover:not(:disabled) {
+    color: var(--text-primary);
+    transform: scale(1.04);
+  }
+  .icon-btn-top-bar:hover:not(:disabled) :global(svg) {
+    animation: jumpAnimation 0.2s ease-out;
+  }
+
+  @keyframes jumpAnimation {
+    0% {
+      transform: translateY(-2px) scaleX(0.8) scaleY(1.1);
+    }
+    80% {
+      transform: translateY(2px) scaleX(1.1) scaleY(0.95);
+    }
+    100% {
+      transform: none;
+    }
+  }
+
+  .icon-btn-top-bar:active:not(:disabled) {
+    color: var(--text-active);
+    /* transform: scaleY(0.9) scaleX(1.1);
+    transition: transform 0.1s ease; */
+  }
+
+  .icon-btn-top-bar:active:not(:disabled) :global(svg) {
+    /* color: var(--text-active); */
+    transform: scaleY(0.9) scaleX(1.1);
   }
 
   .icon-btn-selected {
