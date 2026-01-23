@@ -292,11 +292,19 @@
   }
 
   .file-item:hover {
-    background: color-mix(in srgb, var(--color-primary-500) 30%, var(--surface-secondary));
+    background: color-mix(
+      in srgb,
+      var(--color-primary-500) 30%,
+      var(--surface-secondary)
+    );
   }
 
   .file-item:active:not(:has(.preview-btn:active)):not(.folder) {
-    background: color-mix(in srgb, var(--color-primary-500) 40%, var(--surface-secondary));
+    background: color-mix(
+      in srgb,
+      var(--color-primary-500) 40%,
+      var(--surface-secondary)
+    );
   }
   /* .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon{
     transform: translateY(-3px) scaleX(0.8) scaleY(1.1);
@@ -325,7 +333,11 @@
 
   .file-item.folder:active {
     color: var(--text-active);
-    background: color-mix(in srgb, var(--color-primary-500) 40%, var(--surface-secondary));
+    background: color-mix(
+      in srgb,
+      var(--color-primary-500) 40%,
+      var(--surface-secondary)
+    );
     transition: none;
   }
 
@@ -391,7 +403,7 @@
     flex: 1;
     min-width: 0;
     max-width: 100%;
-    background: var(--surface);
+    background: var(--surface-hover);
     color: var(--text-primary);
     border: 1px solid var(--border);
     border-radius: 4px;
