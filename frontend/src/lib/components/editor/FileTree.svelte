@@ -913,6 +913,7 @@
       {#if onCreateFile}
         <Tooltip text="New file" position="bottom">
           <IconButton
+            class="new-file-btn"
             icon={FilePlus}
             onclick={() => startInlineCreate("file")}
             size="sm"
@@ -933,6 +934,7 @@
       {#if onUploadAsset}
         <Tooltip text="Upload asset" position="bottom">
           <IconButton
+            class="upload-btn"
             icon={ArrowUpFromLine}
             onclick={onUploadAsset}
             size="sm"
@@ -1085,6 +1087,14 @@
   .actions {
     display: flex;
     gap: var(--space-2);
+  }
+
+  :global(.new-file-btn):hover {
+    color: var(--color-tertiary-500) !important;
+  }
+
+  :global(.upload-btn):hover {
+    color: var(--color-secondary-500) !important;
   }
 
   .tree-content {

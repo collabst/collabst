@@ -18,16 +18,28 @@
   --color-primary-500-saturated: #0062ff;
 
   /* Secondary Colors - Accent */
-  --color-secondary-50: #f5f3ff;
-  --color-secondary-100: #ede9fe;
-  --color-secondary-200: #ddd6fe;
-  --color-secondary-300: #c4b5fd;
-  --color-secondary-400: #a78bfa;
-  --color-secondary-500: #8b5cf6;
-  --color-secondary-600: #7c3aed;
-  --color-secondary-700: #6d28d9;
-  --color-secondary-800: #5b21b6;
-  --color-secondary-900: #4c1d95;
+  --color-secondary-50: #f3f0ff;
+  --color-secondary-100: #e6dbff;
+  --color-secondary-200: #d1bfff;
+  --color-secondary-300: #b493fd;
+  --color-secondary-400: #a06bfa;
+  --color-secondary-500: #8a3ff6;
+  --color-secondary-600: #7a1aed;
+  --color-secondary-700: #6a08d9;
+  --color-secondary-800: #5700b6;
+  --color-secondary-900: #470095;
+
+  /* Tertiary Colors - Turquoise */
+  --color-tertiary-50: #f0fdfa;
+  --color-tertiary-100: #ccfbf1;
+  --color-tertiary-200: #99f6e4;
+  --color-tertiary-300: #5eead4;
+  --color-tertiary-400: #2dd4bf;
+  --color-tertiary-500: #14b8a6;
+  --color-tertiary-600: #0d9488;
+  --color-tertiary-700: #0f766e;
+  --color-tertiary-800: #115e59;
+  --color-tertiary-900: #134e4a;
 
   /* Neutral Colors - Grays */
   --color-gray-50: #f9fafb;
