@@ -133,7 +133,7 @@
     onclick={toggleDropdown}
     onmouseenter={handleMouseEnter}
   >
-    {label}
+    <span class="menu-button-label">{label}</span>
   </button>
 
   {#if externalIsOpen}
@@ -245,6 +245,7 @@
 
   .menu-button:hover:not(:disabled):not(.active) {
     background: var(--surface-hover);
+    border: 1px solid transparent;
   }
 
   .menu-button.active {
@@ -257,11 +258,17 @@
     border-bottom-right-radius: 0;
   }
 
+  .menu-button:active:not(:disabled) .menu-button-label {
+    transform: scaleY(0.95) scaleX(1.15);
+    display: inline-block;
+  }
+
   .menu-button:active:not(:disabled) {
     background: var(--dropdown-bg);
     border: 1px solid var(--dropdown-border);
     color: var(--text-active);
-    transform: scale(0.95);
+    transform: scaleY(0.9) translateY(1px);
+    /* letter-spacing: -0.1em; */
   }
 
   .menu-button.active::after {

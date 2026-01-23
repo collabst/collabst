@@ -1,6 +1,6 @@
 <script lang="ts">
   import { theme } from "$lib/stores/theme";
-  import { Tooltip } from "$lib/components/ui";
+  import { IconButton, Tooltip } from "$lib/components/ui";
   import Sun from "@lucide/svelte/icons/sun";
   import Moon from "@lucide/svelte/icons/moon";
 
@@ -21,42 +21,55 @@
     : "Switch to dark mode"}
   position="bottom"
 >
-  <button class="theme-btn" onclick={toggle}>
-    {#if currentTheme === "dark"}
-      <Sun size={18} />
-    {:else}
-      <Moon size={18} />
-    {/if}
-  </button>
+  <div class="theme-toggle-wrapper">
+    <IconButton
+      icon={currentTheme === "dark" ? Sun : Moon}
+      variant="top-bar"
+      size="top-bar"
+      onclick={toggle}
+      class="theme-toggle"
+    />
+  </div>
 </Tooltip>
 
 <style>
-  .theme-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    padding: 0.375rem;
-    border-radius: 50px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
+  .theme-toggle-wrapper {
     margin-left: 0.75rem;
+    margin-right: 0.25rem;
   }
 
   /* Light theme - show dark theme preview on hover */
-  :global([data-theme="light"]) .theme-btn:hover {
-    background: #2a2a2a;
-    color: #cccccc;
-    border-color: #4a4a4e;
+  :global([data-theme="light"])
+    .theme-toggle-wrapper
+    :global(.theme-toggle:hover) {
+    background: #2a2a2a !important;
+    color: #cccccc !important;
+    border-color: #4a4a4e !important;
   }
 
   /* Dark theme - show light theme preview on hover */
-  :global([data-theme="dark"]) .theme-btn:hover {
-    background: #e8e8e8;
-    color: #1e1e1e;
-    border-color: #b8b8b8;
+  :global([data-theme="dark"])
+    .theme-toggle-wrapper
+    :global(.theme-toggle:hover) {
+    background: #e8e8e8 !important;
+    color: #1e1e1e !important;
+    border-color: #b8b8b8 !important;
   }
+
+  .theme-toggle-wrapper :global(.theme-toggle:hover svg) {
+    animation: bigJumpAnimation 0.2s ease-out;
+  }
+
+  @keyframes bigJumpAnimation {
+    0% {
+      transform: translateY(-8px) scaleX(0.8) scaleY(1.1);
+    }
+    80% {
+      transform: translateY(2px) scaleX(1.1) scaleY(0.95);
+    }
+    100% {
+      transform: none;
+    }
+  }
+
 </style>

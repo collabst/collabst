@@ -1,6 +1,6 @@
 <script lang="ts">
   import { auth } from "$lib/stores/auth";
-  import { Tooltip } from "$lib/components/ui";
+  import { Tooltip, IconButton } from "$lib/components/ui";
   import User from "@lucide/svelte/icons/user";
   import LogOut from "@lucide/svelte/icons/log-out";
 
@@ -34,9 +34,12 @@
 
 <div class="profile-menu-container">
   <Tooltip text="Profile menu" position="bottom">
-    <button class="profile-btn" onclick={toggleMenu}>
-      <User size={16} />
-    </button>
+    <IconButton
+      icon={User}
+      variant="top-bar"
+      size="top-bar"
+      onclick={toggleMenu}
+    />
   </Tooltip>
 
   {#if showMenu}
@@ -57,30 +60,6 @@
 <style>
   .profile-menu-container {
     position: relative;
-  }
-
-  .profile-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    padding: 0.375rem;
-    border-radius: 50px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-  }
-
-  .profile-btn:hover {
-    color: var(--text-primary);
-    transform: scale(1.04);
-  }
-
-  .profile-btn:active {
-    color: var(--text-active);
-    transform: scale(0.95);
   }
 
   .profile-dropdown {

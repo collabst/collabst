@@ -18,6 +18,7 @@
     ProfileMenu,
     Tooltip,
     MenuBar,
+    IconButton,
   } from "$lib/components/ui";
   import Home from "@lucide/svelte/icons/home";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
@@ -1251,8 +1252,12 @@
     <header>
       <div class="header-left">
         <Tooltip text="Back to dashboard" position="bottom">
-          <a href="/projects" class="home-btn">
-            <Home size={20} />
+          <a href="/projects" class="home-link">
+            <IconButton
+              icon={Home}
+              variant="top-bar"
+              size="top-bar"
+            />
           </a>
         </Tooltip>
         {#if isEditingProjectName}
@@ -1564,25 +1569,10 @@
     font-weight: 600;
   }
 
-  .home-btn {
-    background: transparent;
-    color: var(--text-secondary);
-    border: none;
-    padding: 0.25rem;
-    cursor: pointer;
+  .home-link {
     display: flex;
     align-items: center;
-    justify-content: center;
-  }
-
-  .home-btn:hover {
-    color: var(--text-primary);
-    transform: scale(1.04);
-  }
-
-  .home-btn:active {
-    color: var(--text-active);
-    transform: scale(0.95);
+    text-decoration: none;
   }
 
   .project-name-button {
