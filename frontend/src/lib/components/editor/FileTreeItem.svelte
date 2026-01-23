@@ -298,16 +298,24 @@
   .file-item:active:not(:has(.preview-btn:active)):not(.folder) {
     background: color-mix(in srgb, var(--color-primary-500) 40%, var(--surface-secondary));
   }
-  .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon{
+  /* .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon{
     transform: translateY(-3px) scaleX(0.8) scaleY(1.1);
+  } */
+
+  .file-item:active:not(:has(.preview-btn:active)):not(.folder) .icon {
+    animation: jumpAnimation 0.2s ease-out;
   }
 
-  .file-item.asset {
-    opacity: 0.9;
-  }
-
-  .file-item.folder {
-    font-weight: var(--font-medium);
+  @keyframes jumpAnimation {
+    0% {
+      transform: translateY(-4px) scaleX(0.8) scaleY(1.1);
+    }
+    80% {
+      transform: translateY(2px) scaleX(1.1) scaleY(0.95);
+    }
+    100% {
+      transform: none;
+    }
   }
 
   .file-item.folder:active .icon {
@@ -433,6 +441,6 @@
 
   .preview-btn:active {
     color: var(--text-active);
-    transform: scaleY(0.9) scaleX(1.1);
+    transform: scaleY(0.9) scaleX(1.2);
   }
 </style>
