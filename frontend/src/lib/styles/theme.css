@@ -256,13 +256,11 @@
   --dialog-cancel-btn-hover: rgba(74, 74, 78, 0.8);
   --dialog-cancel-btn-active: rgba(90, 90, 90, 0.8);
 
-  /* Theme Color - for login, register, create project, send invitation */
-  --color-theme: #3fb092;
-  --color-theme-hover: #1acc99;
-  --color-theme-glow: rgba(0, 255, 187, 0.7);
-
   /* Glow Effects - Dark Theme */
   --color-primary-glow: rgba(22, 112, 255, 0.7);
+  --color-secondary-glow: rgba(132, 50, 247, 0.7);
+  --color-tertiary-glow: rgba(39, 255, 230, 0.75);
+
   --color-error-glow: rgba(255, 1, 1, 0.8);
   --color-warning-glow: rgba(251, 191, 36, 0.4);
   --color-hint-glow: rgba(147, 197, 253, 0.4);
@@ -360,13 +358,11 @@
   --dialog-cancel-btn-hover: rgba(160, 160, 160, 0.9);
   --dialog-cancel-btn-active: rgba(140, 140, 140, 0.9);
 
-  /* Theme Color - for login, register, create project, send invitation */
-  --color-theme: #53c5a5;
-  --color-theme-hover: #1fcd9c;
-  --color-theme-glow: rgba(6, 214, 155, 0.7);
-
   /* Glow Effects - Light Theme */
   --color-primary-glow: rgba(37, 99, 235, 0.5);
+  --color-secondary-glow: rgba(113, 34, 224, 0.7);
+  --color-tertiary-glow: rgba(0, 200, 176, 0.8);
+  
   --color-error-glow: rgba(255, 56, 56, 0.9);
   --color-warning-glow: rgba(217, 119, 6, 0.5);
   --color-hint-glow: rgba(30, 58, 138, 0.4);

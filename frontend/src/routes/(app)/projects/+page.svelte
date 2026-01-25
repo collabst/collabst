@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { auth } from "$lib/stores/auth";
   import { notifications } from "$lib/stores/notifications";
   import { projectsApi, invitationsApi } from "$lib/services/api";
   import { ThemeToggle, ProfileMenu, Tooltip } from "$lib/components/ui";
@@ -25,6 +24,7 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import Search from "@lucide/svelte/icons/search";
   import X from "@lucide/svelte/icons/x";
+  import Plus from "@lucide/svelte/icons/plus";
 
   let projects = $state<Project[]>([]);
   let loading = $state(true);
@@ -357,7 +357,17 @@
 
           <div class="controls-row">
             <button onclick={() => (showCreateModal = true)} class="create-btn">
-              + New Project
+              <span
+                class="create-btn-content"
+                style="display: flex; align-items: center; gap: 0.3rem;"
+              >
+                <Plus
+                  size={18}
+                  strokeWidth={3}
+                  style="vertical-align: middle;"
+                />
+                New Project
+              </span>
             </button>
 
             <div class="view-controls">
@@ -881,13 +891,15 @@
   }
 
   .loading {
+    font-family: "DM Serif Display", Georgia, serif;
+    letter-spacing: -0.02em;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 50px;
     color: var(--text-secondary);
-    background: var(--bg-primary);
+    background: var(--bg-top-bar);
   }
 
   .invitations-section {
@@ -915,24 +927,39 @@
   }
 
   .create-btn {
-    background: var(--bg-canvas, var(--bg-primary));
+    background: var(--bg-primary);
     color: var(--text-primary);
     border: 2px solid var(--border-primary);
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-weight: 500;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 700;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .create-btn:hover {
     background: var(--surface-hover);
     border-color: var(--border-secondary);
+    color: var(--color-tertiary-500);
+    border-color: var(--color-tertiary-glow);
   }
 
   .create-btn:active {
-    background: var(--surface-active);
-    transform: scale(0.98);
+    /* background: var(--surface-active); */
+    /* font-weight: 900; */
+    transform: scaleY(0.96) scaleX(1.01);
+    display: inline-block;
+    /* color: var(--color-tertiary-glow); */
+  }
+
+  :global(.create-btn:active svg) {
+    /* transform: translateX(1px); */
+    stroke-width: 3;
+  }
+
+  .create-btn:active .create-btn-content {
+    /* transform: scaleY(0.99) scaleX(1.02); */
+    display: inline-block;
   }
 
   .controls-row {
@@ -1053,7 +1080,7 @@
     transform: translateY(-4px);
   }
 
-  .project-card:hover .file-icon{
+  .project-card:hover .file-icon {
     animation: jiggleAnimation 0.4s ease;
   }
 
@@ -1329,7 +1356,7 @@
   textarea:focus,
   select:focus {
     outline: none;
-    border-color: var(--color-theme);
+    border-color: var(--color-tertiary-500);
   }
 
   input::placeholder,
@@ -1373,11 +1400,12 @@
 
   .cancel-btn:active {
     background: var(--dialog-cancel-btn-active);
+    color: var(--text-active);
   }
 
   .submit-btn {
     flex: 1;
-    background: var(--color-theme);
+    background: var(--color-tertiary-500);
     color: white;
     border: none;
     padding: var(--space-3);
@@ -1388,12 +1416,13 @@
   }
 
   .submit-btn:hover {
-    background: var(--color-theme-hover);
-    box-shadow: 0 1px 6px var(--color-theme-glow);
+    background: var(--color-tertiary-glow);
+    box-shadow: 0 1px 6px var(--color-tertiary-glow);
   }
 
   .submit-btn:active {
-    box-shadow: 0 1px 12px var(--color-theme-glow);
+    /* background: var(--color-tertiary-glow); */
+    box-shadow: 0 1px 12px var(--color-tertiary-glow);
   }
 
   .delete-message {

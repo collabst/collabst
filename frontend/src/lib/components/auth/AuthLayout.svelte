@@ -4,6 +4,13 @@
     import Moon from "@lucide/svelte/icons/moon";
     import { browser } from "$app/environment";
     import collabstTextLogo from "../../../assets/collabst-text.svg";
+    import type { Snippet } from "svelte";
+
+    interface Props {
+        children: Snippet;
+    }
+
+    let { children }: Props = $props();
 
     let currentTheme = $state($theme);
 
@@ -91,7 +98,7 @@
     </button>
 
     <div class="card">
-        <slot />
+        {@render children()}
     </div>
 </div>
 
@@ -142,7 +149,12 @@
         z-index: 0;
         justify-content: space-evenly;
         align-content: space-evenly;
-        contain: layout style paint; /* Performance hint for browser */
+        contain: strict; /* Strict containment for best performance */
+        content-visibility: auto; /* Skip rendering off-screen elements */
+        /* Use a separate layer for better performance */
+        transform: translateZ(0);
+        /* Reduce priority to avoid blocking main thread */
+        isolation: isolate;
     }
 
     .circle {
@@ -152,9 +164,19 @@
         animation: spin 9s linear infinite;
         justify-self: center;
         align-self: center;
-        will-change: transform; /* GPU acceleration hint */
-        backface-visibility: hidden; /* Prevent flickering */
-        transform: translateZ(0); /* Force GPU rendering */
+        /* Optimize for transform-only animations */
+        will-change: transform;
+        backface-visibility: hidden;
+        /* Force GPU acceleration */
+        transform: translate3d(0, 0, 0);
+        /* Strict containment for isolation */
+        contain: layout paint;
+        /* Prevent text/subpixel rendering */
+        -webkit-font-smoothing: antialiased;
+        /* Composite on own layer */
+        isolation: isolate;
+        /* Reduce rendering complexity */
+        perspective: 1000px;
     }
 
     .container[data-theme="light"] .circle {
@@ -167,7 +189,7 @@
 
     @keyframes spin {
         0% {
-            transform: rotate(0) scale(1);
+            transform: rotate(0deg) scale(1);
             transform-origin: left center;
         }
         25% {
@@ -367,7 +389,7 @@
     }
 
     .container .card :global(input:focus) {
-        border-color: var(--color-theme);
+        border-color: var(--color-tertiary-500);
     }
 
     .card :global(button[type="submit"]) {
@@ -382,21 +404,21 @@
 
     .container[data-theme="light"] .card :global(button[type="submit"]) {
         color: white;
-        background: var(--color-theme);
+        background: var(--color-tertiary-500);
     }
 
     .container .card :global(button[type="submit"]:hover:not(:disabled)) {
-        background: var(--color-theme-hover);
-        box-shadow: 0 1px 10px var(--color-theme-glow);
+        background: var(--color-tertiary-glow);
+        box-shadow: 0 1px 10px var(--color-tertiary-glow);
     }
 
     .container .card :global(button[type="submit"]:active:not(:disabled)) {
-        box-shadow: 0 1px 20px var(--color-theme-glow);
+        box-shadow: 0 1px 20px var(--color-tertiary-glow);
     }
 
     .container[data-theme="dark"] .card :global(button[type="submit"]) {
         color: black;
-        background: var(--color-theme);
+        background: var(--color-tertiary-500);
     }
 
     .card :global(button[type="submit"]:disabled) {
@@ -419,14 +441,13 @@
     }
 
     .card :global(.footer a) {
-        color: #56ceac;
+        color: var(--color-tertiary-500);
         text-decoration: none;
         font-weight: 600;
-        transition: all 0.2s ease;
     }
 
     .card :global(.footer a:hover) {
         text-decoration: underline;
-        color: #57afd1;
+        color: var(--color-primary-500);
     }
 </style>

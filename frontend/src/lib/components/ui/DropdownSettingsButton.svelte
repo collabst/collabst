@@ -100,8 +100,9 @@
     }
 
     .dropdown-btn:active {
-        background: var(--surface-active);
-        transform: scale(0.98);
+        color: var(--text-active);
+        background: var(--surface-active);       
+        transform: scaleX(1.03) scaleY(0.98);
     }
 
     .label {
