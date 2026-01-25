@@ -1712,11 +1712,14 @@
   }
 
   .loading {
-    height: 100vh;
+    font-family: "DM Serif Display", Georgia, serif;
+    letter-spacing: -0.02em;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 50px;
     color: var(--text-secondary);
+    background: var(--bg-top-bar);
   }
 </style>
