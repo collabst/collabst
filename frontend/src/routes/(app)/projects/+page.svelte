@@ -195,7 +195,7 @@
 
 <style>
   .container {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     background: var(--bg-canvas, var(--bg-primary));
@@ -223,7 +223,6 @@
     background: var(--bg-top-bar);
     /* Prevent layout shift by reserving space for activity bar */
     min-height: 0;
-    max-height: calc(100vh - 48px); /* Account for header height */
   }
 
   .activity-bar {
@@ -234,12 +233,12 @@
     justify-content: space-between;
     padding: var(--space-3) 0;
     flex-shrink: 0;
-    overflow: hidden;
-    max-height: 100%;
+    align-self: stretch;
   }
 
   .spacer {
     flex: 1;
+    min-height: 0;
   }
 
   .bottom-activities {

@@ -191,10 +191,10 @@
 
   .icon-btn-top-bar:hover:not(:disabled) {
     color: var(--text-primary);
-    transform: scale(1.04);
   }
   .icon-btn-top-bar:hover:not(:disabled) :global(svg) {
     animation: jumpAnimation 0.2s ease-out;
+    stroke-width: 2.5;
   }
 
   @keyframes jumpAnimation {
@@ -211,12 +211,9 @@
 
   .icon-btn-top-bar:active:not(:disabled) {
     color: var(--text-active);
-    /* transform: scaleY(0.9) scaleX(1.1);
-    transition: transform 0.1s ease; */
   }
 
   .icon-btn-top-bar:active:not(:disabled) :global(svg) {
-    /* color: var(--text-active); */
     transform: scaleY(0.9) scaleX(1.1);
   }
 

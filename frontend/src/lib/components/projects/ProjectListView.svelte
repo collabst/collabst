@@ -91,7 +91,7 @@
         ></a>
 
         <div class="list-cell project-col">
-          <File size={16} class="project-file-icon" />
+          <File size={18} class="project-file-icon" />
           <span class="project-name">{project.name}</span>
           {#if project.current_user_role}
             <span
