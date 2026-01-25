@@ -8,11 +8,11 @@
 
 {#if href}
   <a {href} class="action-btn {action}-action" {title}>
-    <svelte:component this={icon} size={18} />
+    <svelte:component this={icon} size={19} />
   </a>
 {:else}
   <button {onclick} class="action-btn {action}-action" {title}>
-    <svelte:component this={icon} size={18} />
+    <svelte:component this={icon} size={19} />
   </button>
 {/if}
 
@@ -31,22 +31,34 @@
     padding: 0.4rem;
   }
 
-  .action-btn:hover {
-    transform: scale(1.3);
-    transition: none;
+  .action-btn:hover :global(svg) {
+    animation: jumpAnimation 0.2s ease-out;
+    stroke-width: 2.5;
+  }
+
+  @keyframes jumpAnimation {
+    0% {
+      transform: translateY(-2px) scaleX(0.8) scaleY(1.1);
+    }
+    80% {
+      transform: translateY(1px) scaleX(1.1) scaleY(0.95);
+    }
+    100% {
+      transform: none;
+    }
   }
   
   .action-btn:active {
-    transform: scaleY(1.1) scaleX(1.5);
+    transform: scaleY(0.9) scaleX(1.15);
     transition: none;
   }
 
   .open-action:hover {
-    color: var(--color-primary);
+    color: var(--text-active);
   }
 
   .invite-action:hover {
-    color: #8ad48e;
+    color: #8ce991;
   }
 
   /* Light theme: darker green for better contrast */
@@ -55,7 +67,7 @@
   }
 
   .delete-action:hover {
-    color: #ef7474;
+    color: #ff7b7b;
   }
 
   /* Light theme: darker red for better contrast */

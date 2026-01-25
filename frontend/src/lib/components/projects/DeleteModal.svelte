@@ -109,10 +109,11 @@
   }
 
   .modal-content h2 {
-    font-size: 1.7rem;
-    font-weight: var(--font-bold);
-    margin: 0 0 1.5rem 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 1.6rem 0;
     color: var(--dialog-text);
+    letter-spacing: -0.01em;
   }
 
   .delete-message {
@@ -157,7 +158,7 @@
     border: 1px solid var(--color-error);
     padding: var(--space-3);
     border-radius: var(--radius-md);
-    font-weight: var(--font-medium);
+    font-weight: 700;
     cursor: pointer;
     font-size: var(--text-base);
     display: flex;
