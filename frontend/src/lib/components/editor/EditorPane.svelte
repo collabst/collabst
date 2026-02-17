@@ -23,6 +23,7 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import MoreHorizontal from "@lucide/svelte/icons/ellipsis";
   import { onDestroy } from "svelte";
+  import { setCurrentTracker } from "$lib/codemirror/comments";
   import type {
     File as ProjectFile,
     Asset,
@@ -55,6 +56,10 @@
     onRenameAsset?: ((assetId: number) => void) | null;
     onDeleteAsset?: ((assetId: number) => void) | null;
     files?: ProjectFile[];
+    onCommentsChange?: (comments: Comment[]) => void;
+    onNewCommentDraftChange?: (draft: { text: string; range: { from: number; to: number }; selectedText: string } | null) => void;
+    activeCommentId?: string | null;
+    onCommentClick?: (commentId: string) => void;
   }
 
   let {
@@ -78,6 +83,10 @@
     onRenameAsset = null,
     onDeleteAsset = null,
     files = [],
+    onCommentsChange,
+    onNewCommentDraftChange,
+    activeCommentId = null,
+    onCommentClick,
   }: EditorPaneProps = $props();
 
   // Simple blob URL cache - keyed by asset ID
@@ -146,6 +155,7 @@
 
   // Cleanup on unmount
   onDestroy(() => {
+    setCurrentTracker(null);
     for (const url of Object.values(blobUrlCache)) {
       revokeBlobUrl(url);
     }
@@ -160,13 +170,13 @@
   );
 
   let codeEditor: any = $state(null);
-  let comments: Comment[] = [];
-  let newCommentDraft: {
+  let comments = $state<Comment[]>([]);
+  let newCommentDraft = $state<{
     text: string;
     range: { from: number; to: number };
     selectedText: string;
-  } | null = null;
-  let commentsVersion = 0; // Simple counter to trigger reactivity
+  } | null>(null);
+  let commentsVersion = $state(0); // Simple counter to trigger reactivity
   let showCommentButton = $state(false);
   let commentButtonPosition = $state({ top: 0, left: 0 });
   let editorContainer: HTMLElement | null = $state(null);
@@ -275,6 +285,24 @@
     }
   });
 
+  // Notify parent when comments change
+  $effect(() => {
+    onCommentsChange?.(comments);
+  });
+
+  // Notify parent when draft changes
+  $effect(() => {
+    onNewCommentDraftChange?.(newCommentDraft);
+  });
+
+  // Sync active comment state to the editor's tracker
+  $effect(() => {
+    const tracker = codeEditor?.getCommentTracker();
+    if (tracker) {
+      tracker.setActiveComment(activeCommentId ?? null);
+    }
+  });
+
   // Reset listeners flag and hide comment button when file changes
   $effect(() => {
     if (selectedFile) {
@@ -294,10 +322,24 @@
     }
   });
 
+  // Scroll the editor to a specific comment's range
+  export function scrollToComment(commentId: string) {
+    const tracker = codeEditor?.getCommentTracker();
+    if (tracker) {
+      tracker.scrollToComment(commentId);
+    }
+  }
+
   function handleTrackerReady(tracker: any) {
+    // Register the tracker for click handling
+    setCurrentTracker(tracker);
     // Set up callback for when comments change
     tracker.onCommentsChange(() => {
       commentsVersion++;
+    });
+    // Set up callback for when a comment highlight is clicked in the editor
+    tracker.onCommentClick((commentId: string) => {
+      onCommentClick?.(commentId);
     });
     // Trigger initial update
     commentsVersion++;
@@ -469,7 +511,7 @@
     }
   });
 
-  function handleAddComment() {
+  export function handleAddComment() {
     if (!codeEditor) return;
 
     const selection = codeEditor.getSelection();
@@ -488,7 +530,7 @@
     showCommentButton = false;
   }
 
-  function handleSubmitNewComment(content: string) {
+  export function handleSubmitNewComment(content: string) {
     if (!codeEditor || !newCommentDraft || !selectedFile || !ydoc) return;
 
     const tracker = codeEditor.getCommentTracker();
@@ -527,31 +569,29 @@
     newCommentDraft = null;
   }
 
-  function handleCancelNewComment() {
+  export function handleCancelNewComment() {
     newCommentDraft = null;
   }
 
-  function handleCommentResolve(event: CustomEvent) {
+  export function handleCommentResolve(commentId: string) {
     if (!codeEditor) return;
 
     const tracker = codeEditor.getCommentTracker();
     if (!tracker) return;
 
-    tracker.resolveComment(event.detail.commentId);
-    // No need to call updateCommentsList() - the observer will handle it
+    tracker.resolveComment(commentId);
   }
 
-  function handleCommentDelete(event: CustomEvent) {
+  export function handleCommentDelete(commentId: string) {
     if (!codeEditor) return;
 
     const tracker = codeEditor.getCommentTracker();
     if (!tracker) return;
 
-    tracker.removeComment(event.detail.commentId);
-    // No need to call updateCommentsList() - the observer will handle it
+    tracker.removeComment(commentId);
   }
 
-  function handleCommentReply(event: CustomEvent) {
+  export function handleCommentReply(commentId: string, content: string) {
     if (!codeEditor) return;
 
     const tracker = codeEditor.getCommentTracker();
@@ -560,7 +600,7 @@
     const replyId = `reply-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const reply = {
       id: replyId,
-      content: event.detail.content,
+      content,
       author: {
         id: currentUserId,
         username: currentUserName,
@@ -569,8 +609,7 @@
       createdAt: new Date().toISOString(),
     };
 
-    tracker.addReply(event.detail.commentId, reply);
-    // No need to call updateCommentsList() - the observer will handle it
+    tracker.addReply(commentId, reply);
   }
 
   // Action button handlers for typst files
@@ -1266,16 +1305,6 @@
             </div>
           {/if}
         </div>
-        <!-- <CommentsPanel
-          {comments}
-          {currentUserId}
-          {newCommentDraft}
-          on:resolve={handleCommentResolve}
-          on:delete={handleCommentDelete}
-          on:reply={handleCommentReply}
-          on:submitNew={e => handleSubmitNewComment(e.detail.content)}
-          on:cancelNew={handleCancelNewComment}
-        /> -->
       </div>
     </div>
   {/if}

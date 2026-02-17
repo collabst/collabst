@@ -237,6 +237,12 @@
   --color-error-bg: #7f1d1d;
   --color-error-text: #fca5a5;
 
+  /* Comment highlight colors for dark mode */
+  --comment-highlight-bg: rgba(251, 191, 36, 0.15);
+  --comment-highlight-border: rgba(251, 191, 36, 0.5);
+  --comment-highlight-active-bg: rgba(251, 191, 36, 0.3);
+  --comment-highlight-active-border: rgba(251, 191, 36, 0.8);
+
   /* Scrollbar colors for dark mode */
   --scrollbar-track: #1d1d1d;
   --scrollbar-thumb: #3e3e42;
@@ -338,6 +344,12 @@
   --color-warning-text: #92400e;
   --color-error-bg: #fee2e2;
   --color-error-text: #991b1b;
+
+  /* Comment highlight colors for light mode */
+  --comment-highlight-bg: rgba(217, 119, 6, 0.12);
+  --comment-highlight-border: rgba(217, 119, 6, 0.4);
+  --comment-highlight-active-bg: rgba(217, 119, 6, 0.25);
+  --comment-highlight-active-border: rgba(217, 119, 6, 0.7);
 
   /* Scrollbar colors for light mode */
   --scrollbar-track: #d4d4d4;

@@ -18,15 +18,40 @@ export const updateCommentsEffect = StateEffect.define<{
   comments: Map<string, { from: number; to: number }>
 }>()
 
+// State effect for setting the active comment
+export const setActiveCommentEffect = StateEffect.define<string | null>()
+
 // Decoration for highlighted comment ranges
-const commentMark = (commentId: string, color: string) =>
+const commentMark = (commentId: string) =>
   Decoration.mark({
     class: 'cm-comment-highlight',
     attributes: {
       'data-comment-id': commentId,
-      style: `background-color: ${color}40; border-bottom: 2px solid ${color};`
     }
   })
+
+const activeCommentMark = (commentId: string) =>
+  Decoration.mark({
+    class: 'cm-comment-highlight cm-comment-highlight-active',
+    attributes: {
+      'data-comment-id': commentId,
+    }
+  })
+
+// State field to track the active comment ID
+export const activeCommentField = StateField.define<string | null>({
+  create() {
+    return null
+  },
+  update(activeId, tr) {
+    for (let effect of tr.effects) {
+      if (effect.is(setActiveCommentEffect)) {
+        return effect.value
+      }
+    }
+    return activeId
+  }
+})
 
 // State field to track comment decorations
 export const commentField = StateField.define<DecorationSet>({
@@ -36,9 +61,22 @@ export const commentField = StateField.define<DecorationSet>({
   update(decorations, tr) {
     decorations = decorations.map(tr.changes)
 
+    // Check if active comment changed
+    let activeChanged = false
+    let newActiveId: string | null = null
+    for (let effect of tr.effects) {
+      if (effect.is(setActiveCommentEffect)) {
+        activeChanged = true
+        newActiveId = effect.value
+      }
+    }
+
     for (let effect of tr.effects) {
       if (effect.is(addCommentEffect)) {
-        const mark = commentMark(effect.value.commentId, getCommentColor(effect.value.commentId))
+        const activeId = tr.state.field(activeCommentField)
+        const mark = effect.value.commentId === activeId
+          ? activeCommentMark(effect.value.commentId)
+          : commentMark(effect.value.commentId)
         decorations = decorations.update({
           add: [mark.range(effect.value.from, effect.value.to)]
         })
@@ -50,35 +88,39 @@ export const commentField = StateField.define<DecorationSet>({
           }
         })
       } else if (effect.is(updateCommentsEffect)) {
+        const activeId = activeChanged ? newActiveId : tr.state.field(activeCommentField)
         const ranges: any[] = []
         effect.value.comments.forEach((range, commentId) => {
-          const mark = commentMark(commentId, getCommentColor(commentId))
+          const mark = commentId === activeId
+            ? activeCommentMark(commentId)
+            : commentMark(commentId)
           ranges.push(mark.range(range.from, range.to))
         })
         decorations = Decoration.set(ranges, true)
       }
     }
 
+    // If only the active comment changed (no other effects), rebuild decorations
+    if (activeChanged && !tr.effects.some(e => e.is(updateCommentsEffect))) {
+      const iter = decorations.iter()
+      const ranges: any[] = []
+      while (iter.value) {
+        const commentId = iter.value.spec?.attributes?.['data-comment-id']
+        if (commentId) {
+          const mark = commentId === newActiveId
+            ? activeCommentMark(commentId)
+            : commentMark(commentId)
+          ranges.push(mark.range(iter.from, iter.to))
+        }
+        iter.next()
+      }
+      decorations = Decoration.set(ranges, true)
+    }
+
     return decorations
   },
   provide: (f) => EditorView.decorations.from(f)
 })
-
-// Helper to generate consistent colors for comment IDs
-function getCommentColor(commentId: string): string {
-  const colors = [
-    '#3b82f6', // blue
-    '#8b5cf6', // violet
-    '#ec4899', // pink
-    '#f59e0b', // amber
-    '#10b981', // emerald
-    '#06b6d4', // cyan
-    '#6366f1', // indigo
-    '#f97316'  // orange
-  ]
-  const hash = commentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return colors[hash % colors.length]
-}
 
 // Yjs integration for syncing comment ranges
 export class CommentRangeTracker {
@@ -87,6 +129,7 @@ export class CommentRangeTracker {
   private view: EditorView
   private rangeCache: Map<string, { anchor: Y.RelativePosition; head: Y.RelativePosition }>
   private changeCallback: (() => void) | null = null
+  private clickCallback: ((commentId: string) => void) | null = null
   private boundHandleYjsChange: (event: Y.YMapEvent<any>) => void
 
   constructor(ydoc: Y.Doc, fileId: number, view: EditorView) {
@@ -108,6 +151,37 @@ export class CommentRangeTracker {
   // Set a callback that will be called when comments change
   onCommentsChange(callback: () => void) {
     this.changeCallback = callback
+  }
+
+  // Set a callback that will be called when a comment highlight is clicked in the editor
+  onCommentClick(callback: (commentId: string) => void) {
+    this.clickCallback = callback
+  }
+
+  // Notify click callback (called from the click handler extension)
+  notifyCommentClick(commentId: string) {
+    if (this.clickCallback) {
+      this.clickCallback(commentId)
+    }
+  }
+
+  // Set the active comment and update decorations
+  setActiveComment(commentId: string | null) {
+    this.view.dispatch({
+      effects: setActiveCommentEffect.of(commentId)
+    })
+  }
+
+  // Scroll the editor to show the range of a given comment
+  scrollToComment(commentId: string) {
+    const range = this.getCommentRange(commentId)
+    if (range) {
+      this.view.dispatch({
+        selection: { anchor: range.from, head: range.to },
+        scrollIntoView: true
+      })
+      this.view.focus()
+    }
   }
 
   private handleYjsChange(_event: Y.YMapEvent<any>) {
@@ -262,20 +336,56 @@ export class CommentRangeTracker {
     this.yComments.unobserve(this.boundHandleYjsChange)
     this.rangeCache.clear()
     this.changeCallback = null
+    this.clickCallback = null
   }
 }
+
+// Store a reference to the tracker so the click handler can access it
+let currentTracker: CommentRangeTracker | null = null
+
+export function setCurrentTracker(tracker: CommentRangeTracker | null) {
+  currentTracker = tracker
+}
+
+// Click handler extension for comment highlights
+// Uses mouseup so it doesn't interfere with text selection
+const commentClickHandler = EditorView.domEventHandlers({
+  mouseup(event, view) {
+    // Only notify if there was no text selection (i.e. a simple click)
+    const selection = view.state.selection.main
+    if (selection.from !== selection.to) return false
+
+    const target = event.target as HTMLElement
+    const commentEl = target.closest('.cm-comment-highlight')
+    if (commentEl) {
+      const commentId = commentEl.getAttribute('data-comment-id')
+      if (commentId && currentTracker) {
+        currentTracker.notifyCommentClick(commentId)
+      }
+    }
+    return false
+  }
+})
 
 // Extension to add comment functionality to CodeMirror
 export function commentsExtension(): Extension {
   return [
+    activeCommentField,
     commentField,
+    commentClickHandler,
     EditorView.baseTheme({
       '.cm-comment-highlight': {
+        backgroundColor: 'var(--comment-highlight-bg)',
+        borderBottom: '2px solid var(--comment-highlight-border)',
         cursor: 'pointer',
-        transition: 'background-color 0.2s'
+        transition: 'background-color 0.2s, border-color 0.2s'
       },
       '.cm-comment-highlight:hover': {
         filter: 'brightness(1.1)'
+      },
+      '.cm-comment-highlight-active': {
+        backgroundColor: 'var(--comment-highlight-active-bg) !important',
+        borderBottom: '2px solid var(--comment-highlight-active-border) !important'
       }
     })
   ]

@@ -1,14 +1,37 @@
 <script lang="ts">
   import type { Comment, CommentReply } from '$lib/types'
-  import { createEventDispatcher } from 'svelte'
 
-  export let comment: Comment
-  export let currentUserId: number
+  interface CommentThreadProps {
+    comment: Comment
+    currentUserId: number
+    isActive?: boolean
+    onResolve?: (commentId: string) => void
+    onDelete?: (commentId: string) => void
+    onReply?: (commentId: string, content: string) => void
+    onSelect?: (commentId: string) => void
+  }
 
-  const dispatch = createEventDispatcher()
+  let {
+    comment,
+    currentUserId,
+    isActive = false,
+    onResolve,
+    onDelete,
+    onReply,
+    onSelect,
+  }: CommentThreadProps = $props()
 
-  let replyText = ''
-  let isReplying = false
+  let threadElement: HTMLElement | undefined = $state()
+
+  // Auto-scroll into view when this thread becomes active
+  $effect(() => {
+    if (isActive && threadElement) {
+      threadElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+
+  let replyText = $state('')
+  let isReplying = $state(false)
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr)
@@ -26,16 +49,16 @@
   }
 
   function handleResolve() {
-    dispatch('resolve', { commentId: comment.id })
+    onResolve?.(comment.id)
   }
 
   function handleDelete() {
-    dispatch('delete', { commentId: comment.id })
+    onDelete?.(comment.id)
   }
 
   function handleSubmitReply() {
     if (replyText.trim()) {
-      dispatch('reply', { commentId: comment.id, content: replyText.trim() })
+      onReply?.(comment.id, replyText.trim())
       replyText = ''
       isReplying = false
     }
@@ -47,7 +70,15 @@
   }
 </script>
 
-<div class="comment-thread" class:resolved={comment.resolved}>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+  class="comment-thread"
+  class:resolved={comment.resolved}
+  class:active={isActive}
+  bind:this={threadElement}
+  onclick={() => onSelect?.(comment.id)}
+>
   <div class="comment-header">
     <div class="author-info">
       <div
@@ -66,14 +97,14 @@
       {#if !comment.resolved}
         <button
           class="action-btn resolve-btn"
-          on:click={handleResolve}
+          onclick={handleResolve}
           title="Mark as resolved"
         >
           ✓
         </button>
       {/if}
       {#if comment.author.id === currentUserId}
-        <button class="action-btn delete-btn" on:click={handleDelete} title="Delete comment">
+        <button class="action-btn delete-btn" onclick={handleDelete} title="Delete comment">
           ×
         </button>
       {/if}
@@ -115,14 +146,14 @@
           autofocus
         />
         <div class="reply-form-actions">
-          <button class="btn btn-cancel" on:click={handleCancelReply}>Cancel</button>
-          <button class="btn btn-submit" on:click={handleSubmitReply} disabled={!replyText.trim()}>
+          <button class="btn btn-cancel" onclick={handleCancelReply}>Cancel</button>
+          <button class="btn btn-submit" onclick={handleSubmitReply} disabled={!replyText.trim()}>
             Reply
           </button>
         </div>
       </div>
     {:else}
-      <button class="reply-btn" on:click={() => (isReplying = true)}>Reply</button>
+      <button class="reply-btn" onclick={() => (isReplying = true)}>Reply</button>
     {/if}
   {/if}
 </div>
@@ -140,6 +171,11 @@
   .comment-thread.resolved {
     opacity: 0.6;
     background: var(--bg-primary);
+  }
+
+  .comment-thread.active {
+    border-left: 3px solid var(--comment-highlight-active-border, rgba(217, 119, 6, 0.7));
+    background: var(--comment-highlight-bg, rgba(251, 191, 36, 0.1));
   }
 
   .comment-header {

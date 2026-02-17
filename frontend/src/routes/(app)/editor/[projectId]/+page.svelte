@@ -30,11 +30,13 @@
   import DeleteConfirmModal from "$lib/components/editor/DeleteConfirmModal.svelte";
   import UploadAssetModal from "$lib/components/editor/UploadAssetModal.svelte";
   import CollaboratorsPanel from "$lib/components/editor/CollaboratorsPanel.svelte";
+  import CommentsPanel from "$lib/components/editor/CommentsPanel.svelte";
   import UserPresence from "$lib/components/editor/UserPresence.svelte";
   import type {
     Project,
     File as ProjectFile,
     Asset,
+    Comment,
     Diagnostic,
   } from "$lib/types";
   import type { YjsConnection } from "$lib/yjs";
@@ -83,6 +85,22 @@
   let exportAsPNG = $state<() => void>(() => {});
   let exportAsSVG = $state<() => void>(() => {});
   let exportSourcesAsZip = $state<() => void>(() => {});
+
+  // Comment state lifted from EditorPane
+  let editorComments = $state<Comment[]>([]);
+  let editorNewCommentDraft = $state<{
+    text: string;
+    range: { from: number; to: number };
+    selectedText: string;
+  } | null>(null);
+  let activeCommentId = $state<string | null>(null);
+
+  // Auto-open comments panel when a new draft comment is created
+  $effect(() => {
+    if (editorNewCommentDraft && activePanel !== "comments") {
+      activePanel = "comments";
+    }
+  });
 
   // Load toggle states from localStorage with defaults
   let wrapLines = $state(
@@ -454,6 +472,8 @@
     if (!file.is_folder) {
       selectedAsset = null;
     }
+    // Reset active comment when switching files
+    activeCommentId = null;
     // Awareness update handled by reactive statement
   }
 
@@ -1308,7 +1328,12 @@
           onSelectAll={handleSelectAll}
           onToggleLineComment={handleToggleLineComment}
           onToggleBlockComment={handleToggleBlockComment}
-          onAddComment={() => console.log("Add comment - to be implemented")}
+          onAddComment={() => {
+            if (editorPane) {
+              editorPane.handleAddComment();
+              if (activePanel !== "comments") activePanel = "comments";
+            }
+          }}
           onShowToolbar={() => (showToolbar = !showToolbar)}
           onScrollOnType={() =>
             console.log("Scroll on type - to be implemented")}
@@ -1398,7 +1423,21 @@
         </div>
       {:else if activePanel === "comments"}
         <div style="width: {leftPanelWidth}px;">
-          <PlaceholderPanel title="Comments" />
+          <CommentsPanel
+            comments={editorComments}
+            currentUserId={$auth.user?.id || 0}
+            newCommentDraft={editorNewCommentDraft}
+            {activeCommentId}
+            onResolve={(commentId: string) => editorPane?.handleCommentResolve(commentId)}
+            onDelete={(commentId: string) => editorPane?.handleCommentDelete(commentId)}
+            onReply={(commentId: string, content: string) => editorPane?.handleCommentReply(commentId, content)}
+            onSubmitNew={(content: string) => editorPane?.handleSubmitNewComment(content)}
+            onCancelNew={() => editorPane?.handleCancelNewComment()}
+            onSelect={(commentId: string) => {
+              activeCommentId = commentId;
+              editorPane?.scrollToComment(commentId);
+            }}
+          />
         </div>
       {:else if activePanel === "settings"}
         <div style="width: {leftPanelWidth}px;">
@@ -1455,6 +1494,14 @@
         {closeSeparatePreview}
         onRenameAsset={handleRenameSelectedItem}
         onDeleteAsset={handleDeleteAsset}
+        {activeCommentId}
+        onCommentClick={(commentId: string) => {
+          if (activePanel === 'comments') {
+            activeCommentId = commentId;
+          }
+        }}
+        onCommentsChange={(c: Comment[]) => editorComments = c}
+        onNewCommentDraftChange={(d: { text: string; range: { from: number; to: number }; selectedText: string } | null) => editorNewCommentDraft = d}
       />
 
       <div
