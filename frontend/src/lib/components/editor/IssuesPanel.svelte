@@ -76,7 +76,7 @@
     overflow: hidden;
     border-radius: 8px;
     margin: 0 0 var(--space-3) 0;
-    padding-right: 0;
+    padding-top: 6px;
   }
 
   .panel-header {
@@ -95,23 +95,29 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--space-4);
+    padding: 10px;
     overflow-y: auto;
   }
 
   .issue-item {
-    --transparent: 70%;
+    --transparent: 50%;
     width: 100%;
     padding: var(--space-3);
-    margin-bottom: var(--space-3);
-    border-radius: 16px;
+    margin-bottom: 10px;
+    border-radius: 12px;
     background: color-mix(
       in srgb,
       var(--color-bg),
       transparent var(--transparent)
     );
-    border-left: 5px solid var(--color);
+    border: 1px solid var(--color);
     cursor: pointer;
+    font-size: var(--text-sm);
+    color: color-mix(in srgb, var(--color), var(--text-primary) 70%);
+  }
+
+  :global(html[data-theme="dark"]) .issue-item {
+    --transparent: 70%;
   }
 
   .issue-severity-error {
@@ -136,10 +142,16 @@
 
   .issue-item:hover {
     --transparent: 50%;
-    box-shadow: 0px 0px 15px color-mix(in srgb, var(--color), transparent 60%);
+    box-shadow: 0px 0px 10px color-mix(in srgb, var(--color), transparent 55%);
+    transform: translateY(-2px);
   }
 
   .issue-item:active {
+    --transparent: 20%;
+    transform: translateY(1px);
+  }
+
+  :global(html[data-theme="dark"]) .issue-item:active {
     --transparent: 20%;
   }
 
