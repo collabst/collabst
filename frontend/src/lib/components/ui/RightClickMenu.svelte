@@ -91,6 +91,22 @@
     z-index: 1000;
     overflow: hidden;
     min-width: 130px;
+    animation: menu-appear 0.2s cubic-bezier(0.4, 0.2, 0.2, 1);
+    opacity: 1;
+  }
+
+  @keyframes menu-appear {
+    0% {
+    opacity: 0;
+    transform: translateY(40px);
+    }
+    75% {
+    transform: translateY(-4px);
+    }
+    100% {
+    opacity: 1;
+    transform: translateY(0);
+    }
   }
 
   .menu-item {

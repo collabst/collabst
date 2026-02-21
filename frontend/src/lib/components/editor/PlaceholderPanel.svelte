@@ -21,7 +21,7 @@
     overflow: hidden;
     border-radius: 8px;
     margin: 0 0 var(--space-3) 0;
-    padding-right: 0;
+    padding-top: 6px;
   }
 
   .panel-header {

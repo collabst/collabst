@@ -9,7 +9,8 @@
     | "danger"
     | "success"
     | "flat"
-    | "top-bar";
+    | "top-bar"
+    | "replace-all";
   type ButtonSize = "sm" | "md" | "lg" | "top-bar" | "find-toggle";
 
   interface IconButtonProps {
@@ -42,6 +43,7 @@
     lg: 24,
     "top-bar": 18,
     "find-toggle": 16,
+    "replace-all": 10,
   };
 </script>
 
@@ -108,6 +110,25 @@
   .icon-btn-find-toggle:active:not(:disabled) {
     background: none !important;
     transform: scaleY(0.8) scaleX(1.15);
+  }
+
+  .icon-btn-replace-all {
+    width: 24px;
+    height: 24px;
+    background: none !important;
+    padding: 1px;
+    color: var(--text-secondary);
+  }
+
+  .icon-btn-replace-all:hover:not(:disabled) {
+    background: var(--surface-hover) !important;
+    color: var(--color-error);
+  }
+
+  .icon-btn-replace-all:active:not(:disabled) {
+    background: var(--surface-active) !important;
+    color: var(--color-error-dark);
+    transform: scaleY(0.9) scaleX(1.15);
   }
 
   /* Variants */

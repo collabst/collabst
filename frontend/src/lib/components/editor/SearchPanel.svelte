@@ -311,7 +311,7 @@
           onkeydown={handleReplaceKeydown}
         />
         <IconButton
-          variant="flat"
+          variant="replace-all"
           icon={ReplaceAll}
           size="sm"
           onclick={replaceAll}
@@ -327,7 +327,7 @@
             {fileResults.length === 1 ? "match" : "matches"}
           </div>
           <IconButton
-            variant="flat"
+            variant="replace-all"
             icon={ReplaceAll}
             size="sm"
             title="Replace All in File"
@@ -357,7 +357,7 @@
             </div>
             <IconButton
               class="btn"
-              variant="flat"
+              variant="replace-all"
               icon={Replace}
               size="sm"
               title="Replace"
@@ -383,7 +383,7 @@
     overflow: hidden;
     border-radius: 8px;
     margin: 0 0 var(--space-3) 0;
-    padding-right: 0;
+    padding-top: 6px;
   }
 
   .panel-header {
@@ -416,7 +416,6 @@
   .search-area,
   .replace-area {
     display: flex;
-    gap: var(--space-2);
     width: 100%;
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-lg);
@@ -428,7 +427,7 @@
   .search-input,
   .replace-input {
     flex: 1;
-    padding: var(--space-2);
+    padding-left: var(--space-1);
     font-size: var(--text-xs);
     color: var(--text-primary);
     background: var(--bg-editor);
@@ -453,9 +452,13 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-1);
     border-top: 1px solid var(--border-primary);
     padding-top: var(--space-2);
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
   }
 
   .result-item {
@@ -465,17 +468,22 @@
     cursor: pointer;
     padding: var(--space-2);
     border-radius: var(--radius-md);
-    background: var(--bg-secondary);
+    background: var(--bg-top-bar);
     font-size: var(--text-xs);
     font-weight: 500;
+    border: 1px solid var(--border-primary);
   }
 
   .result-item:hover {
-    background: var(--bg-hover);
+    transform: translateY(-2px);
+    border-color: var(--border-active);
+    /* background: var(--surface-hover); */
   }
 
-  .result-item:active {
-    background: var(--bg-active);
+  .result-item:active:not(:has(.btn:active)) {
+    border-color: var(--border-active);
+    background: var(--surface-hover);
+    transform: translateY(1px);
   }
 
   .line-number {
