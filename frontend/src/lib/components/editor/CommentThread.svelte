@@ -1,14 +1,14 @@
 <script lang="ts">
-  import type { Comment, CommentReply } from '$lib/types'
+  import type { Comment, CommentReply } from "$lib/types";
 
   interface CommentThreadProps {
-    comment: Comment
-    currentUserId: number
-    isActive?: boolean
-    onResolve?: (commentId: string) => void
-    onDelete?: (commentId: string) => void
-    onReply?: (commentId: string, content: string) => void
-    onSelect?: (commentId: string) => void
+    comment: Comment;
+    currentUserId: number;
+    isActive?: boolean;
+    onResolve?: (commentId: string) => void;
+    onDelete?: (commentId: string) => void;
+    onReply?: (commentId: string, content: string) => void;
+    onSelect?: (commentId: string) => void;
   }
 
   let {
@@ -19,54 +19,54 @@
     onDelete,
     onReply,
     onSelect,
-  }: CommentThreadProps = $props()
+  }: CommentThreadProps = $props();
 
-  let threadElement: HTMLElement | undefined = $state()
+  let threadElement: HTMLElement | undefined = $state();
 
   // Auto-scroll into view when this thread becomes active
   $effect(() => {
     if (isActive && threadElement) {
-      threadElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      threadElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  })
+  });
 
-  let replyText = $state('')
-  let isReplying = $state(false)
+  let replyText = $state("");
+  let isReplying = $state(false);
 
   function formatDate(dateStr: string) {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString()
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
   }
 
   function handleResolve() {
-    onResolve?.(comment.id)
+    onResolve?.(comment.id);
   }
 
   function handleDelete() {
-    onDelete?.(comment.id)
+    onDelete?.(comment.id);
   }
 
   function handleSubmitReply() {
     if (replyText.trim()) {
-      onReply?.(comment.id, replyText.trim())
-      replyText = ''
-      isReplying = false
+      onReply?.(comment.id, replyText.trim());
+      replyText = "";
+      isReplying = false;
     }
   }
 
   function handleCancelReply() {
-    replyText = ''
-    isReplying = false
+    replyText = "";
+    isReplying = false;
   }
 </script>
 
@@ -104,7 +104,11 @@
         </button>
       {/if}
       {#if comment.author.id === currentUserId}
-        <button class="action-btn delete-btn" onclick={handleDelete} title="Delete comment">
+        <button
+          class="action-btn delete-btn"
+          onclick={handleDelete}
+          title="Delete comment"
+        >
           ×
         </button>
       {/if}
@@ -146,14 +150,22 @@
           autofocus
         />
         <div class="reply-form-actions">
-          <button class="btn btn-cancel" onclick={handleCancelReply}>Cancel</button>
-          <button class="btn btn-submit" onclick={handleSubmitReply} disabled={!replyText.trim()}>
+          <button class="btn btn-cancel" onclick={handleCancelReply}
+            >Cancel</button
+          >
+          <button
+            class="btn btn-submit"
+            onclick={handleSubmitReply}
+            disabled={!replyText.trim()}
+          >
             Reply
           </button>
         </div>
       </div>
     {:else}
-      <button class="reply-btn" onclick={() => (isReplying = true)}>Reply</button>
+      <button class="reply-btn" onclick={() => (isReplying = true)}
+        >Reply</button
+      >
     {/if}
   {/if}
 </div>
@@ -161,21 +173,41 @@
 <style>
   .comment-thread {
     background: var(--surface-primary);
-    border: 1px solid var(--border-primary);
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 12px;
-    transition: opacity 0.2s;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 6px;
+    transition: opacity 1s;
   }
 
   .comment-thread.resolved {
-    opacity: 0.6;
+    opacity: 0.7;
     background: var(--bg-primary);
   }
 
+  .comment-thread:hover {
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--comment-highlight-active-border),
+        transparent 20%
+      );
+  }
+
+  .comment-thread:active:not(:has(.btn:active)):not(:has(textarea:focus)):not(
+      :has(.reply-btn:active)
+    ):not(:has(.resolve-btn:active)):not(:has(.delete-btn:active)) {
+    transform: translateX(6px);
+  }
+
   .comment-thread.active {
-    border-left: 3px solid var(--comment-highlight-active-border, rgba(217, 119, 6, 0.7));
-    background: var(--comment-highlight-bg, rgba(251, 191, 36, 0.1));
+    border: 1px solid var(--comment-highlight-active-border);
+    background: color-mix(
+      in srgb,
+      var(--comment-highlight-bg),
+      var(--surface-primary) 80%
+    );
+    transform: translateX(6px);
   }
 
   .comment-header {
@@ -317,19 +349,22 @@
 
   .reply-form textarea {
     width: 100%;
-    background: var(--surface-secondary);
+    background: var(--surface-hover);
     border: 1px solid var(--border-primary);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 8px;
     color: var(--text-primary);
     font-size: 12px;
     font-family: inherit;
     resize: vertical;
+    /* overflow-y: auto; */
+    /* min-height: 0px; */
+    /* max-height: 120px; */
   }
 
   .reply-form textarea:focus {
     outline: none;
-    border-color: var(--color-primary-600);
+    border-color: var(--comment-highlight-active-border);
   }
 
   .reply-form-actions {
@@ -374,18 +409,19 @@
   .reply-btn {
     margin-top: 8px;
     padding: 6px 12px;
-    background: none;
-    border: 1px solid var(--border-primary);
-    border-radius: 4px;
-    color: var(--text-secondary);
+    background: var(--surface-hover);
+    border: 1px solid transparent;
+    border-radius: 50px;
+    color: var(--text-tertiary);
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
+    width: 100%;
+    text-align: left;
+    transition: none;
   }
 
   .reply-btn:hover {
-    background: var(--surface-secondary);
-    border-color: var(--border-hover);
-    color: var(--text-primary);
+    border-color: var(--comment-highlight-active-border);
   }
 </style>
