@@ -60,6 +60,9 @@
 </script>
 
 <div class="comments-panel">
+<div class="panel-header">
+    <h3>Comments</h3>
+  </div>
   <div class="panel-content">
     {#if resolvedCount > 0}
       <div class="filter-section">
@@ -131,11 +134,26 @@
 
 <style>
   .comments-panel {
-    background: var(--bg-primary);
-    display: flex;
-    flex-direction: column;
     width: 100%;
     height: 100%;
+    background: var(--bg-file-panel);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    margin: 0 0 var(--space-3) 0;
+    padding-top: 6px;
+  }
+
+  .panel-header {
+    padding: var(--space-4);
+  }
+
+  h3 {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
   }
 
   .panel-content {
@@ -147,7 +165,7 @@
 
   .filter-section {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border-primary);
+    /* border-bottom: 1px solid var(--border-primary); */
   }
 
   .filter-toggle {
@@ -196,15 +214,15 @@
   }
 
   .comments-list {
-    padding: 16px;
+    padding: var(--space-2);
     flex: 1;
   }
 
   .new-comment-draft {
     background: var(--surface-primary);
-    border: 2px solid var(--color-primary-600);
-    border-radius: 6px;
-    padding: 12px;
+    border: 1px solid var(--color-primary-600);
+    border-radius: 10px;
+    padding: 10px;
     margin-bottom: 16px;
   }
 
@@ -224,7 +242,7 @@
     margin-top: 6px;
     padding: 8px;
     background: var(--surface-secondary);
-    border-left: 3px solid var(--color-primary-600);
+    border-left: 5px solid var(--color-primary-600);
     border-radius: 4px;
     font-size: 12px;
     color: var(--text-primary);
@@ -239,7 +257,7 @@
     width: 100%;
     background: var(--surface-secondary);
     border: 1px solid var(--border-primary);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 8px;
     color: var(--text-primary);
     font-size: 13px;

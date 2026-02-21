@@ -346,7 +346,7 @@
   --color-error-text: #991b1b;
 
   /* Comment highlight colors for light mode */
-  --comment-highlight-bg: rgba(217, 119, 6, 0.12);
+  --comment-highlight-bg: rgba(217, 119, 6, 0.17);
   --comment-highlight-border: rgba(217, 119, 6, 0.4);
   --comment-highlight-active-bg: rgba(217, 119, 6, 0.25);
   --comment-highlight-active-border: rgba(217, 119, 6, 0.7);
