@@ -7,12 +7,20 @@
     currentUserId: number
     newCommentDraft?: { text: string; range: { from: number; to: number }; selectedText: string } | null
     activeCommentId?: string | null
+    hoveredCommentId?: string | null
+    commentPositions?: Map<string, number>
+    editorScrollTop?: number
+    editorContentHeight?: number
+    draftPosition?: number | null
     onResolve?: (commentId: string) => void
     onDelete?: (commentId: string) => void
     onReply?: (commentId: string, content: string) => void
     onSubmitNew?: (content: string) => void
     onCancelNew?: () => void
     onSelect?: (commentId: string) => void
+    onHover?: (commentId: string) => void
+    onHoverEnd?: (commentId: string) => void
+    onPanelScroll?: (scrollTop: number) => void
   }
 
   let {
@@ -20,19 +28,29 @@
     currentUserId,
     newCommentDraft = null,
     activeCommentId = null,
+    hoveredCommentId = null,
+    commentPositions = new Map(),
+    editorScrollTop = 0,
+    editorContentHeight = 2000,
+    draftPosition = null,
     onResolve,
     onDelete,
     onReply,
     onSubmitNew,
     onCancelNew,
     onSelect,
+    onHover,
+    onHoverEnd,
+    onPanelScroll,
   }: CommentsPanelProps = $props()
 
   let showResolved = $state(false)
   let draftCommentText = $state('')
+  let panelScrollEl: HTMLElement | undefined = $state()
+  let threadHeights = $state<Map<string, number>>(new Map())
+  let isSyncingScroll = false
 
   let visibleComments = $derived(comments.filter((c) => showResolved || !c.resolved))
-  let unresolvedCount = $derived(comments.filter((c) => !c.resolved).length)
   let resolvedCount = $derived(comments.filter((c) => c.resolved).length)
 
   // Focus and clear when draft changes
@@ -46,6 +64,105 @@
     }
   })
 
+  // Sync panel scroll from editor scroll (one-way: editor → panel)
+  $effect(() => {
+    if (panelScrollEl && editorScrollTop != null) {
+      // Guard to avoid loop when we're already syncing from panel → editor
+      isSyncingScroll = true
+      panelScrollEl.scrollTop = editorScrollTop
+      requestAnimationFrame(() => { isSyncingScroll = false })
+    }
+  })
+
+  function handlePanelScroll(e: Event) {
+    if (isSyncingScroll) return
+    const target = e.target as HTMLElement
+    onPanelScroll?.(target.scrollTop)
+  }
+
+  // Compute positioned comments with overlap resolution
+  // The active comment gets priority placement at its ideal position
+  let positionedComments = $derived.by(() => {
+    const MIN_GAP = 4
+
+    type PositionedItem = {
+      type: 'draft' | 'comment'
+      comment?: Comment
+      id: string
+      idealTop: number
+      actualTop: number
+      height: number
+    }
+
+    const items: PositionedItem[] = []
+
+    // Add draft if present
+    if (newCommentDraft && draftPosition != null) {
+      items.push({
+        type: 'draft',
+        id: '__draft__',
+        idealTop: draftPosition,
+        actualTop: draftPosition,
+        height: threadHeights.get('__draft__') || 120,
+      })
+    }
+
+    // Add visible comments that have positions
+    for (const comment of visibleComments) {
+      const pos = commentPositions.get(comment.id)
+      if (pos != null) {
+        items.push({
+          type: 'comment',
+          comment,
+          id: comment.id,
+          idealTop: pos,
+          actualTop: pos,
+          height: threadHeights.get(comment.id) || 80,
+        })
+      }
+    }
+
+    // Sort by ideal position
+    items.sort((a, b) => a.idealTop - b.idealTop)
+
+    // Find the active item index (selected comment gets priority)
+    const activeIdx = items.findIndex(item => item.id === activeCommentId)
+
+    if (activeIdx >= 0) {
+      // Active comment stays at its ideal position
+      items[activeIdx].actualTop = items[activeIdx].idealTop
+
+      // Push items BELOW the active one downward
+      for (let i = activeIdx + 1; i < items.length; i++) {
+        const prev = items[i - 1]
+        const minTop = prev.actualTop + prev.height + MIN_GAP
+        if (items[i].actualTop < minTop) {
+          items[i].actualTop = minTop
+        }
+      }
+
+      // Push items ABOVE the active one upward
+      for (let i = activeIdx - 1; i >= 0; i--) {
+        const next = items[i + 1]
+        const maxBottom = next.actualTop - MIN_GAP
+        if (items[i].actualTop + items[i].height > maxBottom) {
+          items[i].actualTop = maxBottom - items[i].height
+        }
+      }
+    } else {
+      // No active comment — simple top-down push
+      for (let i = 1; i < items.length; i++) {
+        const prev = items[i - 1]
+        const minTop = prev.actualTop + prev.height + MIN_GAP
+        if (items[i].actualTop < minTop) {
+          items[i].actualTop = minTop
+        }
+      }
+    }
+
+    return items
+  })
+
   function handleSubmitNewComment() {
     if (draftCommentText.trim()) {
       onSubmitNew?.(draftCommentText.trim())
@@ -57,78 +174,89 @@
     draftCommentText = ''
     onCancelNew?.()
   }
+
+  function measureThread(el: HTMLElement, id: string) {
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+        threadHeights.set(id, h)
+        threadHeights = new Map(threadHeights)
+      }
+    })
+    observer.observe(el)
+    return {
+      destroy() {
+        observer.disconnect()
+      }
+    }
+  }
 </script>
 
 <div class="comments-panel">
-<div class="panel-header">
-    <h3>Comments</h3>
-  </div>
-  <div class="panel-content">
-    {#if resolvedCount > 0}
-      <div class="filter-section">
-        <label class="filter-toggle">
-          <input type="checkbox" bind:checked={showResolved} />
-          <span>Show resolved ({resolvedCount})</span>
-        </label>
-      </div>
-    {/if}
+  {#if resolvedCount > 0}
+    <div class="filter-section">
+      <label class="filter-toggle">
+        <input type="checkbox" bind:checked={showResolved} />
+        <span>Show resolved ({resolvedCount})</span>
+      </label>
+    </div>
+  {/if}
 
-    {#if newCommentDraft}
-      <div class="comments-list">
-        <div class="new-comment-draft">
-          <div class="draft-header">
-            <span class="draft-label">New Comment</span>
-            {#if newCommentDraft.selectedText}
-              <div class="draft-selected-text">{newCommentDraft.selectedText}</div>
-            {/if}
+  <div class="panel-scroll" bind:this={panelScrollEl} onscroll={handlePanelScroll}>
+    <div class="panel-content" style="height: {editorContentHeight}px;">
+      {#each positionedComments as item (item.id)}
+        {#if item.type === 'draft'}
+          <div
+            class="positioned-thread"
+            style="top: {item.actualTop}px;"
+            use:measureThread={'__draft__'}
+          >
+            <div class="new-comment-draft">
+              <textarea
+                class="new-comment-textarea"
+                bind:value={draftCommentText}
+                placeholder="Add your comment..."
+                rows="2"
+                onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitNewComment(); } if (e.key === 'Escape') { handleCancelNewComment(); } }}
+              ></textarea>
+              <div class="draft-actions">
+                <button class="btn btn-cancel" onclick={handleCancelNewComment}>Cancel</button>
+                <button class="btn btn-submit" onclick={handleSubmitNewComment} disabled={!draftCommentText.trim()}>
+                  Comment
+                </button>
+              </div>
+            </div>
           </div>
-          <textarea
-            class="new-comment-textarea"
-            bind:value={draftCommentText}
-            placeholder="Add your comment..."
-            rows="3"
-          />
-          <div class="draft-actions">
-            <button class="btn btn-cancel" onclick={handleCancelNewComment}>Cancel</button>
-            <button class="btn btn-submit" onclick={handleSubmitNewComment} disabled={!draftCommentText.trim()}>
-              Comment
-            </button>
+        {:else if item.comment}
+          <div
+            class="positioned-thread"
+            style="top: {item.actualTop}px;"
+            use:measureThread={item.id}
+          >
+            <CommentThread
+              comment={item.comment}
+              {currentUserId}
+              isActive={item.id === activeCommentId}
+              isHovered={item.id === hoveredCommentId}
+              {onResolve}
+              {onDelete}
+              {onReply}
+              {onSelect}
+              {onHover}
+              {onHoverEnd}
+            />
           </div>
+        {/if}
+      {/each}
+
+      {#if visibleComments.length === 0 && !newCommentDraft}
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <p>No comments yet</p>
+          <span>Select text to add a comment</span>
         </div>
-
-        {#each visibleComments as comment (comment.id)}
-          <CommentThread
-            {comment}
-            {currentUserId}
-            isActive={comment.id === activeCommentId}
-            {onResolve}
-            {onDelete}
-            {onReply}
-            {onSelect}
-          />
-        {/each}
-      </div>
-    {:else if visibleComments.length === 0}
-      <div class="empty-state">
-        <div class="empty-icon">💬</div>
-        <p>No comments yet</p>
-        <span>Select text to add a comment</span>
-      </div>
-    {:else}
-      <div class="comments-list">
-        {#each visibleComments as comment (comment.id)}
-          <CommentThread
-            {comment}
-            {currentUserId}
-            isActive={comment.id === activeCommentId}
-            {onResolve}
-            {onDelete}
-            {onReply}
-            {onSelect}
-          />
-        {/each}
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -136,36 +264,14 @@
   .comments-panel {
     width: 100%;
     height: 100%;
-    background: var(--bg-file-panel);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-radius: 8px;
-    margin: 0 0 var(--space-3) 0;
-    padding-top: 6px;
-  }
-
-  .panel-header {
-    padding: var(--space-4);
-  }
-
-  h3 {
-    margin: 0;
-    font-size: var(--text-base);
-    font-weight: var(--font-semibold);
-    color: var(--text-primary);
-  }
-
-  .panel-content {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
   }
 
   .filter-section {
-    padding: 12px 16px;
-    /* border-bottom: 1px solid var(--border-primary); */
+    padding: 8px 8px 4px;
+    flex-shrink: 0;
   }
 
   .filter-toggle {
@@ -173,20 +279,47 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    font-size: 13px;
-    color: var(--text-primary);
+    font-size: 12px;
+    color: var(--text-secondary);
     user-select: none;
   }
 
   .filter-toggle input[type='checkbox'] {
     cursor: pointer;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     accent-color: var(--color-primary-600);
   }
 
-  .empty-state {
+  .panel-scroll {
     flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .panel-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .panel-content {
+    position: relative;
+    min-height: 100%;
+  }
+
+  .positioned-thread {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    transition: top 0.2s ease-out;
+  }
+
+  .empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -213,44 +346,11 @@
     color: var(--text-tertiary);
   }
 
-  .comments-list {
-    padding: var(--space-2);
-    flex: 1;
-  }
-
   .new-comment-draft {
     background: var(--surface-primary);
     border: 1px solid var(--color-primary-600);
     border-radius: 10px;
     padding: 10px;
-    margin-bottom: 16px;
-  }
-
-  .draft-header {
-    margin-bottom: 8px;
-  }
-
-  .draft-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-primary-600);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .draft-selected-text {
-    margin-top: 6px;
-    padding: 8px;
-    background: var(--surface-secondary);
-    border-left: 5px solid var(--color-primary-600);
-    border-radius: 4px;
-    font-size: 12px;
-    color: var(--text-primary);
-    font-family: monospace;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 60px;
-    overflow-y: auto;
   }
 
   .new-comment-textarea {
@@ -262,7 +362,7 @@
     color: var(--text-primary);
     font-size: 13px;
     font-family: inherit;
-    resize: vertical;
+    resize: none;
     margin-bottom: 8px;
   }
 
@@ -308,23 +408,5 @@
   .btn-submit:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-  }
-
-  /* Scrollbar styling */
-  .panel-content::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .panel-content::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
-
-  .panel-content::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-  }
-
-  .panel-content::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover);
   }
 </style>

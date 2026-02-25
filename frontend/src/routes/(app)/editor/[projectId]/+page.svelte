@@ -94,6 +94,86 @@
     selectedText: string;
   } | null>(null);
   let activeCommentId = $state<string | null>(null);
+  let hoveredCommentId = $state<string | null>(null);
+
+  // Comment position state for Overleaf-style aligned comments
+  let commentPositions = $state<Map<string, number>>(new Map());
+  let editorScrollTop = $state(0);
+  let editorContentHeight = $state(2000);
+  let draftPosition = $state<number | null>(null);
+  let editorScrollCleanup: (() => void) | null = null;
+  let isSyncingFromPanel = false;
+
+  // Update comment positions from the editor
+  function updateCommentPositions() {
+    if (!editorPane) return;
+    const positions = editorPane.getCommentPositions();
+    commentPositions = positions;
+
+    // Update draft position
+    if (editorNewCommentDraft) {
+      const view = editorPane.getEditorView();
+      if (view) {
+        const scrollDOM = view.scrollDOM;
+        const coords = view.coordsAtPos(editorNewCommentDraft.range.from);
+        if (coords) {
+          draftPosition = coords.top - scrollDOM.getBoundingClientRect().top + scrollDOM.scrollTop;
+        }
+      }
+    } else {
+      draftPosition = null;
+    }
+
+    // Update content height
+    const scrollDOM = editorPane.getEditorScrollDOM();
+    if (scrollDOM) {
+      editorContentHeight = scrollDOM.scrollHeight;
+    }
+  }
+
+  // Set up scroll listener and position updates when comments panel is visible
+  $effect(() => {
+    if (activePanel === 'comments' && editorPane) {
+      // Initial position update
+      updateCommentPositions();
+
+      // Set up scroll listener
+      const scrollDOM = editorPane.getEditorScrollDOM();
+      if (scrollDOM) {
+        const handleScroll = () => {
+          if (isSyncingFromPanel) return;
+          editorScrollTop = scrollDOM.scrollTop;
+          updateCommentPositions();
+        };
+        scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
+        editorScrollTop = scrollDOM.scrollTop;
+
+        editorScrollCleanup = () => {
+          scrollDOM.removeEventListener('scroll', handleScroll);
+        };
+      }
+
+      return () => {
+        editorScrollCleanup?.();
+        editorScrollCleanup = null;
+      };
+    }
+  });
+
+  // Re-compute positions when comments change
+  $effect(() => {
+    if (activePanel === 'comments' && editorComments) {
+      // Use a small delay to let decorations settle
+      setTimeout(updateCommentPositions, 50);
+    }
+  });
+
+  // Re-compute positions when draft changes
+  $effect(() => {
+    if (activePanel === 'comments' && editorNewCommentDraft) {
+      setTimeout(updateCommentPositions, 50);
+    }
+  });
 
   // Auto-open comments panel when a new draft comment is created
   $effect(() => {
@@ -1422,12 +1502,17 @@
           <IssuesPanel {diagnostics} {gotoDiagnostic} />
         </div>
       {:else if activePanel === "comments"}
-        <div style="width: {leftPanelWidth}px;">
+        <div style="width: {leftPanelWidth}px; height: 100%; overflow: hidden;">
           <CommentsPanel
             comments={editorComments}
             currentUserId={$auth.user?.id || 0}
             newCommentDraft={editorNewCommentDraft}
             {activeCommentId}
+            {hoveredCommentId}
+            {commentPositions}
+            {editorScrollTop}
+            {editorContentHeight}
+            {draftPosition}
             onResolve={(commentId: string) => editorPane?.handleCommentResolve(commentId)}
             onDelete={(commentId: string) => editorPane?.handleCommentDelete(commentId)}
             onReply={(commentId: string, content: string) => editorPane?.handleCommentReply(commentId, content)}
@@ -1436,6 +1521,26 @@
             onSelect={(commentId: string) => {
               activeCommentId = commentId;
               editorPane?.scrollToComment(commentId);
+              // Recompute multiple times to catch scroll settling
+              setTimeout(updateCommentPositions, 50);
+              setTimeout(updateCommentPositions, 150);
+              setTimeout(updateCommentPositions, 300);
+            }}
+            onHover={(commentId: string) => {
+              document.querySelectorAll(`.cm-comment-highlight[data-comment-id="${commentId}"]`).forEach(el => el.classList.add('cm-comment-highlight-hovered'));
+            }}
+            onHoverEnd={(commentId: string) => {
+              document.querySelectorAll(`.cm-comment-highlight[data-comment-id="${commentId}"]`).forEach(el => el.classList.remove('cm-comment-highlight-hovered'));
+            }}
+            onPanelScroll={(scrollTop: number) => {
+              const scrollDOM = editorPane?.getEditorScrollDOM();
+              if (scrollDOM) {
+                isSyncingFromPanel = true;
+                scrollDOM.scrollTop = scrollTop;
+                editorScrollTop = scrollTop;
+                updateCommentPositions();
+                requestAnimationFrame(() => { isSyncingFromPanel = false; });
+              }
             }}
           />
         </div>
@@ -1498,10 +1603,19 @@
         onCommentClick={(commentId: string) => {
           if (activePanel === 'comments') {
             activeCommentId = commentId;
+            updateCommentPositions();
           }
+        }}
+        onCommentHover={(commentId: string | null) => {
+          hoveredCommentId = commentId;
         }}
         onCommentsChange={(c: Comment[]) => editorComments = c}
         onNewCommentDraftChange={(d: { text: string; range: { from: number; to: number }; selectedText: string } | null) => editorNewCommentDraft = d}
+        onDocChange={() => {
+          if (activePanel === 'comments') {
+            updateCommentPositions();
+          }
+        }}
       />
 
       <div

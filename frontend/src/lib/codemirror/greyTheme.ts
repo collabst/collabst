@@ -99,7 +99,7 @@ export const greyDarkTheme = EditorView.theme({
   },
 
   '.cm-activeLine': { backgroundColor: darkBackgroundHighlight },
-  '.cm-selectionMatch': { backgroundColor: "#52ff6324" },
+  '.cm-selectionMatch': { backgroundColor: 'transparent' },
 
   '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
     backgroundColor: darkSelectionAlt
@@ -256,7 +256,7 @@ export const greyLightTheme = EditorView.theme({
   },
 
   '.cm-activeLine': { backgroundColor: lightBackgroundHighlight },
-  '.cm-selectionMatch': { backgroundColor: "#aafe661a" },
+  '.cm-selectionMatch': { backgroundColor: 'transparent' },
 
   '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
     backgroundColor: lightSelection

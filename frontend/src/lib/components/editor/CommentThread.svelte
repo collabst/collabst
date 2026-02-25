@@ -5,10 +5,13 @@
     comment: Comment;
     currentUserId: number;
     isActive?: boolean;
+    isHovered?: boolean;
     onResolve?: (commentId: string) => void;
     onDelete?: (commentId: string) => void;
     onReply?: (commentId: string, content: string) => void;
     onSelect?: (commentId: string) => void;
+    onHover?: (commentId: string) => void;
+    onHoverEnd?: (commentId: string) => void;
   }
 
   let {
@@ -19,6 +22,9 @@
     onDelete,
     onReply,
     onSelect,
+    onHover,
+    onHoverEnd,
+    isHovered = false,
   }: CommentThreadProps = $props();
 
   let threadElement: HTMLElement | undefined = $state();
@@ -31,7 +37,9 @@
   });
 
   let replyText = $state("");
-  let isReplying = $state(false);
+  let replyFocused = $state(false);
+  let replyTextarea: HTMLTextAreaElement | undefined = $state();
+  let showMenu = $state(false);
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr);
@@ -60,13 +68,32 @@
     if (replyText.trim()) {
       onReply?.(comment.id, replyText.trim());
       replyText = "";
-      isReplying = false;
+      replyFocused = false;
+      replyTextarea?.blur();
     }
   }
 
   function handleCancelReply() {
     replyText = "";
-    isReplying = false;
+    replyFocused = false;
+    replyTextarea?.blur();
+  }
+
+  function toggleMenu(e: MouseEvent) {
+    e.stopPropagation();
+    showMenu = !showMenu;
+  }
+
+  function closeMenu() {
+    showMenu = false;
+  }
+
+  function handleMenuAction(action: () => void) {
+    return (e: MouseEvent) => {
+      e.stopPropagation();
+      action();
+      closeMenu();
+    };
   }
 </script>
 
@@ -76,8 +103,11 @@
   class="comment-thread"
   class:resolved={comment.resolved}
   class:active={isActive}
+  class:hovered={isHovered}
   bind:this={threadElement}
   onclick={() => onSelect?.(comment.id)}
+  onmouseenter={() => onHover?.(comment.id)}
+  onmouseleave={() => onHoverEnd?.(comment.id)}
 >
   <div class="comment-header">
     <div class="author-info">
@@ -94,24 +124,32 @@
       </div>
     </div>
     <div class="comment-actions">
-      {#if !comment.resolved}
+      <div class="menu-container">
         <button
-          class="action-btn resolve-btn"
-          onclick={handleResolve}
-          title="Mark as resolved"
+          class="action-btn menu-btn"
+          onclick={toggleMenu}
+          title="More actions"
         >
-          ✓
+          ⋯
         </button>
-      {/if}
-      {#if comment.author.id === currentUserId}
-        <button
-          class="action-btn delete-btn"
-          onclick={handleDelete}
-          title="Delete comment"
-        >
-          ×
-        </button>
-      {/if}
+        {#if showMenu}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="menu-backdrop" onclick={handleMenuAction(closeMenu)}></div>
+          <div class="menu-dropdown">
+            {#if !comment.resolved}
+              <button class="menu-item" onclick={handleMenuAction(handleResolve)}>
+                <span class="menu-icon">✓</span> Resolve
+              </button>
+            {/if}
+            {#if comment.author.id === currentUserId}
+              <button class="menu-item menu-item-danger" onclick={handleMenuAction(handleDelete)}>
+                <span class="menu-icon">✕</span> Delete
+              </button>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -141,32 +179,19 @@
   {/if}
 
   {#if !comment.resolved}
-    {#if isReplying}
-      <div class="reply-form">
-        <textarea
-          bind:value={replyText}
-          placeholder="Write a reply..."
-          rows="2"
-          autofocus
-        />
-        <div class="reply-form-actions">
-          <button class="btn btn-cancel" onclick={handleCancelReply}
-            >Cancel</button
-          >
-          <button
-            class="btn btn-submit"
-            onclick={handleSubmitReply}
-            disabled={!replyText.trim()}
-          >
-            Reply
-          </button>
-        </div>
-      </div>
-    {:else}
-      <button class="reply-btn" onclick={() => (isReplying = true)}
-        >Reply</button
-      >
-    {/if}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="reply-form" class:reply-form-active={replyFocused || replyText.trim()} onclick={(e: MouseEvent) => e.stopPropagation()}>
+      <textarea
+        bind:this={replyTextarea}
+        bind:value={replyText}
+        placeholder="Reply..."
+        rows="1"
+        onfocus={() => replyFocused = true}
+        onblur={() => replyFocused = false}
+        onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitReply(); } if (e.key === 'Escape') { handleCancelReply(); } }}
+      ></textarea>
+    </div>
   {/if}
 </div>
 
@@ -185,7 +210,8 @@
     background: var(--bg-primary);
   }
 
-  .comment-thread:hover {
+  .comment-thread:hover,
+  .comment-thread.hovered {
     border: 1px solid
       color-mix(
         in srgb,
@@ -194,9 +220,9 @@
       );
   }
 
-  .comment-thread:active:not(:has(.btn:active)):not(:has(textarea:focus)):not(
-      :has(.reply-btn:active)
-    ):not(:has(.resolve-btn:active)):not(:has(.delete-btn:active)) {
+  .comment-thread:active:not(:has(.action-btn:active)):not(:has(textarea:focus)):not(
+      :has(.menu-dropdown)
+    ) {
     transform: translateX(6px);
   }
 
@@ -256,6 +282,73 @@
   .comment-actions {
     display: flex;
     gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .comment-thread:hover .comment-actions,
+  .comment-thread.hovered .comment-actions,
+  .comment-thread.active .comment-actions {
+    opacity: 1;
+  }
+
+  .menu-container {
+    position: relative;
+  }
+
+  .menu-btn {
+    font-size: 18px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+  }
+
+  .menu-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--surface-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 120px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.1s;
+  }
+
+  .menu-item:hover {
+    background: var(--surface-hover);
+  }
+
+  .menu-item-danger:hover {
+    color: var(--color-error);
+  }
+
+  .menu-icon {
+    font-size: 12px;
+    width: 16px;
+    text-align: center;
   }
 
   .action-btn {
@@ -272,14 +365,6 @@
   .action-btn:hover {
     background: var(--surface-hover);
     color: var(--text-primary);
-  }
-
-  .resolve-btn:hover {
-    color: var(--color-success);
-  }
-
-  .delete-btn:hover {
-    color: var(--color-error);
   }
 
   .comment-content {
@@ -341,7 +426,7 @@
   }
 
   .reply-form {
-    margin-top: 12px;
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -350,78 +435,28 @@
   .reply-form textarea {
     width: 100%;
     background: var(--surface-hover);
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    padding: 8px;
+    border: 1px solid transparent;
+    border-radius: 50px;
+    padding: 6px 12px;
     color: var(--text-primary);
     font-size: 12px;
     font-family: inherit;
+    resize: none;
+    overflow: hidden;
+    transition: border-radius 0.15s, border-color 0.15s;
+  }
+
+  .reply-form-active textarea {
+    border-radius: 8px;
+    border-color: var(--border-primary);
+    padding: 8px;
     resize: vertical;
-    /* overflow-y: auto; */
-    /* min-height: 0px; */
-    /* max-height: 120px; */
   }
 
   .reply-form textarea:focus {
     outline: none;
     border-color: var(--comment-highlight-active-border);
-  }
-
-  .reply-form-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  .btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 500;
-  }
-
-  .btn-cancel {
-    background: var(--surface-secondary);
-    color: var(--text-primary);
-  }
-
-  .btn-cancel:hover {
-    background: var(--surface-hover);
-  }
-
-  .btn-submit {
-    background: var(--color-primary-600);
-    color: white;
-  }
-
-  .btn-submit:hover:not(:disabled) {
-    background: var(--color-primary-700);
-  }
-
-  .btn-submit:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .reply-btn {
-    margin-top: 8px;
-    padding: 6px 12px;
-    background: var(--surface-hover);
-    border: 1px solid transparent;
-    border-radius: 50px;
-    color: var(--text-tertiary);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    text-align: left;
-    transition: none;
-  }
-
-  .reply-btn:hover {
-    border-color: var(--comment-highlight-active-border);
+    border-radius: 8px;
+    padding: 8px;
   }
 </style>

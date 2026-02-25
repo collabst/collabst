@@ -60,6 +60,8 @@
     onNewCommentDraftChange?: (draft: { text: string; range: { from: number; to: number }; selectedText: string } | null) => void;
     activeCommentId?: string | null;
     onCommentClick?: (commentId: string) => void;
+    onCommentHover?: (commentId: string | null) => void;
+    onDocChange?: () => void;
   }
 
   let {
@@ -87,6 +89,8 @@
     onNewCommentDraftChange,
     activeCommentId = null,
     onCommentClick,
+    onCommentHover,
+    onDocChange,
   }: EditorPaneProps = $props();
 
   // Simple blob URL cache - keyed by asset ID
@@ -330,6 +334,24 @@
     }
   }
 
+  // Get the pixel y-positions of all comments relative to editor content top
+  export function getCommentPositions(): Map<string, number> {
+    const tracker = codeEditor?.getCommentTracker();
+    if (tracker) {
+      return tracker.getCommentPositions();
+    }
+    return new Map();
+  }
+
+  // Get the editor scroll DOM for scroll syncing
+  export function getEditorScrollDOM(): HTMLElement | null {
+    const tracker = codeEditor?.getCommentTracker();
+    if (tracker) {
+      return tracker.getScrollDOM();
+    }
+    return null;
+  }
+
   function handleTrackerReady(tracker: any) {
     // Register the tracker for click handling
     setCurrentTracker(tracker);
@@ -340,6 +362,14 @@
     // Set up callback for when a comment highlight is clicked in the editor
     tracker.onCommentClick((commentId: string) => {
       onCommentClick?.(commentId);
+    });
+    // Set up callback for when a comment highlight is hovered in the editor
+    tracker.onCommentHover((commentId: string | null) => {
+      onCommentHover?.(commentId);
+    });
+    // Set up callback for when the document content changes
+    tracker.onDocChange(() => {
+      onDocChange?.();
     });
     // Trigger initial update
     commentsVersion++;

@@ -130,6 +130,9 @@ export class CommentRangeTracker {
   private rangeCache: Map<string, { anchor: Y.RelativePosition; head: Y.RelativePosition }>
   private changeCallback: (() => void) | null = null
   private clickCallback: ((commentId: string) => void) | null = null
+  private hoverCallback: ((commentId: string | null) => void) | null = null
+  private docChangeCallback: (() => void) | null = null
+  private docChangeTimer: ReturnType<typeof setTimeout> | null = null
   private boundHandleYjsChange: (event: Y.YMapEvent<any>) => void
 
   constructor(ydoc: Y.Doc, fileId: number, view: EditorView) {
@@ -151,6 +154,33 @@ export class CommentRangeTracker {
   // Set a callback that will be called when comments change
   onCommentsChange(callback: () => void) {
     this.changeCallback = callback
+  }
+
+  // Set a callback that will be called when the document content changes (new lines, edits, etc.)
+  onDocChange(callback: () => void) {
+    this.docChangeCallback = callback
+  }
+
+  // Notify doc change callback with debouncing (called from the update listener extension)
+  notifyDocChange() {
+    if (this.docChangeCallback) {
+      if (this.docChangeTimer) clearTimeout(this.docChangeTimer)
+      this.docChangeTimer = setTimeout(() => {
+        this.docChangeCallback?.()
+      }, 30)
+    }
+  }
+
+  // Set a callback that will be called when a comment highlight is hovered in the editor
+  onCommentHover(callback: (commentId: string | null) => void) {
+    this.hoverCallback = callback
+  }
+
+  // Notify hover callback (called from the hover handler extension)
+  notifyCommentHover(commentId: string | null) {
+    if (this.hoverCallback) {
+      this.hoverCallback(commentId)
+    }
   }
 
   // Set a callback that will be called when a comment highlight is clicked in the editor
@@ -180,7 +210,6 @@ export class CommentRangeTracker {
         selection: { anchor: range.from, head: range.to },
         scrollIntoView: true
       })
-      this.view.focus()
     }
   }
 
@@ -320,6 +349,34 @@ export class CommentRangeTracker {
     return null
   }
 
+  // Get the pixel y-position of each comment's start relative to editor content top
+  getCommentPositions(): Map<string, number> {
+    const positions = new Map<string, number>()
+    const scrollDOM = this.view.scrollDOM
+    const scrollTop = scrollDOM.scrollTop
+    const editorRect = scrollDOM.getBoundingClientRect()
+
+    this.yComments.forEach((commentData, commentId) => {
+      if (commentData.resolved) return
+      const range = this.getCommentRange(commentId)
+      if (range) {
+        const coords = this.view.coordsAtPos(range.from)
+        if (coords) {
+          // Position relative to the top of the scroll content (not viewport)
+          const top = coords.top - editorRect.top + scrollTop
+          positions.set(commentId, top)
+        }
+      }
+    })
+
+    return positions
+  }
+
+  // Get the editor scroll DOM element for scroll syncing
+  getScrollDOM(): HTMLElement {
+    return this.view.scrollDOM
+  }
+
   addReply(commentId: string, reply: any) {
     const commentData = this.yComments.get(commentId)
     if (commentData) {
@@ -337,6 +394,9 @@ export class CommentRangeTracker {
     this.rangeCache.clear()
     this.changeCallback = null
     this.clickCallback = null
+    this.hoverCallback = null
+    this.docChangeCallback = null
+    if (this.docChangeTimer) clearTimeout(this.docChangeTimer)
   }
 }
 
@@ -346,6 +406,35 @@ let currentTracker: CommentRangeTracker | null = null
 export function setCurrentTracker(tracker: CommentRangeTracker | null) {
   currentTracker = tracker
 }
+
+// Hover handler extension for comment highlights
+let lastHoveredCommentId: string | null = null
+const commentHoverHandler = EditorView.domEventHandlers({
+  mouseover(event) {
+    const target = event.target as HTMLElement
+    const commentEl = target.closest('.cm-comment-highlight')
+    const commentId = commentEl?.getAttribute('data-comment-id') ?? null
+    if (commentId !== lastHoveredCommentId) {
+      lastHoveredCommentId = commentId
+      if (currentTracker) {
+        currentTracker.notifyCommentHover(commentId)
+      }
+    }
+    return false
+  },
+  mouseout(event) {
+    const target = event.target as HTMLElement
+    const related = (event as MouseEvent).relatedTarget as HTMLElement | null
+    // Only clear if we're leaving a comment highlight and not entering another one
+    if (target.closest('.cm-comment-highlight') && !related?.closest('.cm-comment-highlight')) {
+      lastHoveredCommentId = null
+      if (currentTracker) {
+        currentTracker.notifyCommentHover(null)
+      }
+    }
+    return false
+  }
+})
 
 // Click handler extension for comment highlights
 // Uses mouseup so it doesn't interfere with text selection
@@ -367,25 +456,33 @@ const commentClickHandler = EditorView.domEventHandlers({
   }
 })
 
+// Update listener that notifies tracker of doc changes
+const docChangeListener = EditorView.updateListener.of((update) => {
+  if (update.docChanged || update.geometryChanged) {
+    if (currentTracker) {
+      currentTracker.notifyDocChange()
+    }
+  }
+})
+
 // Extension to add comment functionality to CodeMirror
 export function commentsExtension(): Extension {
   return [
     activeCommentField,
     commentField,
     commentClickHandler,
+    commentHoverHandler,
+    docChangeListener,
     EditorView.baseTheme({
       '.cm-comment-highlight': {
         backgroundColor: 'var(--comment-highlight-bg)',
-        borderBottom: '2px solid var(--comment-highlight-border)',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s, border-color 0.2s'
+        transition: 'background-color 0.2s'
       },
-      '.cm-comment-highlight:hover': {
-        filter: 'brightness(1.1)'
+      '.cm-comment-highlight-hovered': {
+        filter: 'brightness(1.3)'
       },
       '.cm-comment-highlight-active': {
-        backgroundColor: 'var(--comment-highlight-active-bg) !important',
-        borderBottom: '2px solid var(--comment-highlight-active-border) !important'
+        backgroundColor: 'var(--comment-highlight-active-bg) !important'
       }
     })
   ]
