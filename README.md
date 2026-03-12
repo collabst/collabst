@@ -34,18 +34,22 @@
 
 > *The Collabst project's goal is to help and accelerate Typst adoption, especially in research labs and scientific production. We believe we can contribute in creating the conditions for scientific knowledge to be entirely produced using sovereign tools, with open source software and easy collaboration in mind.*
 
+<br />
+
 > [!CAUTION]
 > We recommend using Collabst only in environments where **all** users are trusted.
 
+<br />
+
 ## 💥 Features
 
-Collabst allows you to collaborate on Typst projects, an preview them while editing in your browser. Here are its main features: 
-<h3 align="center">Light/Dark Theme (with optional negative preview)</h3>
+Collabst allows you to collaborate on Typst projects and preview them while editing in your browser. Here are its main features: 
+<h3 align="center">Elegant Light and Dark Theme</h3>
 <div align="center">
   <img src="assets/screenshots/editor-dark.png" alt="dark themed editor screenshot" width="800" />
 </div>
 
-<h3 align="center"> A Dashboard for managing your Projects</h3>
+<h3 align="center"> Dashboard for managing your Projects</h3>
 <div align="center">
   <img src="assets/screenshots/dashboard.png" alt="dashboard screenshot" width="800" />
 </div>
@@ -68,12 +72,12 @@ Collabst allows you to collaborate on Typst projects, an preview them while edit
 <div align="center">
   <table cellspacing="0" cellpadding="0" style="border-spacing:0; border-collapse:collapse;">
     <tr>
-      <td style="padding:0;"><img src="assets/gifs/file-list.gif" alt="file-list animation" width="380"/></td>
-      <td style="padding:0;"><img src="assets/gifs/menubar-buttons.gif" alt="menubar animation" width="350"/></td>
+      <td style="padding:0;"><img src="assets/gifs/file-list.gif" alt="file-list animation" width="300"/></td>
+      <td style="padding:0;"><img src="assets/gifs/menubar-buttons.gif" alt="menubar animation" width="280"/></td>
     </tr>
     <tr>
-      <td style="padding:0;"><img src="assets/gifs/newfile-buttons.gif" alt="newfile buttons animation" width="320"/></td>
-      <td style="padding:0;"><img src="assets/gifs/theme-toggle.gif" alt="theme toggle animation" width="300"/></td>
+      <td style="padding:0;"><img src="assets/gifs/newfile-buttons.gif" alt="newfile buttons animation" width="300"/></td>
+      <td style="padding:0;"><img src="assets/gifs/theme-toggle.gif" alt="theme toggle animation" width="280"/></td>
     </tr>
   </table>
 </div>
