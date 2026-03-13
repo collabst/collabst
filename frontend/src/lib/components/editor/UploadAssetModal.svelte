@@ -184,7 +184,7 @@
 
   :global([data-theme="light"]) .drop-zone {
     border-color: var(--border-tertiary);
-    background: rgba(200, 200, 200, 0.5);
+    background: rgba(176, 199, 199, 0.5);
   }
 
   .drop-zone:hover {

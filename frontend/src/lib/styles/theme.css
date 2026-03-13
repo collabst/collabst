@@ -286,51 +286,51 @@
 /* === Light Theme === */
 [data-theme="light"] {
   /* Background Colors - Darker light greys */
-  --bg-primary: #e8e8e8;
+  --bg-primary: #e6f0f0;
   --bg-secondary: #d4d4d4;
   --bg-tertiary: #c8c8c8;
-  --bg-elevated: #e8e8e8;
+  --bg-elevated: var(--bg-primary);
   --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-canvas: #f5f5f5;
+  --bg-canvas: #f6fcfc;
   /* Canvas - lighter than primary */
   --bg-input: #ffffff;
   /* Input background - white for better contrast */
 
   /* Specific Component Backgrounds - Lightest to Darkest */
-  --bg-editor: #f5f5f5;
+  --bg-editor: var(--bg-canvas);
   /* Editor code - lightest */
-  --bg-file-panel: #dbdbdb;
+  --bg-file-panel: #d1dede;
   /* File list - darker than background */
-  --bg-top-bar: #e8e8e8;
+  --bg-top-bar: var(--bg-primary);
   /* Top bar - same as file panel */
   --bg-comments-panel: #d4d4d4;
   /* Comments panel - darkest */
-  --bg-preview: #dbdbdb;
+  --bg-preview: var(--bg-file-panel);
   /* Preview pane background */
   --bg-typst-doc: #ffffff;
   /* Typst document background - white for clarity */
 
   /* Surface Colors - Adjusted to match new scheme */
-  --surface-primary: #e8e8e8;
+  --surface-primary: var(--bg-primary);
   /* Top bar background */
   --surface-secondary: #d4d4d4;
   /* Comments section background */
   --surface-tertiary: #c8c8c8;
-  --surface-hover: rgba(129, 129, 129, 0.2);
-  --surface-active: #b0b0b0;
+  --surface-hover: rgba(110, 151, 146, 0.2);
+  --surface-active: #9ab2b0;
 
   /* Text Colors - Adjusted for light grey backgrounds */
-  --text-primary: #1e1e1e;
-  --text-secondary: #4a4a4a;
-  --text-tertiary: #6e6e6e;
-  --text-disabled: #9d9d9d;
+  --text-primary: #041b16;
+  --text-secondary: #233c3b;
+  --text-tertiary: #698783;
+  --text-disabled: #819a98;
   --text-inverse: #f5f5f5;
   --text-active: #000000;
 
   /* Border Colors - Subtle borders for light theme */
-  --border-primary: #d1d1d1;
-  --border-secondary: #b8b8b8;
-  --border-tertiary: #9d9d9d;
+  --border-primary: #bbd5d2;
+  --border-secondary: #93aea9;
+  --border-tertiary: #8b9b99;
   --border-hover: #c0c0c0;
   --border-focus: var(--color-primary-500);
   --border-error: var(--color-error);
@@ -358,17 +358,17 @@
 
   /* Dialog/Modal Styling - Light Theme */
   --dialog-transparency: 0.7;
-  --dialog-bg: rgba(255, 255, 255, var(--dialog-transparency));
-  --dialog-border: rgba(255, 255, 255, 0.4);
-  --dialog-backdrop: rgba(0, 0, 0, 0.5);
-  --dialog-text: #333;
-  --dialog-text-secondary: #666;
+  --dialog-bg: rgba(239, 255, 254, var(--dialog-transparency));
+  --dialog-border: rgba(239, 255, 254, 0.4);
+  --dialog-backdrop: rgba(0, 5, 16, 0.5);
+  --dialog-text: #0e2a2e;
+  --dialog-text-secondary: #4c6869;
   --dialog-input-bg: #ffffff;
   --dialog-input-border: #e5e7eb;
   --dialog-input-border-focus: #5fd6b5;
-  --dialog-cancel-btn-bg: rgba(180, 180, 180, 0.75);
-  --dialog-cancel-btn-hover: rgba(160, 160, 160, 0.9);
-  --dialog-cancel-btn-active: rgba(140, 140, 140, 0.9);
+  --dialog-cancel-btn-bg: rgba(159, 176, 176, 0.75);
+  --dialog-cancel-btn-hover: rgba(147, 166, 166, 0.9);
+  --dialog-cancel-btn-active: rgba(130, 150, 150, 0.9);
 
   /* Glow Effects - Light Theme */
   --color-primary-glow: rgba(37, 99, 235, 0.5);
@@ -382,13 +382,13 @@
 
   /* Dropdown Menu Styling - Light Theme */
   --dropdown-transparency: 0.3;
-  --dropdown-bg: rgba(255, 255, 255, var(--dropdown-transparency));
-  --dropdown-border: rgba(0, 0, 0, 0.15);
-  --dropdown-hover-bg: rgba(191, 191, 191, 0.5);
-  --opaque-dropdown: #f3f3f3;
+  --dropdown-bg: rgb(239, 255, 254, var(--dropdown-transparency));
+  --dropdown-border: rgba(0, 30, 33, 0.2);
+  --dropdown-hover-bg: rgba(180, 203, 203, 0.5);
+  --opaque-dropdown: #ecf7f7;
 
   --find-transparency: 0.65;
-  --find-bg: rgb(230, 230, 230, var(--find-transparency));
+  --find-bg: rgb(210, 228, 227, var(--find-transparency));
 }
 
 /* Apply scrollbar colors */

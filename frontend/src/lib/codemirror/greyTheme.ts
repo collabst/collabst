@@ -163,10 +163,10 @@ export const greyDarkSyntax: Extension = syntaxHighlighting(greyDarkHighlightSty
 export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax, customGutter]
 
 // Light theme colors
-const lightText = "#1e1e1e",
-  lightTextSecondary = "#474747ff",
-  lightTextTertiary = "#838383ff",
-  lightBackground = "#f5f5f5",
+const lightText = "var(--text-primary)",
+  lightTextSecondary = "var(--text-secondary)",
+  lightTextTertiary = "var(--text-tertiary)",
+  lightBackground = "var(--bg-editor)",
   lightBackgroundHighlight = "#06162f0b",
   lightSelection = "#bbd6f2ff",
   lightSelectionAlt = "#e0e0e0",
