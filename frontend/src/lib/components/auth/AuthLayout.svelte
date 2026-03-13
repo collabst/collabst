@@ -282,8 +282,8 @@
     }
 
     .container[data-theme="light"] .card {
-        background: rgba(255, 255, 255, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(246, 255, 255, 0.85);
+        border: 1px solid rgba(228, 255, 255, 0.4);
         color: #333;
     }
 
@@ -302,7 +302,7 @@
     }
 
     .container[data-theme="light"] .card :global(h1) {
-        color: #666;
+        color: #586867;
     }
 
     .container[data-theme="dark"] .card :global(h1) {
@@ -316,7 +316,7 @@
     }
 
     .container[data-theme="light"] .card :global(h2) {
-        color: #333;
+        color: #2b3333;
     }
 
     .container[data-theme="dark"] .card :global(h2) {
@@ -358,7 +358,7 @@
     }
 
     .container[data-theme="light"] .card :global(label) {
-        color: #333;
+        color: #293433;
     }
 
     .container[data-theme="dark"] .card :global(label) {
@@ -372,13 +372,26 @@
         font-size: 14px;
     }
 
-    .container[data-theme="light"] .card :global(input) {
-        background: white;
-        border-color: #e5e7eb;
-        color: #333;
+    /* Autofill background fix for Chrome/Safari */
+    .container :global(input:-webkit-autofill),
+    .container :global(input:-webkit-autofill:focus),
+    .container :global(input:-webkit-autofill:hover),
+    .container :global(input:-webkit-autofill:active) {
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: #0e3c3aee;
+        transition: background-color 5000s ease-in-out 0s;
+        box-shadow: inset 0 0 20px 20px #b1d2d2;
     }
 
-    .container[data-theme="dark"] .card :global(input) {
+    .container[data-theme="light"] .card :global(input),
+    .container[data-theme="light"] :global(input:-webkit-autofill) {
+        background: white;
+        border-color: #e5e7eb;
+        color: #253232;
+    }
+
+    .container[data-theme="dark"] .card :global(input),
+    .container[data-theme="dark"] :global(input:-webkit-autofill) {
         background: #061d1f;
         border-color: #3f524c;
         color: #e0e0e0;
