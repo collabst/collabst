@@ -296,8 +296,8 @@
   }
 
   :global([data-theme="light"]) .collabst-logo {
-    filter: brightness(0) saturate(100%) invert(40%) sepia(0%) saturate(0%)
-      hue-rotate(0deg) brightness(90%) contrast(85%);
+    filter: invert(19%) sepia(20%) saturate(767%) hue-rotate(129deg)
+      brightness(95%) contrast(70%);
   }
 
   .content-wrapper {

@@ -216,6 +216,6 @@
 
   :global([data-theme="light"]) .collabst-logo {
     filter: invert(19%) sepia(20%) saturate(767%) hue-rotate(129deg)
-      brightness(95%) contrast(65%);
+      brightness(95%) contrast(70%);
   }
 </style>
