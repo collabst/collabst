@@ -6,10 +6,10 @@ import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
 import { customGutter } from './customGutter'
 
 // Dark theme colors
-const darkText = "#cccccc",
-  darkTextSecondary = "#bebebeff",
-  darkTextTertiary = "#949494ff",
-  darkBackground = "#252526",
+const darkText = "var(--text-primary)",
+  darkTextSecondary = "var(--text-secondary)",
+  darkTextTertiary = "var(--text-tertiary)",
+  darkBackground = "var(--bg-editor)",
   darkBackgroundHighlight = "#b0bac71a",
   darkSelection = "#264f78",
   darkSelectionAlt = "#4a4a4e",

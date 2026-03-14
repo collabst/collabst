@@ -180,41 +180,41 @@
 /* === Dark Theme === */
 [data-theme="dark"] {
   /* Background Colors - Monochromatic greys matching projects page */
-  --bg-primary: #1d1d1d;
+  --bg-primary: #1d1d1f;
   --bg-secondary: #252526;
   --bg-tertiary: #2d2d30;
   --bg-elevated: #323233;
   --bg-overlay: rgba(0, 0, 0, 0.8);
-  --bg-canvas: #252526;
+  --bg-canvas: #232325;
   /* Canvas - slightly lighter than primary */
-  --bg-input: #1d1d1d;
+  --bg-input: var(--bg-primary);
   /* Input background */
 
   /* Specific Component Backgrounds - Lightest to Darkest */
-  --bg-editor: #252526;
+  --bg-editor: var(--bg-canvas);
   /* Editor code - lightest */
-  --bg-file-panel: #161616;
+  --bg-file-panel: #18181a;
   /* File list - darker than background */
-  --bg-top-bar: #1d1d1d;
+  --bg-top-bar: var(--bg-primary);
   /* Top bar - same as file panel */
   --bg-comments-panel: #1a1a1a;
   /* Comments panel - darkest */
-  --bg-preview: #161616;
+  --bg-preview: var(--bg-file-panel);
   /* Preview pane background */
   --bg-typst-doc: #ffffff;
   /* Typst document background */
 
   /* Surface Colors - Neutral grey tones */
   --surface-primary: #252526;
-  --surface-secondary: #2d2d30;
+  --surface-secondary: #2b2c2f;
   --surface-tertiary: #323233;
-  --surface-hover: rgba(116, 116, 116, 0.25);
-  --surface-active: #4b4b4b;
+  --surface-hover: rgba(104, 111, 124, 0.25);
+  --surface-active: #3f4246;
 
   /* Text Colors */
-  --text-primary: #cccccc;
-  --text-secondary: #9d9d9d;
-  --text-tertiary: #6e6e6e;
+  --text-primary: #d0d1d1;
+  --text-secondary: #a1a1a2;
+  --text-tertiary: #686d74;
   --text-disabled: #5a5a5a;
   --text-inverse: #1d1d1d;
   --text-active: #ffffff;
@@ -249,18 +249,18 @@
   --scrollbar-thumb-hover: #4a4a4e;
 
   /* Dialog/Modal Styling - Dark Theme */
-  --dialog-transparency: 0.9;
-  --dialog-bg: rgba(30, 30, 30, var(--dialog-transparency));
+  --dialog-transparency: 0.92;
+  --dialog-bg: rgb(22, 23, 24, var(--dialog-transparency));
   --dialog-border: rgba(255, 255, 255, 0.15);
-  --dialog-backdrop: rgba(0, 0, 0, 0.5);
+  --dialog-backdrop: rgba(4, 4, 6, 0.55);
   --dialog-text: #e0e0e0;
   --dialog-text-secondary: #aaa;
   --dialog-input-bg: #061d1f;
-  --dialog-input-border: #3f524c;
+  --dialog-input-border: #3f5251;
   --dialog-input-border-focus: #57afd1;
   --dialog-cancel-btn-bg: rgba(62, 62, 66, 0.6);
   --dialog-cancel-btn-hover: rgba(74, 74, 78, 0.8);
-  --dialog-cancel-btn-active: rgba(90, 90, 90, 0.8);
+  --dialog-cancel-btn-active: rgba(82, 83, 91, 0.8);
 
   /* Glow Effects - Dark Theme */
   --color-primary-glow: rgba(22, 112, 255, 0.7);
@@ -273,14 +273,14 @@
   --color-info-glow: rgba(147, 197, 253, 0.4);
 
   /* Dropdown Menu Styling - Dark Theme */
-  --dropdown-transparency: 0.5;
-  --dropdown-bg: rgba(30, 30, 30, var(--dropdown-transparency));
+  --dropdown-transparency: 0.45;
+  --dropdown-bg: rgb(25, 26, 29, var(--dropdown-transparency));
   --dropdown-border: rgba(255, 255, 255, 0.15);
-  --dropdown-hover-bg: rgba(62, 62, 66, 0.7);
-  --opaque-dropdown: #242424;
+  --dropdown-hover-bg: rgba(60, 60, 65, 0.7);
+  --opaque-dropdown: #222325;
 
   --find-transparency: 0.6;
-  --find-bg: rgba(5, 5, 5, var(--find-transparency));
+  --find-bg: rgb(6, 7, 10, var(--find-transparency));
 }
 
 /* === Light Theme === */
@@ -328,7 +328,7 @@
   --text-active: #000000;
 
   /* Border Colors - Subtle borders for light theme */
-  --border-primary: #bbd5d2;
+  --border-primary: #b8d0cd;
   --border-secondary: #93aea9;
   --border-tertiary: #8b9b99;
   --border-hover: #c0c0c0;
