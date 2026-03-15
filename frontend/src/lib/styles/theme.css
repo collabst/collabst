@@ -286,12 +286,12 @@
 /* === Light Theme === */
 [data-theme="light"] {
   /* Background Colors - Darker light greys */
-  --bg-primary: #e6f0f0;
+  --bg-primary: #e7f0f0;
   --bg-secondary: #d4d4d4;
   --bg-tertiary: #c8c8c8;
   --bg-elevated: var(--bg-primary);
   --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-canvas: #f6fcfc;
+  --bg-canvas: #f7fcfc;
   /* Canvas - lighter than primary */
   --bg-input: #ffffff;
   /* Input background - white for better contrast */
@@ -299,7 +299,7 @@
   /* Specific Component Backgrounds - Lightest to Darkest */
   --bg-editor: var(--bg-canvas);
   /* Editor code - lightest */
-  --bg-file-panel: #d1dede;
+  --bg-file-panel: #d2dede;
   /* File list - darker than background */
   --bg-top-bar: var(--bg-primary);
   /* Top bar - same as file panel */
