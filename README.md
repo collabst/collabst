@@ -1,7 +1,3 @@
-<p float="left">
-  
-</p>
-
 <h1 align="center">
   <img src="assets/collabst-logo+txt.svg" alt="collabst logo" width="150" />
   <br />
@@ -12,8 +8,6 @@
   </h4>
   
 </h1>
-
-<!-- <br /> -->
 
 <p align="center">
 <img src="assets/screenshots/editor.png" width="800px">
@@ -46,7 +40,7 @@
 Collabst allows you to collaborate on Typst projects and preview them while editing in your browser. Here are its main features: 
 <h3 align="center">Elegant Light and Dark Theme</h3>
 <div align="center">
-  <img src="assets/screenshots/editor-dark.png" alt="dark themed editor screenshot" width="800" />
+  <img src="assets/screenshots/collabst-theme-compare.png" alt="dark themed editor screenshot" width="800" />
 </div>
 
 <h3 align="center"> Dashboard for managing your Projects</h3>
@@ -114,6 +108,12 @@ For a more in-depth description of the tech used in Collabst, you can [**click h
 
 ## 🧑‍🔧 Credits
 
+<a href="https://github.com/collabst/collabst/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=collabst/collabst" />
+</a>
+
+<br />
+
 *Collabst was created by*
 
 <table>
@@ -148,3 +148,12 @@ For a more in-depth description of the tech used in Collabst, you can [**click h
     </td>
   </tr>
 </table>
+
+<br />
+<br />
+
+<div align="center">
+  <a href="https://ko-fi.com/collabst">
+    <img src="assets/screenshots/support-us.svg" alt="support us on Ko-fi" />
+  </a>
+</div>
