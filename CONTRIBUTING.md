@@ -21,7 +21,7 @@ Whether submitting a Bug Fix or a New Feature, **KEEP THE CHANGES TO A MINIMAL: 
 You can follow these steps:
 - Identify a clear problem you want to solve (ONE bug fix or ONE feature addition)
 - Fork the Collabst Repo.
-- Make your code changes in your fork.
+- Make your code changes in your fork. For the coding style, we [**use the default Svelte code formatting**](https://github.com/sveltejs/prettier-plugin-svelte), included for instance in the Svelte for VS Code extension.
 - Make a Pull Request: State clearly what the PR fixes/adds
 - Eventually mention an associated Issue
 - The maintainers will try there best to review the PR. Whether it is merged or not stays at their discretion.
