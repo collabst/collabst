@@ -108,6 +108,8 @@ For a more in-depth description of the tech used in Collabst, you can [**click h
 
 ## 🧑‍🔧 Credits
 
+Contributors
+
 <a href="https://github.com/collabst/collabst/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=collabst/collabst" />
 </a>
