@@ -53,12 +53,12 @@ Animations were added throughout the Editor & Dashboard buttons, to make everyth
 <div align="center">
   <table cellspacing="0" cellpadding="0" style="border-spacing:0; border-collapse:collapse;">
     <tr>
-      <td style="padding:0;"><img src="../assets/gifs/file-list.gif" alt="file-list animation" width="300"/></td>
-      <td style="padding:0;"><img src="../assets/gifs/menubar-buttons.gif" alt="menubar animation" width="280"/></td>
+      <td style="padding:0;"><img src="../assets/gifs/file-list.gif" alt="file-list animation" width="270"/></td>
+      <td style="padding:0;"><img src="../assets/gifs/menubar-buttons.gif" alt="menubar animation" width="270"/></td>
     </tr>
     <tr>
-      <td style="padding:0;"><img src="../assets/gifs/newfile-buttons.gif" alt="newfile buttons animation" width="300"/></td>
-      <td style="padding:0;"><img src="../assets/gifs/theme-toggle.gif" alt="theme toggle animation" width="280"/></td>
+      <td style="padding:0;"><img src="../assets/gifs/newfile-buttons.gif" alt="newfile buttons animation" width="270"/></td>
+      <td style="padding:0;"><img src="../assets/gifs/theme-toggle.gif" alt="theme toggle animation" width="270"/></td>
     </tr>
   </table>
 </div>

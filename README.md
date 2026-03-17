@@ -53,10 +53,10 @@ Collabst allows you to collaborate on Typst projects and preview them while edit
   <table align="center">
     <tr>
       <td style="padding:0;">
-        <img src="assets/screenshots/components/collab-editing.png" alt="collab editing screenshot" width="300" />
+        <img src="assets/screenshots/components/collab-editing.png" alt="collab editing screenshot" width="350" />
       </td>
       <td style="padding:0;">
-        <img src="assets/screenshots/components/comments.png" alt="comments screenshot" width="450" />
+        <img src="assets/screenshots/components/comments.png" alt="comments screenshot" width="350" />
       </td>
     </tr>
   </table>
@@ -66,12 +66,12 @@ Collabst allows you to collaborate on Typst projects and preview them while edit
 <div align="center">
   <table cellspacing="0" cellpadding="0" style="border-spacing:0; border-collapse:collapse;">
     <tr>
-      <td style="padding:0;"><img src="assets/gifs/file-list.gif" alt="file-list animation" width="300"/></td>
-      <td style="padding:0;"><img src="assets/gifs/menubar-buttons.gif" alt="menubar animation" width="280"/></td>
+      <td style="padding:0;"><img src="assets/gifs/file-list.gif" alt="file-list animation" width="250"/></td>
+      <td style="padding:0;"><img src="assets/gifs/menubar-buttons.gif" alt="menubar animation" width="250"/></td>
     </tr>
     <tr>
-      <td style="padding:0;"><img src="assets/gifs/newfile-buttons.gif" alt="newfile buttons animation" width="300"/></td>
-      <td style="padding:0;"><img src="assets/gifs/theme-toggle.gif" alt="theme toggle animation" width="280"/></td>
+      <td style="padding:0;"><img src="assets/gifs/newfile-buttons.gif" alt="newfile buttons animation" width="250"/></td>
+      <td style="padding:0;"><img src="assets/gifs/theme-toggle.gif" alt="theme toggle animation" width="250"/></td>
     </tr>
   </table>
 </div>
