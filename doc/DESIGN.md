@@ -70,7 +70,7 @@ In order to make the animations fun and satisfying, many components hover or jum
 
 ### Icons & Fonts
 
-Most components in Collabst have either just an icon, or text AND an associated icon. Icons can really help convey information faster than reading text can, they can also help the user find an already known feature faster. We use [Lucide](https://lucide.dev/)'s icons, which provide a wide array of shapes, with modern and unified outline style
+Most components in Collabst have either just an icon, or text AND an associated icon. Icons can really help convey information faster than reading text can, they can also help the user find an already known feature faster. We use [Lucide](https://lucide.dev/)'s icons, which provide a wide array of shapes, with a modern and unified outline style.
 
 Most of the components use a functional sans serif font, but for some needed variation, some of the bigger texts and titles use [DM Serif Display](https://fonts.google.com/specimen/DM+Serif+Display) made by the Colophon Foundry.
 
