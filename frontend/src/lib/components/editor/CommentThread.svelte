@@ -1,8 +1,10 @@
 <script lang="ts">
-  import type { Comment, CommentReply } from "$lib/types";
+  import type { Comment, UserProfile } from "$lib/types";
+  import { getProfilePicUrl } from "$lib/utils/urls";
 
   interface CommentThreadProps {
     comment: Comment;
+    userProfiles: Record<number, UserProfile>;
     currentUserId: number;
     isActive?: boolean;
     isHovered?: boolean;
@@ -16,6 +18,7 @@
 
   let {
     comment,
+    userProfiles,
     currentUserId,
     isActive = false,
     onResolve,
@@ -40,6 +43,7 @@
   let replyFocused = $state(false);
   let replyTextarea: HTMLTextAreaElement | undefined = $state();
   let showMenu = $state(false);
+  let loadedProfilePics = $state<Record<number, boolean>>({});
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr);
@@ -95,6 +99,31 @@
       closeMenu();
     };
   }
+
+  function profileHref(userId: number) {
+    return `/profile/${userId}`;
+  }
+
+  function authorName(userId: number) {
+    return userProfiles[userId]?.username || `User ${userId}`;
+  }
+
+  function authorColor(userId: number) {
+    const hue = (userId * 47) % 360;
+    return `hsl(${hue} 55% 45%)`;
+  }
+
+  function profilePicSrc(userId: number) {
+    return getProfilePicUrl(userId);
+  }
+
+  function handleAvatarLoad(userId: number) {
+    loadedProfilePics = { ...loadedProfilePics, [userId]: true };
+  }
+
+  function hasLoadedAvatar(userId: number) {
+    return !!loadedProfilePics[userId];
+  }
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -111,15 +140,31 @@
 >
   <div class="comment-header">
     <div class="author-info">
-      <div
+      <a
         class="author-avatar"
-        style="background-color: {comment.author.color}"
-        title={comment.author.username}
+        href={profileHref(comment.authorId)}
+        style="background-color: {authorColor(comment.authorId)}"
+        title={authorName(comment.authorId)}
+        onclick={(e) => e.stopPropagation()}
       >
-        {comment.author.username.charAt(0).toUpperCase()}
-      </div>
+        <span class="avatar-fallback" class:avatar-fallback-hidden={hasLoadedAvatar(comment.authorId)}>
+          {authorName(comment.authorId).charAt(0).toUpperCase()}
+        </span>
+        <img
+          class="avatar-image"
+          class:avatar-image-loaded={hasLoadedAvatar(comment.authorId)}
+          src={profilePicSrc(comment.authorId)}
+          alt={`${authorName(comment.authorId)} avatar`}
+          onload={() => handleAvatarLoad(comment.authorId)}
+          onerror={() => {}}
+        />
+      </a>
       <div class="author-details">
-        <span class="author-name">{comment.author.username}</span>
+        <a
+          class="author-name"
+          href={profileHref(comment.authorId)}
+          onclick={(e) => e.stopPropagation()}
+        >{authorName(comment.authorId)}</a>
         <span class="comment-time">{formatDate(comment.createdAt)}</span>
       </div>
     </div>
@@ -142,7 +187,7 @@
                 <span class="menu-icon">✓</span> Resolve
               </button>
             {/if}
-            {#if comment.author.id === currentUserId}
+            {#if comment.authorId === currentUserId}
               <button class="menu-item menu-item-danger" onclick={handleMenuAction(handleDelete)}>
                 <span class="menu-icon">✕</span> Delete
               </button>
@@ -162,14 +207,30 @@
       {#each comment.replies as reply}
         <div class="reply">
           <div class="reply-header">
-            <div
+            <a
               class="reply-avatar"
-              style="background-color: {reply.author.color}"
-              title={reply.author.username}
+              href={profileHref(reply.authorId)}
+              style="background-color: {authorColor(reply.authorId)}"
+              title={authorName(reply.authorId)}
+              onclick={(e) => e.stopPropagation()}
             >
-              {reply.author.username.charAt(0).toUpperCase()}
-            </div>
-            <span class="reply-author">{reply.author.username}</span>
+              <span class="avatar-fallback" class:avatar-fallback-hidden={hasLoadedAvatar(reply.authorId)}>
+                {authorName(reply.authorId).charAt(0).toUpperCase()}
+              </span>
+              <img
+                class="avatar-image"
+                class:avatar-image-loaded={hasLoadedAvatar(reply.authorId)}
+                src={profilePicSrc(reply.authorId)}
+                alt={`${authorName(reply.authorId)} avatar`}
+                onload={() => handleAvatarLoad(reply.authorId)}
+                onerror={() => {}}
+              />
+            </a>
+            <a
+              class="reply-author"
+              href={profileHref(reply.authorId)}
+              onclick={(e) => e.stopPropagation()}
+            >{authorName(reply.authorId)}</a>
             <span class="reply-time">{formatDate(reply.createdAt)}</span>
           </div>
           <div class="reply-content">{reply.content}</div>
@@ -260,6 +321,36 @@
     font-size: 12px;
     font-weight: 600;
     flex-shrink: 0;
+    text-decoration: none;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .author-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-fallback {
+    position: relative;
+    z-index: 1;
+  }
+
+  .avatar-fallback-hidden {
+    opacity: 0;
+  }
+
+  .avatar-image {
+    opacity: 0;
+    position: absolute;
+    inset: 0;
+  }
+
+  .avatar-image-loaded {
+    opacity: 1;
   }
 
   .author-details {
@@ -272,6 +363,7 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
+    text-decoration: none;
   }
 
   .comment-time {
@@ -403,12 +495,24 @@
     font-size: 10px;
     font-weight: 600;
     flex-shrink: 0;
+    text-decoration: none;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .reply-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .reply-author {
     font-size: 12px;
     font-weight: 600;
     color: var(--text-primary);
+    text-decoration: none;
   }
 
   .reply-time {

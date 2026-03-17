@@ -10,6 +10,7 @@ from app.db.base import get_db
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.schemas.user import UserCreate, User as UserSchema, Token
+from app.services.user_profile import serialize_user
 
 router = APIRouter()
 
@@ -49,7 +50,7 @@ async def register(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return user
+    return serialize_user(user)
 
 
 @router.post("/login", response_model=Token)
@@ -89,7 +90,7 @@ async def login(
         "access_token": access_token,
         "refresh_token": refresh_token_str,
         "token_type": "bearer",
-        "user": UserSchema.from_orm(user)
+        "user": serialize_user(user)
     }
 
 
@@ -148,7 +149,7 @@ async def refresh_token(
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user": UserSchema.from_orm(user)
+        "user": serialize_user(user)
     }
 
 

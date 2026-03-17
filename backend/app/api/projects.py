@@ -2,6 +2,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser
 from app.db.base import get_db
@@ -22,6 +23,22 @@ from app.services.permissions import (
 from app.websocket.project_ws import project_manager
 
 router = APIRouter()
+
+
+def _serialize_collaborator(collaborator: ProjectCollaborator) -> Collaborator:
+    return Collaborator(
+        id=collaborator.id,
+        project_id=collaborator.project_id,
+        user_id=collaborator.user_id,
+        role=collaborator.role,
+        created_at=collaborator.created_at,
+        updated_at=collaborator.updated_at,
+        user={
+            "id": collaborator.user.id,
+            "email": collaborator.user.email,
+            "username": collaborator.user.username,
+        },
+    )
 
 
 @router.post("", response_model=ProjectSchema)
@@ -265,10 +282,11 @@ async def list_collaborators(
 
     result = await db.execute(
         select(ProjectCollaborator)
+        .options(selectinload(ProjectCollaborator.user))
         .where(ProjectCollaborator.project_id == project_id)
     )
     collaborators = result.scalars().all()
-    return collaborators
+    return [_serialize_collaborator(collaborator) for collaborator in collaborators]
 
 
 @router.post("/{project_id}/collaborators", response_model=Collaborator, status_code=status.HTTP_201_CREATED)
@@ -317,11 +335,12 @@ async def add_collaborator(
         project_id=project_id,
         user_id=collaborator_in.user_id,
         role=collaborator_in.role,
+        user=user,
     )
     db.add(collaborator)
     await db.commit()
     await db.refresh(collaborator)
-    return collaborator
+    return _serialize_collaborator(collaborator)
 
 
 @router.put("/{project_id}/collaborators/{user_id}", response_model=Collaborator)
@@ -337,7 +356,9 @@ async def update_collaborator_role(
 
     # Get collaborator
     result = await db.execute(
-        select(ProjectCollaborator).where(
+        select(ProjectCollaborator)
+        .options(selectinload(ProjectCollaborator.user))
+        .where(
             ProjectCollaborator.project_id == project_id,
             ProjectCollaborator.user_id == user_id,
         )
@@ -354,7 +375,8 @@ async def update_collaborator_role(
     collaborator.role = collaborator_in.role
     await db.commit()
     await db.refresh(collaborator)
-    return collaborator
+    await db.refresh(collaborator, attribute_names=["user"])
+    return _serialize_collaborator(collaborator)
 
 
 @router.delete("/{project_id}/collaborators/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

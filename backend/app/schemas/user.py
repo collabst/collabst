@@ -36,3 +36,23 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: int | None = None
+
+
+class UserPublicProfile(BaseModel):
+    id: int
+    username: str
+    created_at: datetime
+    updated_at: datetime
+    is_self: bool
+    email: EmailStr | None = None
+    is_active: bool | None = None
+    is_superuser: bool | None = None
+
+
+class UserSettingsUpdate(BaseModel):
+    username: str | None = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str

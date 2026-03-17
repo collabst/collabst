@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { User, Project, File, Asset, AuthResponse, Collaborator, Invitation } from '../types'
+import type { User, Project, File, Asset, AuthResponse, Collaborator, Invitation, UserProfile } from '../types'
 import { getApiUrl } from '../utils/urls'
 
 const API_URL = getApiUrl()
@@ -347,6 +347,46 @@ export const invitationsApi = {
   // Cancel invitation (owner/admin only)
   cancel: async (projectId: number, invitationId: number): Promise<void> => {
     await api.delete(`/projects/${projectId}/invitations/${invitationId}`)
+  },
+}
+
+// Users
+export const usersApi = {
+  getMe: async (): Promise<User> => {
+    const { data } = await api.get<User>('/users/me')
+    return data
+  },
+
+  getProfile: async (userId: number): Promise<UserProfile> => {
+    const { data } = await api.get<UserProfile>(`/users/${userId}`)
+    return data
+  },
+
+  updateMe: async (updates: { username?: string; email?: string }): Promise<User> => {
+    const { data } = await api.patch<User>('/users/me', updates)
+    return data
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await api.patch('/users/me/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+  },
+
+  uploadProfilePicture: async (file: globalThis.File): Promise<User> => {
+    const formData = new FormData()
+    formData.append('file', file as unknown as Blob)
+
+    const { data } = await api.post<User>('/users/me/profile-picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+
+  deleteProfilePicture: async (): Promise<User> => {
+    const { data } = await api.delete<User>('/users/me/profile-picture')
+    return data
   },
 }
 

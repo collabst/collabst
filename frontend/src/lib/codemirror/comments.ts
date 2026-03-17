@@ -135,6 +135,21 @@ export class CommentRangeTracker {
   private docChangeTimer: ReturnType<typeof setTimeout> | null = null
   private boundHandleYjsChange: (event: Y.YMapEvent<any>) => void
 
+  private normalizeAuthorId(author: any): number {
+    if (typeof author === 'number') return author
+    if (author && typeof author === 'object' && typeof author.id === 'number') return author.id
+    return 0
+  }
+
+  private normalizeReplies(replies: any[]): Comment['replies'] {
+    return (replies || []).map((reply: any) => ({
+      id: reply.id,
+      content: reply.content,
+      authorId: this.normalizeAuthorId(reply.authorId ?? reply.author),
+      createdAt: reply.createdAt,
+    }))
+  }
+
   constructor(ydoc: Y.Doc, fileId: number, view: EditorView) {
     this.yComments = ydoc.getMap(`comments-${fileId}`)
     this.yText = ydoc.getText(`file-${fileId}`)
@@ -274,7 +289,7 @@ export class CommentRangeTracker {
       line: line,
       fileId: comment.fileId,
       content: comment.content,
-      author: comment.author,
+      authorId: comment.authorId,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
       resolved: comment.resolved,
@@ -305,11 +320,11 @@ export class CommentRangeTracker {
       id: commentId,
       fileId: data.fileId,
       content: data.content,
-      author: data.author,
+      authorId: this.normalizeAuthorId(data.authorId ?? data.author),
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       resolved: data.resolved,
-      replies: data.replies || [],
+      replies: this.normalizeReplies(data.replies || []),
       line: data.line || 1
     }
   }
@@ -321,11 +336,11 @@ export class CommentRangeTracker {
         id: commentId,
         fileId: data.fileId,
         content: data.content,
-        author: data.author,
+        authorId: this.normalizeAuthorId(data.authorId ?? data.author),
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
         resolved: data.resolved,
-        replies: data.replies || [],
+        replies: this.normalizeReplies(data.replies || []),
         line: data.line || 1
       })
     })

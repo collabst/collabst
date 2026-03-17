@@ -75,6 +75,17 @@ export interface AuthResponse {
   user: User
 }
 
+export interface UserProfile {
+  id: number
+  username: string
+  created_at: string
+  updated_at: string
+  is_self: boolean
+  email?: string | null
+  is_active?: boolean | null
+  is_superuser?: boolean | null
+}
+
 export interface Invitation {
   id: number
   project_id: number
@@ -98,11 +109,7 @@ export interface Comment {
   id: string
   fileId: number
   content: string
-  author: {
-    id: number
-    username: string
-    color: string
-  }
+  authorId: number
   createdAt: string
   updatedAt: string
   resolved: boolean
@@ -113,11 +120,7 @@ export interface Comment {
 export interface CommentReply {
   id: string
   content: string
-  author: {
-    id: number
-    username: string
-    color: string
-  }
+  authorId: number
   createdAt: string
 }
 

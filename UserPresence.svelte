@@ -8,7 +8,7 @@
 
   let { provider }: UserPresenceProps = $props()
 
-  let awarenessStates: [number, any][] = $state([])
+  let awarenessStates: [number, any][] = []
   let loadedProfilePics = $state<Record<number, boolean>>({})
 
   function getUserName(state: any) {
@@ -124,6 +124,7 @@
     transition: all 0.15s ease;
     position: relative;
     margin-left: -8px;
+    overflow: hidden;
   }
 
   .avatar:first-child {
@@ -152,7 +153,6 @@
     object-fit: cover;
     border-radius: 50%;
     opacity: 0;
-    overflow: hidden;
   }
 
   .avatar-image-loaded {

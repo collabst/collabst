@@ -46,8 +46,6 @@
     onGetAssetBlob: ((asset: Asset) => Promise<string>) | null;
     ydoc: Y.Doc | null;
     currentUserId: number;
-    currentUserName: string;
-    currentUserColor: string;
     diagnostics?: Diagnostic[];
     wrapLines?: boolean;
     showToolbar?: boolean;
@@ -75,8 +73,6 @@
     onGetAssetBlob = null,
     ydoc,
     currentUserId,
-    currentUserName,
-    currentUserColor,
     diagnostics = [],
     wrapLines = true,
     showToolbar = true,
@@ -576,11 +572,7 @@
       id: commentId,
       fileId: selectedFile.id,
       content: content,
-      author: {
-        id: currentUserId,
-        username: currentUserName,
-        color: currentUserColor,
-      },
+      authorId: currentUserId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       resolved: false,
@@ -631,11 +623,7 @@
     const reply = {
       id: replyId,
       content,
-      author: {
-        id: currentUserId,
-        username: currentUserName,
-        color: currentUserColor,
-      },
+      authorId: currentUserId,
       createdAt: new Date().toISOString(),
     };
 

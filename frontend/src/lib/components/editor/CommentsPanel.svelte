@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Comment } from '$lib/types'
+  import type { UserProfile } from '$lib/types'
+  import { usersApi } from '$lib/services/api'
   import CommentThread from './CommentThread.svelte'
 
   interface CommentsPanelProps {
@@ -46,12 +48,46 @@
 
   let showResolved = $state(false)
   let draftCommentText = $state('')
+  let userProfiles = $state<Record<number, UserProfile>>({})
+  let requestedUserIds = $state<Set<number>>(new Set())
   let panelScrollEl: HTMLElement | undefined = $state()
   let threadHeights = $state<Map<string, number>>(new Map())
   let isSyncingScroll = false
 
   let visibleComments = $derived(comments.filter((c) => showResolved || !c.resolved))
   let resolvedCount = $derived(comments.filter((c) => c.resolved).length)
+
+  $effect(() => {
+    const userIds = new Set<number>()
+    for (const comment of comments) {
+      userIds.add(comment.authorId)
+      for (const reply of comment.replies) {
+        userIds.add(reply.authorId)
+      }
+    }
+
+    const toFetch = [...userIds].filter((id) => id > 0 && !userProfiles[id] && !requestedUserIds.has(id))
+    if (!toFetch.length) return
+
+    requestedUserIds = new Set([...requestedUserIds, ...toFetch])
+
+    Promise.all(toFetch.map(async (id) => {
+      try {
+        const profile = await usersApi.getProfile(id)
+        return { id, profile }
+      } catch {
+        return null
+      }
+    })).then((results) => {
+      const nextProfiles = { ...userProfiles }
+      for (const item of results) {
+        if (item?.profile) {
+          nextProfiles[item.id] = item.profile
+        }
+      }
+      userProfiles = nextProfiles
+    })
+  })
 
   // Focus and clear when draft changes
   $effect(() => {
@@ -235,6 +271,7 @@
           >
             <CommentThread
               comment={item.comment}
+              {userProfiles}
               {currentUserId}
               isActive={item.id === activeCommentId}
               isHovered={item.id === hoveredCommentId}

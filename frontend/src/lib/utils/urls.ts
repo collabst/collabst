@@ -13,6 +13,11 @@ export const getApiUrl = (): string => {
     return `${import.meta.env.VITE_API_URL}`
 }
 
+export const getProfilePicUrl = (userId: number): string => {
+  const apiUrl = getApiUrl().replace(/\/$/, '')
+  return `${apiUrl}/profile-pic/${userId}`
+}
+
 /**
  * Get the WebSocket URL using the current hostname with port from env
  * Automatically converts http -> ws and https -> wss

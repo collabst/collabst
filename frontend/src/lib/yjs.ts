@@ -57,7 +57,7 @@ export function createProjectYjs(
     provider.awareness.setLocalStateField('user', {
       id: user.id,
       name: user.username,
-      color: generateUserColor()
+      color: generateUserColor(),
     })
   }
 
@@ -95,7 +95,7 @@ export function createProjectYjs(
       provider.awareness.setLocalStateField('user', {
         id: user.id,
         name: user.username,
-        color: provider.awareness.getLocalState()?.user?.color || generateUserColor()
+        color: provider.awareness.getLocalState()?.user?.color || generateUserColor(),
       })
     }
   }

@@ -1129,6 +1129,29 @@
     }
   });
 
+  // Ensure awareness user info exists even if auth loads after Yjs connection setup
+  $effect(() => {
+    const user = $auth.user;
+    const awareness = yjsConnection?.provider?.awareness;
+
+    if (!user || !awareness) return;
+
+    const localState = awareness.getLocalState();
+    const currentUser = localState?.user;
+
+    if (
+      !currentUser ||
+      currentUser.id !== user.id ||
+      currentUser.name !== user.username
+    ) {
+      awareness.setLocalStateField("user", {
+        id: user.id,
+        name: user.username,
+        color: currentUser?.color || "#3b82f6",
+      });
+    }
+  });
+
   // Diagnostics state for linter and issues panel
   let diagnostics = $state<Diagnostic[]>([]);
 
@@ -1589,9 +1612,6 @@
         onGetAssetBlob={handleGetAssetBlob}
         ydoc={yjsConnection?.ydoc || null}
         currentUserId={$auth.user?.id || 0}
-        currentUserName={$auth.user?.username || "Unknown"}
-        currentUserColor={yjsConnection?.provider?.awareness?.getLocalState()
-          ?.color || "#3b82f6"}
         {diagnostics}
         {wrapLines}
         {showToolbar}

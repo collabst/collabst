@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.services.redis_service import redis_service
-from app.api import auth, projects, files, invitations
+from app.api import auth, projects, files, invitations, users, profile_pic
 from app.websocket.yjs_server import websocket_endpoint, manager as yjs_manager
 from app.websocket.project_ws import project_websocket_endpoint
 
@@ -38,6 +38,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+app.include_router(profile_pic.router, prefix=f"{settings.API_V1_STR}", tags=["users"])
+app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["projects"])
 app.include_router(files.router, prefix=f"{settings.API_V1_STR}/projects", tags=["files"])
 app.include_router(invitations.router, prefix=f"{settings.API_V1_STR}/projects", tags=["invitations"])
