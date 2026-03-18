@@ -161,10 +161,12 @@
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    margin: 0 0 1.5rem 0;
+    font-size: 2.3rem;
+    font-weight: 900;
+    margin: 0rem 0 1.5rem 0.1rem;
     color: var(--dialog-text);
+    letter-spacing: -0.02em;
+    font-family: "DM Serif Display", Georgia, serif;
   }
 
   .drop-zone {
