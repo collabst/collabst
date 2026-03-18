@@ -40,12 +40,15 @@
   let wholeWord = $state(false);
   let regex = $state(false);
 
-  // Pre-populate search term from current selection
-  let query = getSearchQuery(view.state);
-  searchTerm = query.search;
-
   // Select search input content on mount
   onMount(() => {
+    const query = getSearchQuery(view.state);
+    searchTerm = query.search;
+    replaceTerm = query.replace;
+    caseSensitive = query.caseSensitive;
+    wholeWord = query.wholeWord;
+    regex = query.regexp;
+
     tick().then(() => {
       searchInput?.select();
     });

@@ -1,10 +1,9 @@
 <script lang="ts">
   import { auth } from "$lib/stores/auth";
-  import { Tooltip } from "$lib/components/ui";
+  import { Tooltip, UserSettingsModal } from "$lib/components/ui";
   import CircleUser from "@lucide/svelte/icons/circle-user";
   import LogOut from "@lucide/svelte/icons/log-out";
   import { getProfilePicUrl } from "$lib/utils/urls";
-  import UserSettingsModal from "./UserSettingsModal.svelte";
 
   let showMenu = $state(false);
   let showSettingsModal = $state(false);
@@ -54,7 +53,11 @@
 
 <div class="profile-menu-container">
   <Tooltip text="Profile menu" position="bottom">
-    <button class="avatar-trigger" onclick={toggleMenu} aria-label="Open profile menu">
+    <button
+      class="avatar-trigger"
+      onclick={toggleMenu}
+      aria-label="Open profile menu"
+    >
       <span class="avatar-fallback" class:avatar-fallback-hidden={avatarLoaded}>
         {($auth.user?.username || "U")[0].toUpperCase()}
       </span>
@@ -166,15 +169,15 @@
 
   @keyframes slideDown {
     0% {
-    opacity: 0;
-    transform: translateY(-40px);
+      opacity: 0;
+      transform: translateY(-40px);
     }
     75% {
-    transform: translateY(4px);
+      transform: translateY(4px);
     }
     100% {
-    opacity: 1;
-    transform: translateY(0);
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 
