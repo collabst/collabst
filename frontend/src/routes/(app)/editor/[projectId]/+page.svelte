@@ -117,7 +117,10 @@
         const scrollDOM = view.scrollDOM;
         const coords = view.coordsAtPos(editorNewCommentDraft.range.from);
         if (coords) {
-          draftPosition = coords.top - scrollDOM.getBoundingClientRect().top + scrollDOM.scrollTop;
+          draftPosition =
+            coords.top -
+            scrollDOM.getBoundingClientRect().top +
+            scrollDOM.scrollTop;
         }
       }
     } else {
@@ -133,7 +136,7 @@
 
   // Set up scroll listener and position updates when comments panel is visible
   $effect(() => {
-    if (activePanel === 'comments' && editorPane) {
+    if (activePanel === "comments" && editorPane) {
       // Initial position update
       updateCommentPositions();
 
@@ -145,11 +148,11 @@
           editorScrollTop = scrollDOM.scrollTop;
           updateCommentPositions();
         };
-        scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
+        scrollDOM.addEventListener("scroll", handleScroll, { passive: true });
         editorScrollTop = scrollDOM.scrollTop;
 
         editorScrollCleanup = () => {
-          scrollDOM.removeEventListener('scroll', handleScroll);
+          scrollDOM.removeEventListener("scroll", handleScroll);
         };
       }
 
@@ -162,7 +165,7 @@
 
   // Re-compute positions when comments change
   $effect(() => {
-    if (activePanel === 'comments' && editorComments) {
+    if (activePanel === "comments" && editorComments) {
       // Use a small delay to let decorations settle
       setTimeout(updateCommentPositions, 50);
     }
@@ -170,7 +173,7 @@
 
   // Re-compute positions when draft changes
   $effect(() => {
-    if (activePanel === 'comments' && editorNewCommentDraft) {
+    if (activePanel === "comments" && editorNewCommentDraft) {
       setTimeout(updateCommentPositions, 50);
     }
   });
@@ -1536,10 +1539,14 @@
             {editorScrollTop}
             {editorContentHeight}
             {draftPosition}
-            onResolve={(commentId: string) => editorPane?.handleCommentResolve(commentId)}
-            onDelete={(commentId: string) => editorPane?.handleCommentDelete(commentId)}
-            onReply={(commentId: string, content: string) => editorPane?.handleCommentReply(commentId, content)}
-            onSubmitNew={(content: string) => editorPane?.handleSubmitNewComment(content)}
+            onResolve={(commentId: string) =>
+              editorPane?.handleCommentResolve(commentId)}
+            onDelete={(commentId: string) =>
+              editorPane?.handleCommentDelete(commentId)}
+            onReply={(commentId: string, content: string) =>
+              editorPane?.handleCommentReply(commentId, content)}
+            onSubmitNew={(content: string) =>
+              editorPane?.handleSubmitNewComment(content)}
             onCancelNew={() => editorPane?.handleCancelNewComment()}
             onSelect={(commentId: string) => {
               activeCommentId = commentId;
@@ -1550,10 +1557,22 @@
               setTimeout(updateCommentPositions, 300);
             }}
             onHover={(commentId: string) => {
-              document.querySelectorAll(`.cm-comment-highlight[data-comment-id="${commentId}"]`).forEach(el => el.classList.add('cm-comment-highlight-hovered'));
+              document
+                .querySelectorAll(
+                  `.cm-comment-highlight[data-comment-id="${commentId}"]`,
+                )
+                .forEach((el) =>
+                  el.classList.add("cm-comment-highlight-hovered"),
+                );
             }}
             onHoverEnd={(commentId: string) => {
-              document.querySelectorAll(`.cm-comment-highlight[data-comment-id="${commentId}"]`).forEach(el => el.classList.remove('cm-comment-highlight-hovered'));
+              document
+                .querySelectorAll(
+                  `.cm-comment-highlight[data-comment-id="${commentId}"]`,
+                )
+                .forEach((el) =>
+                  el.classList.remove("cm-comment-highlight-hovered"),
+                );
             }}
             onPanelScroll={(scrollTop: number) => {
               const scrollDOM = editorPane?.getEditorScrollDOM();
@@ -1562,7 +1581,9 @@
                 scrollDOM.scrollTop = scrollTop;
                 editorScrollTop = scrollTop;
                 updateCommentPositions();
-                requestAnimationFrame(() => { isSyncingFromPanel = false; });
+                requestAnimationFrame(() => {
+                  isSyncingFromPanel = false;
+                });
               }
             }}
           />
@@ -1621,7 +1642,7 @@
         onDeleteAsset={handleDeleteAsset}
         {activeCommentId}
         onCommentClick={(commentId: string) => {
-          if (activePanel === 'comments') {
+          if (activePanel === "comments") {
             activeCommentId = commentId;
             updateCommentPositions();
           }
@@ -1629,10 +1650,16 @@
         onCommentHover={(commentId: string | null) => {
           hoveredCommentId = commentId;
         }}
-        onCommentsChange={(c: Comment[]) => editorComments = c}
-        onNewCommentDraftChange={(d: { text: string; range: { from: number; to: number }; selectedText: string } | null) => editorNewCommentDraft = d}
+        onCommentsChange={(c: Comment[]) => (editorComments = c)}
+        onNewCommentDraftChange={(
+          d: {
+            text: string;
+            range: { from: number; to: number };
+            selectedText: string;
+          } | null,
+        ) => (editorNewCommentDraft = d)}
         onDocChange={() => {
-          if (activePanel === 'comments') {
+          if (activePanel === "comments") {
             updateCommentPositions();
           }
         }}
