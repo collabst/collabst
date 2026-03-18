@@ -100,10 +100,6 @@
     };
   }
 
-  function profileHref(userId: number) {
-    return `/profile/${userId}`;
-  }
-
   function authorName(userId: number) {
     return userProfiles[userId]?.username || `User ${userId}`;
   }
@@ -140,9 +136,8 @@
 >
   <div class="comment-header">
     <div class="author-info">
-      <a
+      <div
         class="author-avatar"
-        href={profileHref(comment.authorId)}
         style="background-color: {authorColor(comment.authorId)}"
         title={authorName(comment.authorId)}
         onclick={(e) => e.stopPropagation()}
@@ -158,13 +153,9 @@
           onload={() => handleAvatarLoad(comment.authorId)}
           onerror={() => {}}
         />
-      </a>
+      </div>
       <div class="author-details">
-        <a
-          class="author-name"
-          href={profileHref(comment.authorId)}
-          onclick={(e) => e.stopPropagation()}
-        >{authorName(comment.authorId)}</a>
+        <span class="author-name">{authorName(comment.authorId)}</span>
         <span class="comment-time">{formatDate(comment.createdAt)}</span>
       </div>
     </div>
@@ -207,9 +198,8 @@
       {#each comment.replies as reply}
         <div class="reply">
           <div class="reply-header">
-            <a
+            <div
               class="reply-avatar"
-              href={profileHref(reply.authorId)}
               style="background-color: {authorColor(reply.authorId)}"
               title={authorName(reply.authorId)}
               onclick={(e) => e.stopPropagation()}
@@ -225,12 +215,8 @@
                 onload={() => handleAvatarLoad(reply.authorId)}
                 onerror={() => {}}
               />
-            </a>
-            <a
-              class="reply-author"
-              href={profileHref(reply.authorId)}
-              onclick={(e) => e.stopPropagation()}
-            >{authorName(reply.authorId)}</a>
+            </div>
+            <span class="reply-author">{authorName(reply.authorId)}</span>
             <span class="reply-time">{formatDate(reply.createdAt)}</span>
           </div>
           <div class="reply-content">{reply.content}</div>

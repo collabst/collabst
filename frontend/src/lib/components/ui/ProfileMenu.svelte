@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { auth } from "$lib/stores/auth";
   import { Tooltip } from "$lib/components/ui";
   import CircleUser from "@lucide/svelte/icons/circle-user";
   import LogOut from "@lucide/svelte/icons/log-out";
   import { getProfilePicUrl } from "$lib/utils/urls";
+  import UserSettingsModal from "./UserSettingsModal.svelte";
 
   let showMenu = $state(false);
+  let showSettingsModal = $state(false);
   let avatarLoaded = $state(false);
 
   $effect(() => {
@@ -23,10 +24,10 @@
     auth.logout();
   }
 
-  function handleOpenProfile() {
+  function handleOpenSettings() {
     if (!$auth.user) return;
     showMenu = false;
-    goto(`/profile/${$auth.user.id}`);
+    showSettingsModal = true;
   }
 
   function profilePicSrc() {
@@ -76,9 +77,9 @@
         <span>{$auth.user?.username || "User"}</span>
       </div>
       <div class="divider"></div>
-      <button class="menu-item" onclick={handleOpenProfile}>
+      <button class="menu-item" onclick={handleOpenSettings}>
         <CircleUser size={16} />
-        <span>Profile</span>
+        <span>Settings</span>
       </button>
       <button class="menu-item" onclick={handleLogout}>
         <LogOut size={16} />
@@ -86,6 +87,8 @@
       </button>
     </div>
   {/if}
+
+  <UserSettingsModal bind:open={showSettingsModal} />
 </div>
 
 <style>

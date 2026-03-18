@@ -63,9 +63,8 @@
   {#if users.length > 0}
     <div class="user-avatars">
       {#each users as [clientId, state], index}
-        <a
+        <div
           class="avatar"
-          href={state.user?.id ? `/profile/${state.user.id}` : undefined}
           style="background: {state.user?.color || '#999'}; z-index: {100 - index}; --avatar-glow: {state.user?.color || '#999'}70"
         >
           {#if state.user?.id}
@@ -88,7 +87,7 @@
           <div class="tooltip">
             {getUserName(state) || `User ${clientId}`}
           </div>
-        </a>
+        </div>
       {/each}
       {#if totalUsers > 10}
         <div class="avatar more" style="z-index: 0">
