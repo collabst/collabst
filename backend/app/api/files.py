@@ -445,6 +445,7 @@ async def upload_asset(
                 "size": asset.size,
                 "parent_id": asset.parent_id,
                 "created_at": asset.created_at.isoformat(),
+                "updated_at": asset.updated_at.isoformat(),
             }
         }
     )

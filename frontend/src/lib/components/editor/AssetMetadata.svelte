@@ -18,8 +18,23 @@
         );
     }
 
-    function formatDate(dateString: string): string {
-        const date = new Date(dateString);
+    function formatDate(
+        primaryDateString: string,
+        fallbackDateString?: string,
+    ): string {
+        const primaryDate = new Date(primaryDateString);
+        const fallbackDate = fallbackDateString
+            ? new Date(fallbackDateString)
+            : null;
+        const date = Number.isNaN(primaryDate.getTime())
+            ? fallbackDate
+            : primaryDate;
+
+        if (!date || Number.isNaN(date.getTime())) {
+            // Keep a deterministic date output when timestamps are malformed.
+            return new Date().toLocaleDateString();
+        }
+
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -80,7 +95,9 @@
 
         <div class="metadata-row">
             <span class="metadata-label">Last changed</span>
-            <span class="metadata-value">{formatDate(asset.updated_at)}</span>
+            <span class="metadata-value"
+                >{formatDate(asset.updated_at, asset.created_at)}</span
+            >
         </div>
     </div>
 </div>

@@ -9,7 +9,7 @@
 
   let { show, onClose, onUpload }: UploadAssetModalProps = $props();
 
-  let fileInput: HTMLInputElement;
+  let fileInput: HTMLInputElement | undefined = $state();
   let selectedFile: File | null = $state(null);
   let isDragging = $state(false);
 
@@ -61,8 +61,17 @@
     }
   }
 
-  function handleBackdropClick() {
-    onClose();
+  function handleBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }
+
+  function handleDropZoneKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openFilePicker();
+    }
   }
 
   function openFilePicker() {
@@ -73,27 +82,27 @@
 {#if show}
   <div
     class="modal"
-    on:click={handleBackdropClick}
-    role="dialog"
-    aria-modal="true"
+    onclick={handleBackdropClick}
+    role="presentation"
   >
-    <div class="modal-content" on:click|stopPropagation role="document">
+    <div class="modal-content" role="dialog" aria-modal="true" tabindex="-1">
       <h2>Upload Asset</h2>
-      <form on:submit={handleSubmit}>
+      <form onsubmit={handleSubmit}>
         <input
           bind:this={fileInput}
           type="file"
-          on:change={handleFileSelect}
+          onchange={handleFileSelect}
           style="display: none;"
         />
 
         <div
           class="drop-zone"
           class:dragging={isDragging}
-          on:click={openFilePicker}
-          on:drop={handleDrop}
-          on:dragover={handleDragOver}
-          on:dragleave={handleDragLeave}
+          onclick={openFilePicker}
+          ondrop={handleDrop}
+          ondragover={handleDragOver}
+          ondragleave={handleDragLeave}
+          onkeydown={handleDropZoneKeydown}
           role="button"
           tabindex="0"
         >
@@ -108,7 +117,7 @@
         {/if}
 
         <div class="modal-actions">
-          <button type="button" on:click={onClose} class="cancel-btn">
+          <button type="button" onclick={onClose} class="cancel-btn">
             Cancel
           </button>
           <button type="submit" class="submit-btn" disabled={!selectedFile}>
