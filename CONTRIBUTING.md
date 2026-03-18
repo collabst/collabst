@@ -28,4 +28,4 @@ You can follow these steps:
 - Don't spam them to reply and be respectful, remember you're talking to human beings.
 
 <br/>
-Have fun coding & thank you for your contributions! 
+Have fun coding & thank you for your contributions!
