@@ -142,11 +142,12 @@
   }
 
   .modal-content h2 {
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin: 0 0 1.6rem 0;
+    font-size: 2.3rem;
+    font-weight: 900;
+    margin: 0rem 0 1.5rem 0.1rem;
     color: var(--dialog-text);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    font-family: "DM Serif Display", Georgia, serif;
   }
 
   .field {
