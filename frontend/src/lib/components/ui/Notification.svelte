@@ -26,6 +26,7 @@
     animation: slideUpIn 0.3s ease;
     min-width: 300px;
     justify-content: center;
+    z-index: 1000;
   }
 
   .notification.closing {

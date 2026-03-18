@@ -18,7 +18,7 @@
     display: flex;
     flex-direction: column-reverse;
     gap: 0.5rem;
-    z-index: 1000;
+    z-index: 2147483000;
     pointer-events: none;
   }
 
