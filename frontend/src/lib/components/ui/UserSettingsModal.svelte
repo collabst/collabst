@@ -540,7 +540,8 @@
         line-height: 1;
         height: 40px;
         box-sizing: border-box;
-        padding: 0;
+        padding-bottom: 0.1rem;
+        margin-bottom: 0.1rem;
     }
 
     .display-name-input {
@@ -554,10 +555,10 @@
     }
 
     .display-name-button {
-        border: 1px solid transparent;
+        border: none;
         background: transparent;
         text-align: left;
-        cursor: pointer;
+        cursor: text;
         min-width: 0;
         white-space: nowrap;
         overflow: hidden;
@@ -567,9 +568,9 @@
 
     .display-name-button:hover:not(:disabled),
     .display-name-button:focus-visible {
-        outline: 2px solid var(--color-primary-500);
         outline-offset: 2px;
         border-radius: var(--radius-sm);
+        
     }
 
     .display-name-button:disabled {
@@ -604,12 +605,6 @@
         opacity: 0.65;
         cursor: not-allowed;
     }
-
-    /* .hero-email {
-        margin: 0;
-        color: red;
-        font-size: var(--text-md);
-    } */
 
     .hero-meta p {
         margin: 0;

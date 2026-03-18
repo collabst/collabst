@@ -162,8 +162,10 @@
   }
 
   .modal-title {
-    font-size: var(--text-xl);
+    font-size: 2rem;
     font-weight: var(--font-semibold);
+    font-family: "DM Serif Display", Georgia, serif;
+    letter-spacing: -0.01em;
     color: var(--dialog-text);
     margin: 0;
   }
