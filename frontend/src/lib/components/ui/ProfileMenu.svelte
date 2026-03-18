@@ -73,15 +73,6 @@
   {#if showMenu}
     <div class="profile-dropdown">
       <div class="profile-info">
-        {#if $auth.user?.id && avatarLoaded}
-          <img
-            class="avatar-image"
-            src={profilePicSrc()}
-            alt="User avatar"
-          />
-        {:else}
-          <span class="avatar-fallback-small">{($auth.user?.username || "U")[0].toUpperCase()}</span>
-        {/if}
         <span>{$auth.user?.username || "User"}</span>
       </div>
       <div class="divider"></div>
@@ -103,15 +94,24 @@
   }
 
   .avatar-trigger {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 999px;
     border: 1px solid var(--border-primary);
-    background: var(--surface-secondary);
+    background: var(--bg-file-panel);
     padding: 0;
     overflow: hidden;
     position: relative;
     cursor: pointer;
+    margin-left: 0.15rem;
+  }
+
+  .avatar-trigger:hover {
+    background: var(--surface-active);
+  }
+
+  .avatar-trigger:active {
+    transform: scaleX(1.1) scaleY(0.95);
   }
 
   .avatar-image {
@@ -136,24 +136,13 @@
     place-items: center;
     width: 100%;
     height: 100%;
-    color: var(--text-primary);
-    font-size: 12px;
-    font-weight: 700;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 400;
   }
 
   .avatar-fallback-hidden {
     opacity: 0;
-  }
-
-  .avatar-fallback-small {
-    width: 18px;
-    height: 18px;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    font-size: 10px;
-    font-weight: 700;
-    background: var(--surface-secondary);
   }
 
   .profile-dropdown {
@@ -169,17 +158,20 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     overflow: hidden;
-    animation: slideDown 0.2s ease;
+    animation: slideDown 0.2s cubic-bezier(0.4, 0.2, 0.2, 1);
   }
 
   @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
+    0% {
+    opacity: 0;
+    transform: translateY(-40px);
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
+    75% {
+    transform: translateY(4px);
+    }
+    100% {
+    opacity: 1;
+    transform: translateY(0);
     }
   }
 
@@ -188,9 +180,9 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    color: var(--text-primary);
-    font-size: 14px;
-    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 18px;
+    font-weight: 700;
   }
 
   .divider {
