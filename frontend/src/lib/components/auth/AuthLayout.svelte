@@ -296,31 +296,26 @@
     /* Global form styles that apply to slotted content */
     .card :global(h1) {
         font-size: 22px;
-        font-weight: bold;
-        margin-bottom: 0.4rem;
+        font-weight: 400;
+        margin-bottom: 0.1rem;
         text-align: center;
     }
 
     .container[data-theme="light"] .card :global(h1) {
-        color: #586867;
+        color: var(--text-tertiary);
     }
 
     .container[data-theme="dark"] .card :global(h1) {
-        color: #aaa;
+        color: var(--text-secondary);
     }
 
     .card :global(h2) {
-        font-size: 34px;
-        margin-bottom: 2.8rem;
+        color: var(--text-primary);
+        font-size: 40px;
+        font-family: "DM Serif Display", Georgia, serif;
+        letter-spacing: -0.015em;
+        margin-bottom: 2.6rem;
         text-align: center;
-    }
-
-    .container[data-theme="light"] .card :global(h2) {
-        color: #2b3333;
-    }
-
-    .container[data-theme="dark"] .card :global(h2) {
-        color: #e0e0e0;
     }
 
     .card :global(.error) {
@@ -358,11 +353,11 @@
     }
 
     .container[data-theme="light"] .card :global(label) {
-        color: #293433;
+        color: var(--text-secondary);
     }
 
     .container[data-theme="dark"] .card :global(label) {
-        color: #e0e0e0;
+        color: var(--text-primary);
     }
 
     .card :global(input) {
@@ -446,11 +441,11 @@
     }
 
     .container[data-theme="light"] .card :global(.footer) {
-        color: #666;
+        color: var(--text-tertiary);
     }
 
     .container[data-theme="dark"] .card :global(.footer) {
-        color: #aaa;
+        color: var(--text-secondary);
     }
 
     .card :global(.footer a) {
