@@ -159,12 +159,16 @@
       worker?.postMessage({ type: 'exportPDF', payload: { mainFilePath } });
     }
 
+    function exportNotImplemented(format: string) {
+      alert(`Export as ${format} not implemented yet`);
+    }
+
     exportAsPNG = () => {
-      alert("Export as PNG not implemented yet");
+      exportNotImplemented("PNG");
     }
 
     exportAsSVG = () => {
-      alert("Export as SVG not implemented yet");
+      exportNotImplemented("SVG");
     }
 
     exportSourcesAsZip = async () => {

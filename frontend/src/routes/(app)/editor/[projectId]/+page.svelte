@@ -81,10 +81,11 @@
   let editingProjectName = $state("");
   let projectNameInput = $state<HTMLInputElement | undefined>();
   let renderSession: any = $state(null);
-  let exportAsPDF = $state<() => void>(() => {});
-  let exportAsPNG = $state<() => void>(() => {});
-  let exportAsSVG = $state<() => void>(() => {});
-  let exportSourcesAsZip = $state<() => void>(() => {});
+  const unboundExportAction = () => {};
+  let exportAsPDF = $state<() => void>(unboundExportAction);
+  let exportAsPNG = $state<() => void>(unboundExportAction);
+  let exportAsSVG = $state<() => void>(unboundExportAction);
+  let exportSourcesAsZip = $state<() => void>(unboundExportAction);
 
   // Comment state lifted from EditorPane
   let editorComments = $state<Comment[]>([]);
@@ -855,9 +856,28 @@
     return createBlobUrl(arrayBuffer, asset.mime_type);
   }
 
-  async function handleDownloadPDF() {
-    // TODO: Implement PDF export with incremental compiler
-    notifications.show("PDF export coming soon", "info");
+  function runPreviewExport(exportLabel: string, exportAction: () => void) {
+    if (
+      typeof exportAction !== "function" ||
+      exportAction === unboundExportAction
+    ) {
+      notifications.show(`${exportLabel} is not available yet`, "warning", 2500);
+      return;
+    }
+
+    exportAction();
+  }
+
+  function handleExportPDF() {
+    runPreviewExport("PDF export", exportAsPDF);
+  }
+
+  function handleExportPNG() {
+    runPreviewExport("PNG export", exportAsPNG);
+  }
+
+  function handleExportSVG() {
+    runPreviewExport("SVG export", exportAsSVG);
   }
 
   function onFileCreated(file: ProjectFile) {
@@ -993,23 +1013,29 @@
       closeSeparatePreview();
     };
 
-    // Handle keyboard shortcuts: Ctrl+S, Ctrl+N, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
+    // Handle keyboard shortcuts: Ctrl+S, Ctrl+Shift+S, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        notifications.show("All changes are saved automatically", "info", 2000);
-      } else if (
+      if (
         (e.metaKey || e.ctrlKey) &&
-        e.key === "n" &&
-        !e.shiftKey &&
-        !e.altKey
+        e.shiftKey &&
+        !e.altKey &&
+        (e.key.toLowerCase() === "s" || e.code === "KeyS")
       ) {
-        // Ctrl+N for new file - be very specific to override browser
+        // Ctrl+Shift+S for export PDF - capture and stop propagation early
+        // so browser/extension handlers are less likely to win this shortcut.
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        handleNewFileFromMenu();
+        handleExportPDF();
         return false;
+      } else if (
+        (e.metaKey || e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.key.toLowerCase() === "s" || e.code === "KeyS")
+      ) {
+        e.preventDefault();
+        notifications.show("All changes are saved automatically", "info", 2000);
       } else if (
         (e.metaKey || e.ctrlKey) &&
         e.key === "f" &&
@@ -1048,7 +1074,7 @@
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("keydown", handleKeyDown, true); // Use capture phase to intercept Ctrl+N before browser
+    window.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
 
@@ -1425,9 +1451,9 @@
           onUploadFile={() => (showUploadAssetModal = true)}
           onRenameFile={handleRenameSelectedItem}
           onDeleteFile={handleDeleteSelectedItem}
-          onExportPDF={handleDownloadPDF}
-          onExportPNG={() => console.log("Export PNG - to be implemented")}
-          onExportSVG={() => console.log("Export SVG - to be implemented")}
+          onExportPDF={handleExportPDF}
+          onExportPNG={handleExportPNG}
+          onExportSVG={handleExportSVG}
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSearchReplace={handleSearchReplace}
