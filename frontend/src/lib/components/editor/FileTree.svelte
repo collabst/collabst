@@ -1079,7 +1079,8 @@
 
   h3 {
     margin: 0;
-    font-size: var(--text-base);
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
     font-weight: var(--font-semibold);
     color: var(--text-primary);
   }

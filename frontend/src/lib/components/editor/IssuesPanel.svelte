@@ -76,7 +76,7 @@
     overflow: hidden;
     border-radius: 8px;
     margin: 0 0 var(--space-3) 0;
-    padding-top: 6px;
+    padding-top: 4px;
   }
 
   .panel-header {
@@ -85,7 +85,8 @@
 
   h3 {
     margin: 0;
-    font-size: var(--text-base);
+    font-size: 1.1rem;
+    letter-spacing: -0.015em;
     font-weight: var(--font-semibold);
     color: var(--text-primary);
   }
