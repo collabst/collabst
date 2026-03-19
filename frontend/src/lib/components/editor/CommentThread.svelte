@@ -142,7 +142,10 @@
         title={authorName(comment.authorId)}
         onclick={(e) => e.stopPropagation()}
       >
-        <span class="avatar-fallback" class:avatar-fallback-hidden={hasLoadedAvatar(comment.authorId)}>
+        <span
+          class="avatar-fallback"
+          class:avatar-fallback-hidden={hasLoadedAvatar(comment.authorId)}
+        >
           {authorName(comment.authorId).charAt(0).toUpperCase()}
         </span>
         <img
@@ -171,15 +174,24 @@
         {#if showMenu}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="menu-backdrop" onclick={handleMenuAction(closeMenu)}></div>
+          <div
+            class="menu-backdrop"
+            onclick={handleMenuAction(closeMenu)}
+          ></div>
           <div class="menu-dropdown">
             {#if !comment.resolved}
-              <button class="menu-item" onclick={handleMenuAction(handleResolve)}>
+              <button
+                class="menu-item"
+                onclick={handleMenuAction(handleResolve)}
+              >
                 <span class="menu-icon">✓</span> Resolve
               </button>
             {/if}
             {#if comment.authorId === currentUserId}
-              <button class="menu-item menu-item-danger" onclick={handleMenuAction(handleDelete)}>
+              <button
+                class="menu-item menu-item-danger"
+                onclick={handleMenuAction(handleDelete)}
+              >
                 <span class="menu-icon">✕</span> Delete
               </button>
             {/if}
@@ -204,7 +216,10 @@
               title={authorName(reply.authorId)}
               onclick={(e) => e.stopPropagation()}
             >
-              <span class="avatar-fallback" class:avatar-fallback-hidden={hasLoadedAvatar(reply.authorId)}>
+              <span
+                class="avatar-fallback"
+                class:avatar-fallback-hidden={hasLoadedAvatar(reply.authorId)}
+              >
                 {authorName(reply.authorId).charAt(0).toUpperCase()}
               </span>
               <img
@@ -228,15 +243,27 @@
   {#if !comment.resolved}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="reply-form" class:reply-form-active={replyFocused || replyText.trim()} onclick={(e: MouseEvent) => e.stopPropagation()}>
+    <div
+      class="reply-form"
+      class:reply-form-active={replyFocused || replyText.trim()}
+      onclick={(e: MouseEvent) => e.stopPropagation()}
+    >
       <textarea
         bind:this={replyTextarea}
         bind:value={replyText}
         placeholder="Reply..."
         rows="1"
-        onfocus={() => replyFocused = true}
-        onblur={() => replyFocused = false}
-        onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitReply(); } if (e.key === 'Escape') { handleCancelReply(); } }}
+        onfocus={() => (replyFocused = true)}
+        onblur={() => (replyFocused = false)}
+        onkeydown={(e: KeyboardEvent) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmitReply();
+          }
+          if (e.key === "Escape") {
+            handleCancelReply();
+          }
+        }}
       ></textarea>
     </div>
   {/if}
@@ -263,7 +290,7 @@
       color-mix(
         in srgb,
         var(--comment-highlight-active-border),
-        transparent 20%
+        transparent 10%
       );
   }
 
@@ -275,6 +302,11 @@
       var(--bg-editor) 80%
     );
     box-shadow: 0 2px 0px var(--comment-highlight-active-border);
+  }
+
+  .comment-thread:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 transparent;
   }
 
   .comment-header {
@@ -531,7 +563,18 @@
     font-family: inherit;
     resize: none;
     overflow: hidden;
-    transition: border-radius 0.15s, border-color 0.15s;
+    transition:
+      border-radius 0.15s,
+      border-color 0.15s;
+  }
+
+  .comment-thread.active .reply-form textarea {
+    background: var(--comment-highlight-active-input);
+    border-color: color-mix(
+      in srgb,
+      var(--comment-highlight-active-border),
+      transparent 40%
+    );
   }
 
   .reply-form-active textarea {
@@ -543,7 +586,7 @@
 
   .reply-form textarea:focus {
     outline: none;
-    border-color: var(--comment-highlight-active-border);
+    border-color: var(--comment-highlight-active-border) !important;
     border-radius: 8px;
     padding: 8px;
   }

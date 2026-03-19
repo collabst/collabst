@@ -240,8 +240,9 @@
   /* Comment highlight colors for dark mode */
   --comment-highlight-bg: rgba(251, 191, 36, 0.15);
   --comment-highlight-border: rgba(251, 191, 36, 0.5);
-  --comment-highlight-active-bg: rgba(251, 191, 36, 0.2);
+  --comment-highlight-active-bg: rgba(133, 95, 0, 0.2);
   --comment-highlight-active-border: rgba(251, 191, 36, 0.8);
+  --comment-highlight-active-input: rgba(93, 90, 83, 0.2);
 
   /* Scrollbar colors for dark mode */
   --scrollbar-track: #1d1d1d;
@@ -350,6 +351,7 @@
   --comment-highlight-border: rgba(217, 119, 6, 0.4);
   --comment-highlight-active-bg: rgba(255, 144, 18, 0.35);
   --comment-highlight-active-border: rgba(217, 119, 6, 0.7);
+  --comment-highlight-active-input: rgba(242, 155, 57, 0.15);
 
   /* Scrollbar colors for light mode */
   --scrollbar-track: #d4d4d4;
