@@ -570,7 +570,6 @@
     .display-name-button:focus-visible {
         outline-offset: 2px;
         border-radius: var(--radius-sm);
-        
     }
 
     .display-name-button:disabled {
@@ -621,6 +620,7 @@
     .section h3 {
         margin: 0 0 var(--space-3);
         font-size: 1.5rem;
+        letter-spacing: -0.015em;
     }
 
     .fields {

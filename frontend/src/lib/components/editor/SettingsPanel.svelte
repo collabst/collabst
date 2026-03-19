@@ -200,7 +200,7 @@
     font-weight: var(--font-semibold);
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: +0.01em;
   }
 
   .setting-item {

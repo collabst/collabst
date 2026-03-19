@@ -144,6 +144,7 @@
     font-size: var(--text-lg);
     font-weight: var(--font-medium);
     color: var(--dialog-text);
+    letter-spacing: -0.01em;
   }
 
   input,

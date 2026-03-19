@@ -1802,6 +1802,7 @@
   .project-name-button {
     font-size: 16px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     margin: 0;
     cursor: pointer;
     padding: 2px 8px;
@@ -1828,6 +1829,7 @@
   .project-name-input {
     font-size: 16px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--text-primary);
     background: var(--surface-hover);
     border: 1px solid var(--border);
