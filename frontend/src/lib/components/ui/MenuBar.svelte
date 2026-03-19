@@ -136,7 +136,7 @@
   
   // File menu - use $derived to properly reference props
   const fileMenuItems = $derived<DropdownMenuItem[]>([
-    { label: 'New file', icon: FilePlus, onclick: () => onNewFile(), shortcut: 'Ctrl+N' },
+    { label: 'New file', icon: FilePlus, onclick: () => onNewFile() },
     { label: 'Upload file', icon: Upload, onclick: () => onUploadFile() },
     { label: 'Rename file', icon: FileEdit, onclick: () => onRenameFile(), shortcut: 'F2' },
     { label: 'Delete file', icon: Trash, onclick: () => onDeleteFile(), shortcut: 'Delete', separator: true },
