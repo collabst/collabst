@@ -244,8 +244,8 @@
 
 <style>
   .comment-thread {
-    background: var(--surface-primary);
-    border: 1px solid transparent;
+    background: var(--bg-editor);
+    border: 1px solid var(--border-tertiary);
     border-radius: 10px;
     padding: 8px;
     margin-bottom: 6px;
@@ -267,20 +267,14 @@
       );
   }
 
-  .comment-thread:active:not(:has(.action-btn:active)):not(:has(textarea:focus)):not(
-      :has(.menu-dropdown)
-    ) {
-    transform: translateX(6px);
-  }
-
   .comment-thread.active {
     border: 1px solid var(--comment-highlight-active-border);
     background: color-mix(
       in srgb,
-      var(--comment-highlight-bg),
-      var(--surface-primary) 80%
+      var(--comment-highlight-active-bg),
+      var(--bg-editor) 80%
     );
-    transform: translateX(6px);
+    box-shadow: 0 2px 0px var(--comment-highlight-active-border);
   }
 
   .comment-header {
@@ -375,7 +369,7 @@
   }
 
   .menu-btn {
-    font-size: 18px;
+    font-size: 8px;
     letter-spacing: 1px;
     line-height: 1;
   }
@@ -434,15 +428,19 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 16px;
-    transition: all 0.2s;
+    padding: 2px 8px 6px 8px;
+    border-radius: 99px;
+    font-size: 18px;
+    transition: none;
   }
 
   .action-btn:hover {
     background: var(--surface-hover);
     color: var(--text-primary);
+  }
+
+  .action-btn:active {
+    transform: scaleX(1.1) scaleY(0.9);
   }
 
   .comment-content {
@@ -454,8 +452,8 @@
   }
 
   .replies {
-    margin-top: 12px;
-    padding-left: 12px;
+    margin-top: 10px;
+    padding-left: 8px;
     border-left: 2px solid var(--border-primary);
   }
 
@@ -508,11 +506,11 @@
 
   .reply-content {
     font-size: 12px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     line-height: 1.4;
     white-space: pre-wrap;
     word-break: break-word;
-    padding-left: 26px;
+    padding-left: 3px;
   }
 
   .reply-form {

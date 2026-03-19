@@ -62,6 +62,9 @@
     comments.filter((c) => showResolved || !c.resolved),
   );
   let resolvedCount = $derived(comments.filter((c) => c.resolved).length);
+  let isEmptyStateVisible = $derived(
+    visibleComments.length === 0 && !newCommentDraft,
+  );
 
   $effect(() => {
     const userIds = new Set<number>();
@@ -115,6 +118,11 @@
   // Sync panel scroll from editor scroll (one-way: editor → panel)
   $effect(() => {
     if (panelScrollEl && editorScrollTop != null) {
+      if (isEmptyStateVisible) {
+        panelScrollEl.scrollTop = 0;
+        return;
+      }
+
       // Guard to avoid loop when we're already syncing from panel → editor
       isSyncingScroll = true;
       panelScrollEl.scrollTop = editorScrollTop;
@@ -258,7 +266,10 @@
     bind:this={panelScrollEl}
     onscroll={handlePanelScroll}
   >
-    <div class="panel-content" style="height: {editorContentHeight}px;">
+    <div
+      class="panel-content"
+      style={isEmptyStateVisible ? undefined : `height: ${editorContentHeight}px;`}
+    >
       {#each positionedComments as item (item.id)}
         {#if item.type === "draft"}
           <div
@@ -319,7 +330,7 @@
         {/if}
       {/each}
 
-      {#if visibleComments.length === 0 && !newCommentDraft}
+      {#if isEmptyStateVisible}
         <div class="empty-state">
           <div class="empty-icon">💬</div>
           <p>No comments yet</p>
@@ -380,14 +391,14 @@
 
   .positioned-thread {
     position: absolute;
-    left: 4px;
-    right: 4px;
+    left: 0px;
+    right: 0px;
     transition: top 0.2s ease-out;
   }
 
   .empty-state {
     position: absolute;
-    top: 50%;
+    top: 48%;
     left: 50%;
     transform: translate(-50%, -50%);
     display: flex;
@@ -396,6 +407,7 @@
     justify-content: center;
     padding: none;
     text-align: center;
+    width: 90%;
   }
 
   .empty-icon {
