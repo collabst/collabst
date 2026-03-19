@@ -164,7 +164,7 @@
 
       <!-- Settings Panel -->
       {#if showSettingsPanel}
-        <PlaceholderPanel title="Settings" />
+        <PlaceholderPanel title="Global Settings" />
       {/if}
 
       <!-- Main Content -->
