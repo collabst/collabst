@@ -89,6 +89,9 @@
 
   // Comment state lifted from EditorPane
   let editorComments = $state<Comment[]>([]);
+  let unresolvedCommentsCount = $derived(
+    editorComments.filter((comment) => !comment.resolved).length,
+  );
   let editorNewCommentDraft = $state<{
     text: string;
     range: { from: number; to: number };
@@ -1516,6 +1519,7 @@
         {activePanel}
         onActivityClick={handleActivityClick}
         {diagnostics}
+        {unresolvedCommentsCount}
       />
 
       {#if activePanel === "files"}

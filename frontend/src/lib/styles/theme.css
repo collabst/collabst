@@ -74,6 +74,8 @@
   --color-hint: #3b82f6;
   --color-hint-dark: #2563eb;
 
+  --color-comment: #00c8aa;
+
   /* Notification Colors */
   --color-hint-bg: #1e3a8a;
   --color-hint-text: #93c5fd;
@@ -272,6 +274,7 @@
   --color-warning-glow: rgba(251, 191, 36, 0.4);
   --color-hint-glow: rgba(147, 197, 253, 0.4);
   --color-info-glow: rgba(147, 197, 253, 0.4);
+  --color-comments-glow: rgba(45, 212, 191, 0.6);
 
   /* Dropdown Menu Styling - Dark Theme */
   --dropdown-transparency: 0.45;
@@ -381,6 +384,7 @@
   --color-warning-glow: rgba(217, 119, 6, 0.5);
   --color-hint-glow: rgba(30, 58, 138, 0.4);
   --color-info-glow: rgba(30, 58, 138, 0.4);
+  --color-comments-glow: rgba(3, 184, 169, 0.7);
 
   /* Dropdown Menu Styling - Light Theme */
   --dropdown-transparency: 0.3;

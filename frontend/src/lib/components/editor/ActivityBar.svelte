@@ -12,9 +12,13 @@
   import collabstLogo from "../../../assets/collabst-text-vertical.svg";
   import type { Diagnostic } from "$lib/types";
 
+  type NotificationType = "error" | "warning" | "info" | "hint" | "comments";
+  type IssueSeverity = Exclude<NotificationType, "comments">;
+
   export let activePanel: string | null = "files";
   export let onActivityClick: (activity: string) => void;
   export let diagnostics: Diagnostic[] = [];
+  export let unresolvedCommentsCount = 0;
 
   type Activity = {
     id: string;
@@ -57,8 +61,16 @@
 
   let issueNotification: boolean = false;
   $: issueNotification = diagnostics.length > 0;
+  let commentsNotification: boolean = false;
+  $: commentsNotification = unresolvedCommentsCount > 0;
 
-  function severityValue(severity: string): number {
+  const issueSeverities: IssueSeverity[] = ["error", "warning", "info", "hint"];
+
+  function isIssueSeverity(value: string): value is IssueSeverity {
+    return issueSeverities.includes(value as IssueSeverity);
+  }
+
+  function severityValue(severity: IssueSeverity): number {
     switch (severity) {
       case "error":
         return 1;
@@ -73,10 +85,14 @@
     }
   }
 
-  let issueSeverity = "info";
-  $: issueSeverity = diagnostics
-    .map((d) => d.severity)
-    .sort((a, b) => severityValue(a) - severityValue(b))[0];
+  let issueSeverity: IssueSeverity = "info";
+  $: issueSeverity =
+    diagnostics
+      .map((d) => d.severity)
+      .filter((severity): severity is IssueSeverity =>
+        isIssueSeverity(severity),
+      )
+      .sort((a, b) => severityValue(a) - severityValue(b))[0] ?? "info";
 </script>
 
 <div class="activity-bar">
@@ -92,8 +108,23 @@
           >
             <Notifiable
               hasNotification={issueNotification}
-              color="var(--color-{issueSeverity}-text)"
+              type={issueSeverity}
               count={diagnostics.length}
+            >
+              <svelte:component this={activity.icon} size={24} />
+            </Notifiable>
+          </button>
+        {:else if activity.id === "comments"}
+          <button
+            class="activity-btn"
+            class:active={activePanel === activity.id}
+            on:click={() => handleClick(activity)}
+            aria-label={activity.label}
+          >
+            <Notifiable
+              hasNotification={commentsNotification}
+              type="comments"
+              count={unresolvedCommentsCount}
             >
               <svelte:component this={activity.icon} size={24} />
             </Notifiable>

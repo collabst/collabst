@@ -1,14 +1,27 @@
 <script lang="ts">
+  type NotificationType =
+    | 'error'
+    | 'warning'
+    | 'info'
+    | 'hint'
+    | 'comments'
+
   export let hasNotification: boolean = false
   export let position: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' = 'top-right'
   export let size: number = 20
   export let count: number | null = null
+  export let type: NotificationType = 'error'
 </script>
 
 <div class="notifiable" class:has-notification={hasNotification}>
   <slot />
   {#if hasNotification}
-    <div class="notification-dot" class:position class:has-count={count !== null} style="--dot-size: {size}px">
+    <div
+      class={`notification-dot type-${type}`}
+      class:position
+      class:has-count={count !== null}
+      style="--dot-size: {size}px"
+    >
       {#if count !== null}
         <span class="count-text">{count}</span>
       {/if}
@@ -26,12 +39,38 @@
     position: absolute;
     width: var(--dot-size);
     height: var(--dot-size);
-    border-radius: 50%;
+    border-radius: 50px;
     background: var(--color-error);
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+    box-shadow: 0 0 10px var(--color-error-glow);
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: fit-content;
+  }
+
+  .notification-dot.type-error {
+    background: var(--color-error);
+    box-shadow: 0 0 10px var(--color-error-glow);
+  }
+
+  .notification-dot.type-warning {
+    background: var(--color-warning);
+    box-shadow: 0 0 10px var(--color-warning-glow);
+  }
+
+  .notification-dot.type-info {
+    background: var(--color-info);
+    box-shadow: 0 0 10px var(--color-info-glow);
+  }
+
+  .notification-dot.type-hint {
+    background: var(--color-hint);
+    box-shadow: 0 0 10px var(--color-hint-glow);
+  }
+
+  .notification-dot.type-comments {
+    background: var(--color-comment);
+    box-shadow: 0 0 10px var(--color-comments-glow);
   }
 
   .count-text {
