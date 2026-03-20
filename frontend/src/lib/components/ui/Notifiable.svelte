@@ -1,16 +1,15 @@
 <script lang="ts">
-  type NotificationType =
-    | 'error'
-    | 'warning'
-    | 'info'
-    | 'hint'
-    | 'comments'
+  type NotificationType = "error" | "warning" | "info" | "hint" | "comments";
 
-  export let hasNotification: boolean = false
-  export let position: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' = 'top-right'
-  export let size: number = 20
-  export let count: number | null = null
-  export let type: NotificationType = 'error'
+  export let hasNotification: boolean = false;
+  export let position:
+    | "top-right"
+    | "top-left"
+    | "bottom-right"
+    | "bottom-left" = "top-right";
+  export let size: number = 20;
+  export let count: number | null = null;
+  export let type: NotificationType = "error";
 </script>
 
 <div class="notifiable" class:has-notification={hasNotification}>
@@ -86,7 +85,12 @@
   }
 
   .notifiable :global(.notification-dot:not([class*="position"])),
-  .notifiable :global(.notification-dot.position:not([class*="top-left"]):not([class*="bottom-right"]):not([class*="bottom-left"])) {
+  .notifiable
+    :global(
+      .notification-dot.position:not([class*="top-left"]):not(
+          [class*="bottom-right"]
+        ):not([class*="bottom-left"])
+    ) {
     top: calc(var(--dot-size) * -0.5);
     right: calc(var(--dot-size) * -0.5);
   }
