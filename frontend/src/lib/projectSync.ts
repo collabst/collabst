@@ -6,14 +6,15 @@ const WS_URL = getWsUrl()
 export interface ProjectSyncCallbacks {
   onFileCreated: (file: ProjectFile) => void
   onFileUpdated: (file: ProjectFile) => void
-  onFileDeleted: (fileId: number) => void
+  onFileDeleted: (fileId: string) => void
   onAssetCreated: (asset: Asset) => void
   onAssetUpdated: (asset: Asset) => void
-  onAssetDeleted: (assetId: number) => void
+  onAssetDeleted: (assetId: string) => void
   onProjectUpdated: (project: Project) => void
+  onUnauthorized?: (event: { channel: string; code: string; reason: string }) => void
 }
 
-export function createProjectSync(projectId: number, callbacks: ProjectSyncCallbacks) {
+export function createProjectSync(projectId: string, callbacks: ProjectSyncCallbacks, token?: string | null) {
   let ws: WebSocket | null = null
   let pingInterval: number | null = null
   let reconnectTimeout: number | null = null
@@ -25,7 +26,11 @@ export function createProjectSync(projectId: number, callbacks: ProjectSyncCallb
     }
 
     console.log(`[ProjectSync] Connecting to project ${projectId}`)
-    ws = new WebSocket(`${WS_URL}/ws/project/${projectId}`)
+    const wsUrl = new URL(`${WS_URL}/ws/project/${projectId}`)
+    if (token) {
+      wsUrl.searchParams.set('token', token)
+    }
+    ws = new WebSocket(wsUrl.toString())
 
     ws.onopen = () => {
       console.log(`[ProjectSync] Connected to project ${projectId}`)
@@ -64,6 +69,13 @@ export function createProjectSync(projectId: number, callbacks: ProjectSyncCallb
             callbacks.onProjectUpdated(message.project)
             break
           case 'pong':
+            break
+          case 'ws_unauthorized':
+            callbacks.onUnauthorized?.({
+              channel: message.channel || 'project',
+              code: message.code || 'insufficient_role',
+              reason: message.reason || 'Unauthorized websocket operation'
+            })
             break
           default:
             console.warn('[ProjectSync] Unknown message type:', message.type)

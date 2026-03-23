@@ -35,18 +35,19 @@
 
   export let ytext: Y.Text;
   export let provider: WebsocketProvider;
-  export let fileId: number;
+  export let fileId: string;
   export let ydoc: Y.Doc;
   export let onTrackerReady: ((tracker: CommentRangeTracker) => void) | null =
     null;
   export let diagnostics: Diagnostic[] = [];
   export let fileName = "";
   export let wrapLines = true;
+  export let editable = true;
 
   let editorElement: HTMLDivElement;
   let view: EditorView | null = null;
   let undoManager: Y.UndoManager | null = null;
-  let currentFileId: number | null = null;
+  let currentFileId: string | null = null;
   let commentTracker: CommentRangeTracker | null = null;
   let currentTheme: "light" | "dark" = $themeStore;
   const themeCompartment = new Compartment();
@@ -56,6 +57,8 @@
   const editorStyleCompartment = new Compartment();
   const lineNumbersCompartment = new Compartment();
   const ligaturesCompartment = new Compartment();
+  const readOnlyCompartment = new Compartment();
+  const editableCompartment = new Compartment();
 
   // Track which lines have errors
   let errorLines = new Set<number>();
@@ -84,6 +87,32 @@
   // Update line numbers when diagnostics change
   $: if (view && diagnostics !== undefined) {
     updateLineNumbers();
+  }
+
+  // Update readonly/editable behavior when permission changes
+  $: if (view) {
+    updateEditableState();
+  }
+
+  function getReadonlyExtensions() {
+    return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable)];
+  }
+
+  function updateEditableState() {
+    if (!view) return;
+
+    view.dom.classList.toggle("cm-readonly", !editable);
+
+    view.dispatch({
+      effects: [
+        readOnlyCompartment.reconfigure(EditorState.readOnly.of(!editable)),
+        editableCompartment.reconfigure(EditorView.editable.of(editable)),
+      ],
+    });
+
+    if (!editable) {
+      view.contentDOM.blur();
+    }
   }
 
   // Get theme extensions based on current theme (theme only, no syntax highlighting)
@@ -335,7 +364,7 @@
   }
 
   // Store cursor positions as Yjs relative positions per file
-  let cursorPositions: Map<number, any> = new Map();
+  let cursorPositions: Map<string, any> = new Map();
 
   // Export methods for comment management
   export function getView() {
@@ -641,6 +670,8 @@
         closeBrackets(),
         indentOnInput(),
         indentUnit.of("  "), // Set indentation to 2 spaces
+        readOnlyCompartment.of(EditorState.readOnly.of(!editable)),
+        editableCompartment.of(EditorView.editable.of(editable)),
         yCollab(ytext, provider.awareness, { undoManager }),
         createUndoRedoKeymap(),
         commentsExtension(),
@@ -651,6 +682,8 @@
       state,
       parent: editorElement,
     });
+
+    view.dom.classList.toggle("cm-readonly", !editable);
 
     // Focus the editor
     view.focus();
@@ -721,12 +754,16 @@
           closeBrackets(),
           indentOnInput(),
           indentUnit.of("  "), // Set indentation to 2 spaces
+          readOnlyCompartment.of(EditorState.readOnly.of(!editable)),
+          editableCompartment.of(EditorView.editable.of(editable)),
           yCollab(ytext, provider.awareness, { undoManager }),
           createUndoRedoKeymap(),
           commentsExtension(),
         ],
       }),
     );
+
+    view.dom.classList.toggle("cm-readonly", !editable);
 
     // Restore cursor position if we have one saved
     const savedPosition = cursorPositions.get(fileId);
@@ -817,6 +854,15 @@
 
   :global(.cm-editor) {
     height: 100%;
+  }
+
+  :global(.cm-editor.cm-readonly) {
+    cursor: default;
+  }
+
+  :global(.cm-editor.cm-readonly .cm-cursor),
+  :global(.cm-editor.cm-readonly .cm-dropCursor) {
+    display: none;
   }
 
   /* Custom error underline for diagnostics */

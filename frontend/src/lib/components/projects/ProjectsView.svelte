@@ -12,8 +12,8 @@
   let { projects, onCreateProject, onInvite, onDelete } = $props<{
     projects: Project[];
     onCreateProject: () => void;
-    onInvite: (projectId: number) => void;
-    onDelete: (projectId: number) => void;
+    onInvite: (projectId: string) => void;
+    onDelete: (projectId: string) => void;
   }>();
 
   // Search state

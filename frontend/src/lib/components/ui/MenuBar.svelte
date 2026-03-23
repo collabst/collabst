@@ -42,6 +42,8 @@
     wrapLines?: boolean
     negativePreview?: boolean
     showToolbar?: boolean
+    canWrite?: boolean
+    canComment?: boolean
   }
   
   let {
@@ -67,7 +69,9 @@
     onNegativePreview = () => console.log('Negative preview'),
     wrapLines: wrapLinesFromParent = true,
     negativePreview: negativePreviewFromParent = false,
-    showToolbar: showToolbarFromParent = true
+    showToolbar: showToolbarFromParent = true,
+    canWrite = true,
+    canComment = true
   }: MenuBarProps = $props()
   
   // Toggle states
@@ -136,10 +140,10 @@
   
   // File menu - use $derived to properly reference props
   const fileMenuItems = $derived<DropdownMenuItem[]>([
-    { label: 'New file', icon: FilePlus, onclick: () => onNewFile() },
-    { label: 'Upload file', icon: Upload, onclick: () => onUploadFile() },
-    { label: 'Rename file', icon: FileEdit, onclick: () => onRenameFile(), shortcut: 'F2' },
-    { label: 'Delete file', icon: Trash, onclick: () => onDeleteFile(), shortcut: 'Delete', separator: true },
+    ...(canWrite ? [{ label: 'New file', icon: FilePlus, onclick: () => onNewFile() }] : []),
+    ...(canWrite ? [{ label: 'Upload file', icon: Upload, onclick: () => onUploadFile() }] : []),
+    ...(canWrite ? [{ label: 'Rename file', icon: FileEdit, onclick: () => onRenameFile(), shortcut: 'F2' }] : []),
+    ...(canWrite ? [{ label: 'Delete file', icon: Trash, onclick: () => onDeleteFile(), shortcut: 'Delete', separator: true }] : []),
     { label: 'Export PDF', icon: Download, onclick: () => onExportPDF(), shortcut: 'Ctrl+⇧+S' },
     { 
       label: 'Export as', 
@@ -158,9 +162,9 @@
     { label: 'Redo', icon: Redo, onclick: () => onRedo(), shortcut: 'Ctrl+Y', separator: true },
     { label: 'Search and replace', icon: Search, onclick: () => onSearchReplace(), shortcut: 'Ctrl+F' },
     { label: 'Select all', icon: MousePointerClick, onclick: () => onSelectAll(), shortcut: 'Ctrl+A', separator: true },
-    { label: 'Toggle line comment', onclick: () => onToggleLineComment(), shortcut: 'Ctrl+/' },
-    { label: 'Toggle block comment', onclick: () => onToggleBlockComment(), shortcut: 'Ctrl+⇧+A' },
-    { label: 'Add comment', icon: MessageSquarePlus, onclick: () => onAddComment() }
+    ...(canWrite ? [{ label: 'Toggle line comment', onclick: () => onToggleLineComment(), shortcut: 'Ctrl+/' }] : []),
+    ...(canWrite ? [{ label: 'Toggle block comment', onclick: () => onToggleBlockComment(), shortcut: 'Ctrl+⇧+A' }] : []),
+    ...(canComment ? [{ label: 'Add comment', icon: MessageSquarePlus, onclick: () => onAddComment() }] : [])
   ])
   
   // View menu

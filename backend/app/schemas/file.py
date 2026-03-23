@@ -8,12 +8,12 @@ class FileBase(BaseModel):
     path: str
     type: FileType
     content: str = ""
-    parent_id: int | None = None
+    parent_id: str | None = None
     is_folder: bool = False
 
 
 class FileCreate(FileBase):
-    project_id: int
+    project_id: str | None = None
 
     @field_validator('content')
     @classmethod
@@ -28,13 +28,13 @@ class FileUpdate(BaseModel):
     name: str | None = None
     path: str | None = None
     content: str | None = None
-    parent_id: int | None = None
+    parent_id: str | None = None
     # Note: is_folder is NOT in FileUpdate (immutable after creation)
 
 
 class File(FileBase):
-    id: int
-    project_id: int
+    id: str
+    project_id: str
     created_at: datetime
     updated_at: datetime
 

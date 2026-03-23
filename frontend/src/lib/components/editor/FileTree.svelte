@@ -18,27 +18,28 @@
     files: ProjectFile[];
     assets: Asset[];
     selectedItem: ProjectFile | Asset | null;
-    previewFileId?: number | null;
+    previewFileId?: string | null;
     onSelectFile: (file: ProjectFile) => void;
     onSelectAsset: (asset: Asset) => void;
-    onSetPreviewFile: (fileId: number) => void;
-    onRenameFile?: ((fileId: number, newName: string) => void) | null;
-    onRenameAsset?: ((assetId: number, newName: string) => void) | null;
+    onSetPreviewFile: (fileId: string) => void;
+    onRenameFile?: ((fileId: string, newName: string) => void) | null;
+    onRenameAsset?: ((assetId: string, newName: string) => void) | null;
     onMoveFile?:
-      | ((fileId: number, targetFolderId: number | null) => void)
+      | ((fileId: string, targetFolderId: string | null) => void)
       | null;
     onMoveAsset?:
-      | ((assetId: number, targetFolderId: number | null) => void)
+      | ((assetId: string, targetFolderId: string | null) => void)
       | null;
-    onDeleteFile?: ((fileId: number) => void) | null;
-    onDeleteAsset?: ((assetId: number) => void) | null;
-    onCreateFile?: ((fileName: string, parentId: number | null) => void) | null;
+    onDeleteFile?: ((fileId: string) => void) | null;
+    onDeleteAsset?: ((assetId: string) => void) | null;
+    onCreateFile?: ((fileName: string, parentId: string | null) => void) | null;
     onCreateFolder?:
-      | ((folderName: string, parentId: number | null) => void)
+      | ((folderName: string, parentId: string | null) => void)
       | null;
     onUploadAsset?: (() => void) | null;
     onClearSelection?: (() => void) | null;
     provider?: WebsocketProvider | null;
+    canWrite?: boolean;
   }
 
   let {
@@ -60,23 +61,24 @@
     onUploadAsset = null,
     onClearSelection = null,
     provider = null,
+    canWrite = true,
   }: Props = $props();
 
   let awarenessStates: [number, any][] = [];
 
   // Track expanded folders - stores folder IDs that are expanded
-  let expandedFolders = $state(new Set<number>());
+  let expandedFolders = $state(new Set<string>());
 
   // Track the last clicked item for delete operations
   let lastClickedItem = $state<TreeItem | null>(null);
 
   // Track the last expanded folder for creation context
-  let lastExpandedFolderId = $state<number | null>(null);
+  let lastExpandedFolderId = $state<string | null>(null);
 
   // State for inline file/folder creation
   let creatingItem = $state<{
     type: "file" | "folder";
-    parentId: number | null;
+    parentId: string | null;
     name: string;
   } | null>(null);
   let creatingInputElement = $state<HTMLInputElement | undefined>();
@@ -96,14 +98,14 @@
 
   // State for drag and drop with overlay
   let draggedItem = $state<{
-    id: number;
+    id: string;
     isAsset: boolean;
     isFolder: boolean;
   } | null>(null);
   let dropZone = $state<{
     top: number;
     height: number;
-    targetId: number | null;
+    targetId: string | null;
   } | null>(null);
   let treeContentElement = $state<HTMLDivElement | undefined>();
 
@@ -185,7 +187,7 @@
   let fileTreeWithAssets = $derived(
     (() => {
       const tree = JSON.parse(JSON.stringify(fileTree)) as FileTreeNode[]; // Deep clone
-      const fileMap = new Map<number, FileTreeNode>();
+      const fileMap = new Map<string, FileTreeNode>();
 
       // Build a map of all nodes for quick lookup
       const buildMap = (nodes: FileTreeNode[]) => {
@@ -264,7 +266,7 @@
 
       // Create a temporary item for rendering
       const tempItem = {
-        id: -1, // Temporary ID
+        id: "__creating__", // Temporary ID
         name: "",
         path: "",
         type: "other" as const,
@@ -275,7 +277,7 @@
         level: 0,
         isExpanded: false,
         children: [],
-        project_id: 0,
+        project_id: "",
         created_at: "",
         updated_at: "",
         isCreating: true, // Special flag
@@ -409,7 +411,7 @@
     }
   }
 
-  function handleToggleFolder(folderId: number) {
+  function handleToggleFolder(folderId: string) {
     const newExpanded = new Set(expandedFolders);
     if (newExpanded.has(folderId)) {
       // Collapsing folder - clear last expanded folder if it's this one
@@ -435,6 +437,7 @@
   }
 
   function handleTreeContentContextMenu(e: MouseEvent) {
+    if (!canWrite) return;
     // Right-click on background - show New File/Folder options
     if (e.target === e.currentTarget) {
       e.preventDefault();
@@ -457,6 +460,7 @@
   }
 
   function handleTreeKeyDown(e: KeyboardEvent) {
+    if (!canWrite) return;
     // Handle Delete/Backspace key to delete last clicked item
     if (
       (e.key === "Delete" || e.key === "Backspace") &&
@@ -471,7 +475,7 @@
   // Calculate drop zone based on mouse position and hovered item
   function calculateDropZone(
     e: DragEvent,
-  ): { top: number; height: number; targetId: number | null } | null {
+  ): { top: number; height: number; targetId: string | null } | null {
     if (!treeContentElement) return null;
 
     const treeRect = treeContentElement.getBoundingClientRect();
@@ -507,7 +511,7 @@
       }
     }
 
-    const itemId = parseInt(itemElement.getAttribute("data-item-id") || "0");
+    const itemId = itemElement.getAttribute("data-item-id") || "";
     const item = allItems.find((i) => i.id === itemId && !isCreatingItem(i)) as
       | TreeItem
       | undefined;
@@ -529,9 +533,7 @@
         const itemIndex = children.indexOf(itemElement);
 
         for (let i = itemIndex + 1; i < children.length; i++) {
-          const childId = parseInt(
-            children[i].getAttribute("data-item-id") || "0",
-          );
+          const childId = children[i].getAttribute("data-item-id") || "";
           const childItem = allItems.find(
             (c) => c.id === childId && !isCreatingItem(c),
           ) as TreeItem | undefined;
@@ -626,7 +628,7 @@
         treeContentElement.querySelectorAll('[role="treeitem"]'),
       ) as HTMLElement[];
       const parentElement = children.find((el) => {
-        const id = parseInt(el.getAttribute("data-item-id") || "0");
+        const id = el.getAttribute("data-item-id") || "";
         return id === parentId;
       });
 
@@ -649,9 +651,7 @@
         const parentIndex = children.indexOf(parentElement);
 
         for (let i = parentIndex + 1; i < children.length; i++) {
-          const childId = parseInt(
-            children[i].getAttribute("data-item-id") || "0",
-          );
+          const childId = children[i].getAttribute("data-item-id") || "";
           const childItem = allItems.find(
             (c) => c.id === childId && !isCreatingItem(c),
           ) as TreeItem | undefined;
@@ -699,6 +699,7 @@
   }
 
   function handleTreeDragOver(e: DragEvent) {
+    if (!canWrite) return;
     e.preventDefault();
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = "move";
@@ -707,6 +708,7 @@
   }
 
   function handleTreeDragLeave(e: DragEvent) {
+    if (!canWrite) return;
     // Only clear if leaving the tree-content element itself
     if (e.currentTarget === e.target) {
       dropZone = null;
@@ -714,6 +716,7 @@
   }
 
   function handleTreeDrop(e: DragEvent) {
+    if (!canWrite) return;
     e.preventDefault();
 
     if (!draggedItem || !e.dataTransfer) {
@@ -755,10 +758,11 @@
   }
 
   function handleItemDragStart(
-    itemId: number,
+    itemId: string,
     isAsset: boolean,
     isFolder: boolean,
   ) {
+    if (!canWrite) return;
     draggedItem = { id: itemId, isAsset, isFolder };
   }
 
@@ -768,6 +772,7 @@
   }
 
   function handleItemContextMenu(e: MouseEvent, item: TreeItem) {
+    if (!canWrite) return;
     e.preventDefault();
     e.stopPropagation();
     rightClickMenuX = e.clientX;
@@ -842,13 +847,14 @@
 
   function startInlineCreate(
     type: "file" | "folder",
-    explicitParentId?: number | null,
+    explicitParentId?: string | null,
   ) {
+    if (!canWrite) return;
     // Determine parent based on:
     // 1. Explicit parent ID (from right-click menu)
     // 2. Last expanded folder
     // 3. Root level (default)
-    let parentId: number | null = null;
+    let parentId: string | null = null;
 
     if (explicitParentId !== undefined) {
       // Explicitly set parent (e.g., from right-click menu)
@@ -910,7 +916,7 @@
   <div class="tree-header">
     <h3>Files</h3>
     <div class="actions">
-      {#if onCreateFile}
+      {#if canWrite && onCreateFile}
         <Tooltip text="New file" position="bottom">
           <IconButton
             class="new-file-btn"
@@ -921,7 +927,7 @@
           />
         </Tooltip>
       {/if}
-      {#if onCreateFolder}
+      {#if canWrite && onCreateFolder}
         <Tooltip text="New folder" position="bottom">
           <IconButton
             icon={FolderPlus}
@@ -931,7 +937,7 @@
           />
         </Tooltip>
       {/if}
-      {#if onUploadAsset}
+      {#if canWrite && onUploadAsset}
         <Tooltip text="Upload asset" position="bottom">
           <IconButton
             class="upload-btn"

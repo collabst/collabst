@@ -1,13 +1,14 @@
 <script lang="ts">
   import SendHorizontal from "@lucide/svelte/icons/send-horizontal";
+  import type { CollaboratorRole } from "$lib/types";
 
   let { show = $bindable(false), onSubmit } = $props<{
     show?: boolean;
-    onSubmit: (email: string, role: string) => void;
+    onSubmit: (email: string, role: CollaboratorRole) => void;
   }>();
 
   let inviteEmail = $state("");
-  let inviteRole = $state("editor");
+  let inviteRole = $state<CollaboratorRole>("writer");
   let inviteEmailInput = $state<HTMLInputElement | undefined>();
 
   // Focus input when modal opens
@@ -33,13 +34,13 @@
     e.preventDefault();
     onSubmit(inviteEmail, inviteRole);
     inviteEmail = "";
-    inviteRole = "editor";
+    inviteRole = "writer";
   }
 
   function closeModal() {
     show = false;
     inviteEmail = "";
-    inviteRole = "editor";
+    inviteRole = "writer";
   }
 </script>
 
@@ -74,8 +75,9 @@
           <label for="invite-role">Role</label>
           <select id="invite-role" bind:value={inviteRole}>
             <option value="reader">Reader - Can only view</option>
-            <option value="editor">Editor - Can edit files</option>
-            <option value="admin">Admin - Can manage collaborators</option>
+            <option value="commentor">Commentor - Can comment</option>
+            <option value="writer">Writer - Can edit files</option>
+            <option value="admin">Admin - Can manage sharing and members</option>
           </select>
         </div>
         <div class="modal-actions">

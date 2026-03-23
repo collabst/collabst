@@ -1,11 +1,12 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, EmailStr
 from app.models.invitation import InvitationStatus
 
 
 class InvitationCreate(BaseModel):
     invitee_email: EmailStr
-    role: str = "editor"
+    role: Literal["reader", "commentor", "writer", "admin"] = "writer"
 
 
 class InvitationResponse(BaseModel):
@@ -13,12 +14,12 @@ class InvitationResponse(BaseModel):
 
 
 class Invitation(BaseModel):
-    id: int
-    project_id: int
-    inviter_id: int
+    id: str
+    project_id: str
+    inviter_id: str
     invitee_email: str
-    invitee_id: int | None
-    role: str
+    invitee_id: str | None
+    role: Literal["reader", "commentor", "writer", "admin"]
     status: InvitationStatus
     token: str
     expires_at: datetime

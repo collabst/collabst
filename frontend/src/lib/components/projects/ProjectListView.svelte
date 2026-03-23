@@ -10,15 +10,17 @@
   export let projects: Project[];
   export let sortBy: "name" | "created" | "modified";
   export let onSortByColumn: (column: "name" | "created" | "modified") => void;
-  export let onInvite: (projectId: number) => void;
-  export let onDelete: (projectId: number) => void;
+  export let onInvite: (projectId: string) => void;
+  export let onDelete: (projectId: string) => void;
 
   function getRoleBadgeClass(role: string): string {
     switch (role) {
       case "admin":
         return "role-admin";
-      case "editor":
-        return "role-editor";
+      case "writer":
+        return "role-writer";
+      case "commentor":
+        return "role-commentor";
       case "reader":
         return "role-reader";
       default:
@@ -311,10 +313,16 @@
     border: 1px solid rgba(186, 104, 200, 0.3);
   }
 
-  .role-editor {
+  .role-writer {
     background: rgba(76, 175, 80, 0.3);
     color: #81c784;
     border: 1px solid rgba(129, 199, 132, 0.3);
+  }
+
+  .role-commentor {
+    background: rgba(255, 152, 0, 0.25);
+    color: #ffcc80;
+    border: 1px solid rgba(255, 204, 128, 0.35);
   }
 
   .role-reader {

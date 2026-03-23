@@ -52,7 +52,7 @@ CREATE TABLE project_collaborators (
     id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL,  -- 'reader', 'commentor', 'editor', 'admin'
+    role VARCHAR(20) NOT NULL,  -- 'reader', 'commentor', 'writer', 'admin'
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(project_id, user_id)
@@ -78,7 +78,7 @@ GET /api/v1/projects/{project_id}/collaborators
         "id": 1,
         "project_id": 10,
         "user_id": 5,
-        "role": "editor",
+        "role": "writer",
         "user": {
             "id": 5,
             "email": "john@example.com",
@@ -102,7 +102,7 @@ POST /api/v1/projects/{project_id}/collaborators
 ```json
 {
     "user_id": 5,
-    "role": "editor"
+    "role": "writer"
 }
 ```
 
@@ -112,7 +112,7 @@ POST /api/v1/projects/{project_id}/collaborators
     "id": 1,
     "project_id": 10,
     "user_id": 5,
-    "role": "editor",
+    "role": "writer",
     "user": {
         "id": 5,
         "email": "john@example.com",
@@ -225,7 +225,7 @@ Now includes collaborators in the response:
         {
             "id": 1,
             "user_id": 5,
-            "role": "editor",
+            "role": "writer",
             "user": {
                 "id": 5,
                 "email": "john@example.com",
@@ -256,7 +256,7 @@ DELETE /api/v1/projects/{project_id}
 
 ## Usage Examples
 
-### Example 1: Add an Editor to a Project
+### Example 1: Add a Writer to a Project
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/projects/10/collaborators \
@@ -264,7 +264,7 @@ curl -X POST http://localhost:8000/api/v1/projects/10/collaborators \
   -H "Content-Type: application/json" \
   -d '{
     "user_id": 5,
-    "role": "editor"
+        "role": "writer"
   }'
 ```
 

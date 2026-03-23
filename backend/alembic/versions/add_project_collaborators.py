@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('project_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('role', sa.Enum('READER', 'COMMENTOR', 'EDITOR', 'ADMIN', name='collaboratorrole'), nullable=False),
+        sa.Column('role', sa.Enum('reader', 'commentor', 'writer', 'admin', name='collaboratorrole'), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ondelete='CASCADE'),

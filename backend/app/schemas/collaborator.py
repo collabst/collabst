@@ -4,9 +4,10 @@ from enum import Enum
 
 
 class CollaboratorRole(str, Enum):
+    OWNER = "owner"
     READER = "reader"
     COMMENTOR = "commentor"
-    EDITOR = "editor"
+    WRITER = "writer"
     ADMIN = "admin"
 
 
@@ -15,7 +16,7 @@ class CollaboratorBase(BaseModel):
 
 
 class CollaboratorAdd(CollaboratorBase):
-    user_id: int
+    user_id: str
 
 
 class CollaboratorUpdate(BaseModel):
@@ -23,7 +24,7 @@ class CollaboratorUpdate(BaseModel):
 
 
 class CollaboratorUser(BaseModel):
-    id: int
+    id: str
     email: str
     username: str
 
@@ -31,9 +32,9 @@ class CollaboratorUser(BaseModel):
 
 
 class Collaborator(CollaboratorBase):
-    id: int
-    project_id: int
-    user_id: int
+    id: str
+    project_id: str
+    user_id: str
     user: CollaboratorUser
     created_at: datetime
     updated_at: datetime

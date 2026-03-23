@@ -1,5 +1,23 @@
 import axios from 'axios'
-import type { User, Project, File, Asset, AuthResponse, Collaborator, Invitation, UserProfile } from '../types'
+import type {
+  User,
+  Project,
+  File,
+  Asset,
+  AuthResponse,
+  Collaborator,
+  Invitation,
+  UserProfile,
+  CollaboratorRole,
+  ShareLink,
+  ShareLinksSummary,
+  SharingOverview,
+  CommentThreadDTO,
+  CommentThreadCreatePayload,
+  CommentThreadUpdatePayload,
+  CommentReplyDTO,
+  CommentReplyCreatePayload,
+} from '../types'
 import { getApiUrl } from '../utils/urls'
 
 const API_URL = getApiUrl()
@@ -160,7 +178,7 @@ export const projectsApi = {
     return data
   },
 
-  get: async (id: number): Promise<Project> => {
+  get: async (id: string): Promise<Project> => {
     const { data } = await api.get<Project>(`/projects/${id}`)
     return data
   },
@@ -170,50 +188,76 @@ export const projectsApi = {
     return data
   },
 
-  update: async (id: number, name?: string, description?: string): Promise<Project> => {
+  update: async (id: string, name?: string, description?: string): Promise<Project> => {
     const { data } = await api.put<Project>(`/projects/${id}`, { name, description })
     return data
   },
 
-  delete: async (id: number): Promise<void> => {
+  delete: async (id: string): Promise<void> => {
     await api.delete(`/projects/${id}`)
   },
 
   // Collaborators
-  listCollaborators: async (projectId: number): Promise<Collaborator[]> => {
+  listCollaborators: async (projectId: string): Promise<Collaborator[]> => {
     const { data } = await api.get<Collaborator[]>(`/projects/${projectId}/collaborators`)
     return data
   },
 
-  addCollaborator: async (projectId: number, userId: number, role: 'reader' | 'editor' | 'admin'): Promise<Collaborator> => {
+  addCollaborator: async (projectId: string, userId: string, role: CollaboratorRole): Promise<Collaborator> => {
     const { data } = await api.post<Collaborator>(`/projects/${projectId}/collaborators`, { user_id: userId, role })
     return data
   },
 
-  updateCollaborator: async (projectId: number, userId: number, role: 'reader' | 'editor' | 'admin'): Promise<Collaborator> => {
+  updateCollaborator: async (projectId: string, userId: string, role: CollaboratorRole): Promise<Collaborator> => {
     const { data } = await api.put<Collaborator>(`/projects/${projectId}/collaborators/${userId}`, { role })
     return data
   },
 
-  removeCollaborator: async (projectId: number, userId: number): Promise<void> => {
+  removeCollaborator: async (projectId: string, userId: string): Promise<void> => {
     await api.delete(`/projects/${projectId}/collaborators/${userId}`)
+  },
+}
+
+export const sharingApi = {
+  getOverview: async (projectId: string): Promise<SharingOverview> => {
+    const { data } = await api.get<SharingOverview>(`/projects/${projectId}/sharing`)
+    return data
+  },
+
+  listPublicLinks: async (projectId: string): Promise<ShareLinksSummary> => {
+    const { data } = await api.get<ShareLinksSummary>(`/projects/${projectId}/share-links`)
+    return data
+  },
+
+  createPublicLink: async (projectId: string, linkType: 'read' | 'comment' | 'edit'): Promise<ShareLink> => {
+    const { data } = await api.post<ShareLink>(`/projects/${projectId}/share-links/${linkType}`)
+    return data
+  },
+
+  revokePublicLink: async (projectId: string, linkType: 'read' | 'comment' | 'edit'): Promise<void> => {
+    await api.delete(`/projects/${projectId}/share-links/${linkType}`)
+  },
+
+  accessByShareHash: async (shareHash: string): Promise<{ project_id: string; permission: 'read' | 'comment' | 'edit'; project_added_to_workspace: boolean }> => {
+    const { data } = await api.get(`/projects/share/${shareHash}`)
+    return data
   },
 }
 
 // Files
 export const filesApi = {
-  list: async (projectId: number): Promise<File[]> => {
+  list: async (projectId: string): Promise<File[]> => {
     const { data } = await api.get<File[]>(`/projects/${projectId}/files`)
     return data
   },
 
   create: async (
-    projectId: number,
+    projectId: string,
     name: string,
     path: string,
     type: File['type'],
     content: string,
-    parentId: number | null = null
+    parentId: string | null = null,
   ): Promise<File> => {
     const { data } = await api.post<File>(`/projects/${projectId}/files`, {
       project_id: projectId,
@@ -228,9 +272,9 @@ export const filesApi = {
   },
 
   createFolder: async (
-    projectId: number,
+    projectId: string,
     name: string,
-    parentId: number | null = null
+    parentId: string | null = null,
   ): Promise<File> => {
     const { data } = await api.post<File>(`/projects/${projectId}/files`, {
       project_id: projectId,
@@ -245,18 +289,18 @@ export const filesApi = {
   },
 
   update: async (
-    projectId: number,
-    fileId: number,
-    updates: { name?: string; content?: string; path?: string; parent_id?: number | null }
+    projectId: string,
+    fileId: string,
+    updates: { name?: string; content?: string; path?: string; parent_id?: string | null },
   ): Promise<File> => {
     const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, updates)
     return data
   },
 
   move: async (
-    projectId: number,
-    fileId: number,
-    newParentId: number | null
+    projectId: string,
+    fileId: string,
+    newParentId: string | null,
   ): Promise<File> => {
     const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, {
       parent_id: newParentId
@@ -264,19 +308,19 @@ export const filesApi = {
     return data
   },
 
-  delete: async (projectId: number, fileId: number): Promise<void> => {
+  delete: async (projectId: string, fileId: string): Promise<void> => {
     await api.delete(`/projects/${projectId}/files/${fileId}`)
   },
 }
 
 // Assets
 export const assetsApi = {
-  list: async (projectId: number): Promise<Asset[]> => {
+  list: async (projectId: string): Promise<Asset[]> => {
     const { data } = await api.get<Asset[]>(`/projects/${projectId}/assets`)
     return data
   },
 
-  upload: async (projectId: number, file: globalThis.File, parentId: number | null = null): Promise<Asset> => {
+  upload: async (projectId: string, file: globalThis.File, parentId: string | null = null): Promise<Asset> => {
     const formData = new FormData()
     formData.append('file', file as unknown as Blob)
     if (parentId !== null) {
@@ -284,37 +328,68 @@ export const assetsApi = {
     }
 
     const { data } = await api.post<Asset>(`/projects/${projectId}/assets/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
   },
 
-  getUrl: async (projectId: number, assetId: number): Promise<{ url: string; filename: string; mime_type: string }> => {
+  getUrl: async (projectId: string, assetId: string): Promise<{ url: string; filename: string; mime_type: string }> => {
     const { data } = await api.get(`/projects/${projectId}/assets/${assetId}/url`)
     return data
   },
 
-  update: async (projectId: number, assetId: number, updates: { filename?: string; parent_id?: number | null }): Promise<Asset> => {
+  update: async (projectId: string, assetId: string, updates: { filename?: string; parent_id?: string | null }): Promise<Asset> => {
     const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, updates)
     return data
   },
 
-  move: async (projectId: number, assetId: number, newParentId: number | null): Promise<Asset> => {
+  move: async (projectId: string, assetId: string, newParentId: string | null): Promise<Asset> => {
     const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, {
       parent_id: newParentId
     })
     return data
   },
 
-  delete: async (projectId: number, assetId: number): Promise<void> => {
+  delete: async (projectId: string, assetId: string): Promise<void> => {
     await api.delete(`/projects/${projectId}/assets/${assetId}`)
+  },
+}
+
+// Comments
+export const commentsApi = {
+  listFileThreads: async (projectId: string, fileId: string): Promise<CommentThreadDTO[]> => {
+    const { data } = await api.get<CommentThreadDTO[]>(`/projects/${projectId}/comments/files/${fileId}/threads`)
+    return data
+  },
+
+  createThread: async (projectId: string, payload: CommentThreadCreatePayload): Promise<CommentThreadDTO> => {
+    const { data } = await api.post<CommentThreadDTO>(`/projects/${projectId}/comments/threads`, payload)
+    return data
+  },
+
+  createReply: async (
+    projectId: string,
+    threadId: string,
+    payload: CommentReplyCreatePayload,
+  ): Promise<CommentReplyDTO> => {
+    const { data } = await api.post<CommentReplyDTO>(`/projects/${projectId}/comments/threads/${threadId}/replies`, payload)
+    return data
+  },
+
+  updateThread: async (
+    projectId: string,
+    threadId: string,
+    payload: CommentThreadUpdatePayload,
+  ): Promise<CommentThreadDTO> => {
+    const { data } = await api.patch<CommentThreadDTO>(`/projects/${projectId}/comments/threads/${threadId}`, payload)
+    return data
   },
 }
 
 // Invitations
 export const invitationsApi = {
   // Send invitation
-  send: async (projectId: number, email: string, role: string = 'editor'): Promise<Invitation> => {
+  send: async (projectId: string, email: string, role: CollaboratorRole = 'writer'): Promise<Invitation> => {
     const { data } = await api.post<Invitation>(`/projects/${projectId}/invitations`, {
       invitee_email: email,
       role,
@@ -329,23 +404,23 @@ export const invitationsApi = {
   },
 
   // List invitations for a project
-  listForProject: async (projectId: number): Promise<Invitation[]> => {
+  listForProject: async (projectId: string): Promise<Invitation[]> => {
     const { data } = await api.get<Invitation[]>(`/projects/${projectId}/invitations`)
     return data
   },
 
   // Accept invitation
-  accept: async (invitationId: number): Promise<void> => {
+  accept: async (invitationId: string): Promise<void> => {
     await api.post(`/projects/invitations/${invitationId}/accept`)
   },
 
   // Decline invitation
-  decline: async (invitationId: number): Promise<void> => {
+  decline: async (invitationId: string): Promise<void> => {
     await api.post(`/projects/invitations/${invitationId}/decline`)
   },
 
   // Cancel invitation (owner/admin only)
-  cancel: async (projectId: number, invitationId: number): Promise<void> => {
+  cancel: async (projectId: string, invitationId: string): Promise<void> => {
     await api.delete(`/projects/${projectId}/invitations/${invitationId}`)
   },
 }
@@ -357,7 +432,7 @@ export const usersApi = {
     return data
   },
 
-  getProfile: async (userId: number): Promise<UserProfile> => {
+  getProfile: async (userId: string): Promise<UserProfile> => {
     const { data } = await api.get<UserProfile>(`/users/${userId}`)
     return data
   },

@@ -18,8 +18,8 @@ class ProjectUpdate(BaseModel):
 
 
 class Project(ProjectBase):
-    id: int
-    owner_id: int
+    id: str
+    owner_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -28,7 +28,7 @@ class Project(ProjectBase):
 
 class OwnerInfo(BaseModel):
     """Basic owner information."""
-    id: int
+    id: str
     username: str
     email: str
 
@@ -37,6 +37,6 @@ class OwnerInfo(BaseModel):
 
 class ProjectWithRole(Project):
     """Project with the current user's role and owner information."""
-    current_user_role: Literal['owner', 'admin', 'editor', 'reader']
+    current_user_role: Literal['owner', 'admin', 'writer', 'commentor', 'reader']
     owner: Optional[OwnerInfo] = None
     collaborators_count: int = 0

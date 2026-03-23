@@ -1,59 +1,66 @@
-from typing import Annotated, List
 from datetime import datetime, timedelta
+from typing import Annotated, List
 import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser
 from app.db.base import get_db
 from app.models.invitation import Invitation, InvitationStatus
-from app.models.project import Project
-from app.models.user import User
 from app.models.project_collaborator import ProjectCollaborator
-from app.schemas.invitation import (
-    InvitationCreate,
-    InvitationResponse,
-    Invitation as InvitationSchema,
-)
-from app.services.permissions import check_is_admin_or_owner
+from app.models.user import User
+from app.schemas.invitation import Invitation as InvitationSchema
+from app.schemas.invitation import InvitationCreate
+from app.services.hash_lookup import get_invitation_by_ref, get_project_by_ref
+from app.services.permissions import check_can_manage_sharing
 
 router = APIRouter()
 
 
-@router.post("/{project_id}/invitations", response_model=InvitationSchema, status_code=status.HTTP_201_CREATED)
+def _serialize_invitation(invitation: Invitation) -> InvitationSchema:
+    return InvitationSchema(
+        id=invitation.hash_id,
+        project_id=invitation.project.hash_id,
+        inviter_id=invitation.inviter.hash_id,
+        invitee_email=invitation.invitee_email,
+        invitee_id=invitation.invitee.hash_id if invitation.invitee else None,
+        role=invitation.role,
+        status=invitation.status,
+        token=invitation.token,
+        expires_at=invitation.expires_at,
+        created_at=invitation.created_at,
+        updated_at=invitation.updated_at,
+    )
+
+
+@router.post("/{project_ref}/invitations", response_model=InvitationSchema, status_code=status.HTTP_201_CREATED)
 async def send_invitation(
-    project_id: int,
+    project_ref: str,
     invitation_in: InvitationCreate,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Send an invitation to collaborate on a project."""
-    # Check if user has permission (owner or admin)
-    await check_is_admin_or_owner(db, project_id, current_user.id)
+    project = await check_can_manage_sharing(db, project_ref, current_user.id)
 
-    # Check if user exists
     result = await db.execute(select(User).where(User.email == invitation_in.invitee_email))
     invitee = result.scalar_one_or_none()
 
-    # Check if user is already a collaborator
     if invitee:
         result = await db.execute(
             select(ProjectCollaborator).where(
-                ProjectCollaborator.project_id == project_id,
+                ProjectCollaborator.project_id == project.id,
                 ProjectCollaborator.user_id == invitee.id,
             )
         )
         if result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User is already a collaborator"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User is already a collaborator")
 
-    # Check if there's already a pending invitation
     result = await db.execute(
         select(Invitation).where(
-            Invitation.project_id == project_id,
+            Invitation.project_id == project.id,
             Invitation.invitee_email == invitation_in.invitee_email,
             Invitation.status == InvitationStatus.PENDING,
         )
@@ -61,30 +68,26 @@ async def send_invitation(
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="There is already a pending invitation for this email"
+            detail="There is already a pending invitation for this email",
         )
 
-    # Create invitation
-    token = secrets.token_urlsafe(32)
     invitation = Invitation(
-        project_id=project_id,
+        project_id=project.id,
         inviter_id=current_user.id,
         invitee_email=invitation_in.invitee_email,
         invitee_id=invitee.id if invitee else None,
         role=invitation_in.role,
         status=InvitationStatus.PENDING,
-        token=token,
-        expires_at=datetime.utcnow() + timedelta(days=7),  # 7 days to accept
+        token=secrets.token_urlsafe(32),
+        expires_at=datetime.utcnow() + timedelta(days=7),
     )
 
     db.add(invitation)
     await db.commit()
     await db.refresh(invitation)
+    await db.refresh(invitation, attribute_names=["project", "inviter", "invitee"])
 
-    # TODO: Send email notification here
-    # send_invitation_email(invitation_in.invitee_email, token, project.name)
-
-    return invitation
+    return _serialize_invitation(invitation)
 
 
 @router.get("/invitations/pending", response_model=List[InvitationSchema])
@@ -92,80 +95,55 @@ async def list_pending_invitations(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """List all pending invitations for the current user."""
     result = await db.execute(
         select(Invitation)
+        .options(selectinload(Invitation.project), selectinload(Invitation.inviter), selectinload(Invitation.invitee))
         .where(
-            or_(
-                Invitation.invitee_email == current_user.email,
-                Invitation.invitee_id == current_user.id,
-            ),
+            or_(Invitation.invitee_email == current_user.email, Invitation.invitee_id == current_user.id),
             Invitation.status == InvitationStatus.PENDING,
             Invitation.expires_at > datetime.utcnow(),
         )
         .order_by(Invitation.created_at.desc())
     )
     invitations = result.scalars().all()
-    return invitations
+    return [_serialize_invitation(i) for i in invitations]
 
 
-@router.get("/{project_id}/invitations", response_model=List[InvitationSchema])
+@router.get("/{project_ref}/invitations", response_model=List[InvitationSchema])
 async def list_project_invitations(
-    project_id: int,
+    project_ref: str,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """List all invitations for a project."""
-    # Check if user has access to the project
-    await check_is_admin_or_owner(db, project_id, current_user.id)
+    project = await check_can_manage_sharing(db, project_ref, current_user.id)
 
     result = await db.execute(
         select(Invitation)
-        .where(Invitation.project_id == project_id)
+        .options(selectinload(Invitation.project), selectinload(Invitation.inviter), selectinload(Invitation.invitee))
+        .where(Invitation.project_id == project.id)
         .order_by(Invitation.created_at.desc())
     )
     invitations = result.scalars().all()
-    return invitations
+    return [_serialize_invitation(i) for i in invitations]
 
 
-@router.post("/invitations/{invitation_id}/accept", status_code=status.HTTP_200_OK)
+@router.post("/invitations/{invitation_ref}/accept", status_code=status.HTTP_200_OK)
 async def accept_invitation(
-    invitation_id: int,
+    invitation_ref: str,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Accept an invitation to collaborate on a project."""
-    # Get invitation
-    result = await db.execute(select(Invitation).where(Invitation.id == invitation_id))
-    invitation = result.scalar_one_or_none()
+    invitation = await get_invitation_by_ref(db, invitation_ref)
 
-    if not invitation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found"
-        )
-
-    # Check if invitation is for current user
     if invitation.invitee_email != current_user.email and invitation.invitee_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invitation is not for you"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This invitation is not for you")
 
-    # Check if invitation is still valid
     if invitation.status != InvitationStatus.PENDING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invitation is {invitation.status}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invitation is {invitation.status}")
 
     if invitation.expires_at < datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invitation has expired"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invitation has expired")
 
-    # Check if user is already a collaborator
     result = await db.execute(
         select(ProjectCollaborator).where(
             ProjectCollaborator.project_id == invitation.project_id,
@@ -175,91 +153,60 @@ async def accept_invitation(
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You are already a collaborator on this project"
+            detail="You are already a collaborator on this project",
         )
 
-    # Add user as collaborator
-    collaborator = ProjectCollaborator(
-        project_id=invitation.project_id,
-        user_id=current_user.id,
-        role=invitation.role,
+    db.add(
+        ProjectCollaborator(
+            project_id=invitation.project_id,
+            user_id=current_user.id,
+            role=invitation.role,
+        )
     )
-    db.add(collaborator)
 
-    # Update invitation status
     invitation.status = InvitationStatus.ACCEPTED
     invitation.invitee_id = current_user.id
-
     await db.commit()
 
     return {"message": "Invitation accepted successfully"}
 
 
-@router.post("/invitations/{invitation_id}/decline", status_code=status.HTTP_200_OK)
+@router.post("/invitations/{invitation_ref}/decline", status_code=status.HTTP_200_OK)
 async def decline_invitation(
-    invitation_id: int,
+    invitation_ref: str,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Decline an invitation to collaborate on a project."""
-    # Get invitation
-    result = await db.execute(select(Invitation).where(Invitation.id == invitation_id))
-    invitation = result.scalar_one_or_none()
+    invitation = await get_invitation_by_ref(db, invitation_ref)
 
-    if not invitation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found"
-        )
-
-    # Check if invitation is for current user
     if invitation.invitee_email != current_user.email and invitation.invitee_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invitation is not for you"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This invitation is not for you")
 
-    # Check if invitation is still valid
     if invitation.status != InvitationStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invitation is already {invitation.status}"
+            detail=f"Invitation is already {invitation.status}",
         )
 
-    # Update invitation status
     invitation.status = InvitationStatus.DECLINED
-
     await db.commit()
 
     return {"message": "Invitation declined"}
 
 
-@router.delete("/{project_id}/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{project_ref}/invitations/{invitation_ref}", status_code=status.HTTP_204_NO_CONTENT)
 async def cancel_invitation(
-    project_id: int,
-    invitation_id: int,
+    project_ref: str,
+    invitation_ref: str,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Cancel a pending invitation (owner/admin only)."""
-    # Check if user has permission
-    await check_is_admin_or_owner(db, project_id, current_user.id)
+    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    invitation = await get_invitation_by_ref(db, invitation_ref)
 
-    # Get invitation
-    result = await db.execute(
-        select(Invitation).where(
-            Invitation.id == invitation_id,
-            Invitation.project_id == project_id,
-        )
-    )
-    invitation = result.scalar_one_or_none()
+    if invitation.project_id != project.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
 
-    if not invitation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found"
-        )
-
-    # Update status or delete
     invitation.status = InvitationStatus.CANCELLED
     await db.commit()
+    return

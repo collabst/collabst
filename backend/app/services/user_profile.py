@@ -4,7 +4,7 @@ from app.schemas.user import User as UserSchema
 
 def serialize_user(user: User) -> UserSchema:
     return UserSchema(
-        id=user.id,
+        id=user.hash_id,
         email=user.email,
         username=user.username,
         is_active=user.is_active,

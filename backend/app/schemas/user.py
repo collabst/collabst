@@ -18,7 +18,7 @@ class UserUpdate(BaseModel):
 
 
 class User(UserBase):
-    id: int
+    id: str
     is_active: bool
     is_superuser: bool
     created_at: datetime
@@ -35,11 +35,11 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    user_id: int | None = None
+    user_id: str | None = None
 
 
 class UserPublicProfile(BaseModel):
-    id: int
+    id: str
     username: str
     created_at: datetime
     updated_at: datetime

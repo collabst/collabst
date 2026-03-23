@@ -6,27 +6,27 @@ class AssetBase(BaseModel):
     filename: str
     path: str
     mime_type: str
-    parent_id: int | None = None
+    parent_id: str | None = None
 
 
 class AssetCreate(AssetBase):
-    project_id: int
+    project_id: str
     storage_path: str
     size: int
 
 
 class AssetUpdate(BaseModel):
     filename: str | None = None
-    parent_id: int | None = None
+    parent_id: str | None = None
 
 
 class Asset(AssetBase):
-    id: int
-    project_id: int
+    id: str
+    project_id: str
     path: str
     storage_path: str
     size: int
-    parent_id: int | None = None
+    parent_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

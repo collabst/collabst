@@ -10,7 +10,7 @@
   import CreateProjectModal from "$lib/components/projects/CreateProjectModal.svelte";
   import InviteModal from "$lib/components/projects/InviteModal.svelte";
   import DeleteModal from "$lib/components/projects/DeleteModal.svelte";
-  import type { Project } from "$lib/types";
+  import type { CollaboratorRole, Project } from "$lib/types";
   import collabstLogo from "../../../assets/collabst-text-vertical.svg";
   import CircleHelp from "@lucide/svelte/icons/circle-help";
   import Rocket from "@lucide/svelte/icons/rocket";
@@ -23,8 +23,8 @@
   let showInviteModal = $state(false);
   let showDeleteModal = $state(false);
   let showSettingsPanel = $state(false);
-  let selectedProjectId = $state<number | null>(null);
-  let deleteProjectId = $state<number | null>(null);
+  let selectedProjectId = $state<string | null>(null);
+  let deleteProjectId = $state<string | null>(null);
 
   async function loadProjects() {
     try {
@@ -52,7 +52,7 @@
     }
   }
 
-  async function handleDeleteProject(id: number) {
+  async function handleDeleteProject(id: string) {
     deleteProjectId = id;
     showDeleteModal = true;
   }
@@ -75,12 +75,12 @@
     }
   }
 
-  function handleOpenInviteModal(projectId: number) {
+  function handleOpenInviteModal(projectId: string) {
     selectedProjectId = projectId;
     showInviteModal = true;
   }
 
-  async function handleSendInvite(email: string, role: string) {
+  async function handleSendInvite(email: string, role: CollaboratorRole) {
     if (!selectedProjectId) return;
 
     try {

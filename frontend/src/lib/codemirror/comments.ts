@@ -135,10 +135,12 @@ export class CommentRangeTracker {
   private docChangeTimer: ReturnType<typeof setTimeout> | null = null
   private boundHandleYjsChange: (event: Y.YMapEvent<any>) => void
 
-  private normalizeAuthorId(author: any): number {
-    if (typeof author === 'number') return author
-    if (author && typeof author === 'object' && typeof author.id === 'number') return author.id
-    return 0
+  private normalizeAuthorId(author: any): string {
+    if (typeof author === 'string') return author
+    if (typeof author === 'number') return String(author)
+    if (author && typeof author === 'object' && typeof author.id === 'string') return author.id
+    if (author && typeof author === 'object' && typeof author.id === 'number') return String(author.id)
+    return ''
   }
 
   private normalizeReplies(replies: any[]): Comment['replies'] {
@@ -150,7 +152,7 @@ export class CommentRangeTracker {
     }))
   }
 
-  constructor(ydoc: Y.Doc, fileId: number, view: EditorView) {
+  constructor(ydoc: Y.Doc, fileId: string, view: EditorView) {
     this.yComments = ydoc.getMap(`comments-${fileId}`)
     this.yText = ydoc.getText(`file-${fileId}`)
     this.view = view
@@ -240,8 +242,6 @@ export class CommentRangeTracker {
     const comments = new Map<string, { from: number; to: number }>()
 
     this.yComments.forEach((commentData, commentId) => {
-      if (commentData.resolved) return // Skip resolved comments
-
       const anchor = Y.createRelativePositionFromJSON(commentData.anchor)
       const head = Y.createRelativePositionFromJSON(commentData.head)
 
@@ -252,8 +252,8 @@ export class CommentRangeTracker {
         const from = Math.min(anchorPos.index, headPos.index)
         const to = Math.max(anchorPos.index, headPos.index)
 
-        // Only add decoration if range is not empty
-        if (from < to) {
+        // Only add decoration if range is not empty and comment is still open.
+        if (from < to && !commentData.resolved) {
           comments.set(commentId, { from, to })
         }
 
@@ -372,7 +372,6 @@ export class CommentRangeTracker {
     const editorRect = scrollDOM.getBoundingClientRect()
 
     this.yComments.forEach((commentData, commentId) => {
-      if (commentData.resolved) return
       const range = this.getCommentRange(commentId)
       if (range) {
         const coords = this.view.coordsAtPos(range.from)

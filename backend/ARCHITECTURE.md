@@ -362,7 +362,7 @@ project_collaborators (
     id,
     project_id,
     user_id,
-    role  -- 'owner', 'editor', 'viewer'
+     role  -- 'owner', 'admin', 'writer', 'commentor', 'reader'
 )
 ```
 

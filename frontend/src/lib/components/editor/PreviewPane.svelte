@@ -7,6 +7,7 @@
   import MoveVertical from "@lucide/svelte/icons/move-vertical";
   import File from "@lucide/svelte/icons/file";
   import PictureInPicture from "@lucide/svelte/icons/picture-in-picture";
+  import Share2 from "@lucide/svelte/icons/share-2";
   import Download from "@lucide/svelte/icons/download";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { browser } from '$app/environment';
@@ -32,6 +33,7 @@
     exportAsPNG?: () => void;
     exportAsSVG?: () => void;
     exportSourcesAsZip?: () => void;
+    onOpenShare?: () => void;
   }
 
   let {
@@ -49,6 +51,7 @@
     exportAsPNG = $bindable(() => {}),
     exportAsSVG = $bindable(() => {}),
     exportSourcesAsZip = $bindable(() => {}),
+    onOpenShare = () => {},
   }: Props = $props();
 
   // iframe reference for communication
@@ -186,7 +189,7 @@
         // Add all assets
         for (const asset of assets) {
           try {
-            const { url } = await assetsApi.getUrl(asset.project_id, asset.id);
+            const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             const path = asset.path.startsWith('/') ? asset.path.slice(1) : asset.path;
@@ -372,19 +375,19 @@
           let arrayBuffer: ArrayBuffer;
 
           // Try IndexedDB cache first
-          const cachedBlob = await getCachedAsset(asset.project_id, asset.id, asset.storage_path);
+          const cachedBlob = await getCachedAsset(String(asset.project_id), asset.id, asset.storage_path);
 
           if (cachedBlob) {
             // Use cached data
             arrayBuffer = cachedBlob.blob;
           } else {
             // Fetch from API and cache
-            const { url } = await assetsApi.getUrl(asset.project_id, asset.id);
+            const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
             const response = await fetch(url);
             arrayBuffer = await response.arrayBuffer();
 
             // Store in IndexedDB cache (fire and forget)
-            cacheAsset(asset.project_id, asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
+            cacheAsset(String(asset.project_id), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
               .catch(err => console.warn('Failed to cache asset:', err));
           }
 
@@ -627,8 +630,11 @@
       </Tooltip>
     </div>
     <div class="download-controls">
+      <Tooltip text="Share" position="bottom">
+        <ToolButton icon={Share2} onclick={onOpenShare} position="first"/>
+      </Tooltip>
       <Tooltip text="Export PDF" position="bottom">
-        <ToolButton icon={Download} onclick={exportAsPDF} position="first"/>
+        <ToolButton icon={Download} onclick={exportAsPDF} position="middle"/>
       </Tooltip>
       <Tooltip text="Export..." position="bottom">
         <DropdownToolButton 

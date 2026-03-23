@@ -16,7 +16,7 @@
     }
   }
 
-  async function handleAccept(id: number) {
+  async function handleAccept(id: string) {
     try {
       await invitationsApi.accept(id)
       loadInvitations()
@@ -27,7 +27,7 @@
     }
   }
 
-  async function handleDecline(id: number) {
+  async function handleDecline(id: string) {
     try {
       await invitationsApi.decline(id)
       loadInvitations()

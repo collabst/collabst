@@ -1,15 +1,21 @@
 <script lang="ts">
-  import { mount, onMount, onDestroy } from "svelte";
+  import { mount, onMount, onDestroy, tick } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
-  import { projectsApi, filesApi, assetsApi } from "$lib/services/api";
+  import {
+    projectsApi,
+    filesApi,
+    assetsApi,
+    commentsApi,
+  } from "$lib/services/api";
   import {
     createProjectYjs,
     destroyYjsConnection,
     getFileText,
   } from "$lib/yjs";
   import { createProjectSync } from "$lib/projectSync";
+  import { createCommentSync } from "$lib/commentSync";
   import { auth } from "$lib/stores/auth";
   import { notifications } from "$lib/stores/notifications";
   import { theme } from "$lib/stores/theme";
@@ -38,6 +44,8 @@
     Asset,
     Comment,
     Diagnostic,
+    CommentThreadDTO,
+    CommentReplyDTO,
   } from "$lib/types";
   import type { YjsConnection } from "$lib/yjs";
   import PreviewPane from "$lib/components/editor/PreviewPane.svelte";
@@ -58,24 +66,26 @@
     revokeBlobUrl,
   } from "$lib/utils/assetCache";
   import SeparatePreview from "$lib/components/editor/SeparatePreview.svelte";
+  import ShareDialog from "$lib/components/editor/ShareDialog.svelte";
 
-  let projectId = $derived($page.params.projectId);
+  let projectId = $derived($page.params.projectId ?? "");
 
   let project = $state<Project | null>(null);
   let files = $state<ProjectFile[]>([]);
   let assets = $state<Asset[]>([]);
   let selectedFile = $state<ProjectFile | null>(null);
   let selectedAsset = $state<Asset | null>(null);
-  let previewFileId = $state<number | null>(null);
+  let previewFileId = $state<string | null>(null);
   let showUploadAssetModal = $state(false);
   let showDeleteModal = $state(false);
   let deleteTarget = $state<{
     type: "file" | "asset";
-    id: number;
+    id: string;
     name: string;
     isFolder?: boolean;
   } | null>(null);
   let showCollaborators = false;
+  let showShareDialog = $state(false);
   let fileTreeHasFocus = $state(false);
   let isEditingProjectName = $state(false);
   let editingProjectName = $state("");
@@ -374,9 +384,20 @@
   }
 
   let isViewingAsset = $derived(!!selectedAsset);
+  let currentUserRole = $state<"owner" | "admin" | "writer" | "commentor" | "reader">("reader");
+  let canWrite = $derived(
+    ["owner", "admin", "writer"].includes(currentUserRole),
+  );
+  let canComment = $derived(
+    canWrite || currentUserRole === "commentor",
+  );
+  let canManageProject = $derived(
+    ["owner", "admin"].includes(currentUserRole),
+  );
 
   let yjsConnection = $state<YjsConnection | null>(null);
   let projectSync: any = null;
+  let commentSync: any = null;
   let isConnected = $state(false);
   let isSynced = false;
   let isLocalSynced = false;
@@ -419,24 +440,32 @@
     }
   });
 
-  async function loadProject() {
+  async function loadProject(): Promise<boolean> {
     try {
-      project = await projectsApi.get(Number(projectId));
+      project = await projectsApi.get(projectId);
+      currentUserRole = (project?.current_user_role || "reader") as typeof currentUserRole;
+      return true;
     } catch (error) {
       console.error("Failed to load project:", error);
+      const status = (error as any)?.response?.status;
+      if (status === 404 || status === 403) {
+        notifications.show("Project not found", "error", 5000);
+        goto("/");
+      }
+      return false;
     }
   }
 
   async function loadFiles() {
     try {
-      const data = await filesApi.list(Number(projectId));
+      const data = await filesApi.list(projectId);
       files = data;
 
       // If project has no files, create main.typ automatically
-      if (data.length === 0) {
+      if (data.length === 0 && canWrite) {
         try {
           const mainFile = await filesApi.create(
-            Number(projectId),
+            projectId,
             "main.typ",
             "/",
             "typst",
@@ -468,17 +497,175 @@
 
   async function loadAssets() {
     try {
-      const data = await assetsApi.list(Number(projectId));
+      const data = await assetsApi.list(projectId);
       assets = data;
     } catch (error) {
       console.error("Failed to load assets:", error);
     }
   }
 
-  async function handleCreateFile(fileName: string, parentId: number | null) {
+  function mapThreadToComment(thread: CommentThreadDTO): Comment {
+    return {
+      id: thread.id,
+      fileId: thread.file_id,
+      content: thread.content,
+      authorId: thread.author_id,
+      createdAt: thread.created_at,
+      updatedAt: thread.updated_at,
+      resolved: thread.status === "resolved",
+      replies: (thread.replies || [])
+        .filter((reply) => reply.status !== "deleted")
+        .map((reply) => ({
+          id: reply.id,
+          content: reply.content,
+          authorId: reply.author_id,
+          createdAt: reply.created_at,
+        })),
+      line: 1,
+      anchorRelJson: thread.anchor_rel_json,
+      headRelJson: thread.head_rel_json,
+    };
+  }
+
+  function applyThreadUpdate(thread: CommentThreadDTO) {
+    if (thread.status === "deleted") {
+      editorComments = editorComments.filter((comment) => comment.id !== thread.id);
+      if (activeCommentId === thread.id) {
+        activeCommentId = null;
+      }
+      return;
+    }
+
+    if (selectedFile?.id !== thread.file_id) {
+      return;
+    }
+
+    const mapped = mapThreadToComment(thread);
+    const index = editorComments.findIndex((comment) => comment.id === mapped.id);
+    if (index === -1) {
+      editorComments = [...editorComments, mapped].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return;
+    }
+
+    editorComments = editorComments.map((comment) =>
+      comment.id === mapped.id ? mapped : comment,
+    );
+  }
+
+  function applyReplyUpdate(threadId: string, reply: CommentReplyDTO) {
+    if (reply.status === "deleted") {
+      return;
+    }
+
+    editorComments = editorComments.map((comment) => {
+      if (comment.id !== threadId) {
+        return comment;
+      }
+
+      const nextReplies = comment.replies.some((item) => item.id === reply.id)
+        ? comment.replies.map((item) =>
+            item.id === reply.id
+              ? {
+                  id: reply.id,
+                  content: reply.content,
+                  authorId: reply.author_id,
+                  createdAt: reply.created_at,
+                }
+              : item,
+          )
+        : [
+            ...comment.replies,
+            {
+              id: reply.id,
+              content: reply.content,
+              authorId: reply.author_id,
+              createdAt: reply.created_at,
+            },
+          ];
+
+      return {
+        ...comment,
+        replies: nextReplies,
+        updatedAt: reply.updated_at,
+      };
+    });
+  }
+
+  async function loadCommentsForSelectedFile(file: ProjectFile | null) {
+    if (!file || file.is_folder || selectedAsset) {
+      editorComments = [];
+      return;
+    }
+
+    try {
+      const threads = await commentsApi.listFileThreads(projectId, file.id);
+      if (selectedFile?.id !== file.id) {
+        return;
+      }
+
+      editorComments = threads
+        .filter((thread) => thread.status !== "deleted")
+        .map(mapThreadToComment)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    } catch (error: any) {
+      console.error("Failed to load comments:", error);
+      const message = error?.response?.data?.detail || "Failed to load comments";
+      notifications.show(message, "error", 4000);
+    }
+  }
+
+  async function handleCreateComment(payload: {
+    file_id: string;
+    content: string;
+    anchor_rel_json: string | null;
+    head_rel_json: string | null;
+  }) {
+    if (!canComment) return;
+
+    const thread = await commentsApi.createThread(projectId, {
+      file_id: payload.file_id,
+      content: payload.content,
+      anchor_rel_json: payload.anchor_rel_json,
+      head_rel_json: payload.head_rel_json,
+    });
+
+    applyThreadUpdate(thread);
+    activeCommentId = thread.id;
+  }
+
+  async function handleResolveComment(commentId: string) {
+    if (!canComment) return;
+
+    const thread = await commentsApi.updateThread(projectId, commentId, {
+      status: "resolved",
+    });
+    applyThreadUpdate(thread);
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (!canManageProject) return;
+
+    const thread = await commentsApi.updateThread(projectId, commentId, {
+      status: "deleted",
+    });
+    applyThreadUpdate(thread);
+  }
+
+  async function handleReplyComment(commentId: string, content: string) {
+    if (!canComment) return;
+
+    const reply = await commentsApi.createReply(projectId, commentId, {
+      content,
+    });
+    applyReplyUpdate(commentId, reply);
+  }
+
+  async function handleCreateFile(fileName: string, parentId: string | null) {
+    if (!canWrite) return;
+
     try {
       const newFile = await filesApi.create(
-        Number(projectId),
+        projectId,
         fileName,
         "/", // Path will be computed by backend
         "typst",
@@ -501,11 +688,13 @@
 
   async function handleCreateFolder(
     folderName: string,
-    parentId: number | null,
+    parentId: string | null,
   ) {
+    if (!canWrite) return;
+
     try {
       const newFolder = await filesApi.createFolder(
-        Number(projectId),
+        projectId,
         folderName,
         parentId,
       );
@@ -525,16 +714,18 @@
   }
 
   async function handleUploadAsset(file: File) {
+    if (!canWrite) return;
+
     try {
       // Determine parent: if selected item is a folder, create inside it; otherwise create at root
       const parentId = selectedFile?.is_folder ? selectedFile.id : null;
 
-      const asset = await assetsApi.upload(Number(projectId), file, parentId);
+      const asset = await assetsApi.upload(projectId, file, parentId);
 
       // Cache the uploaded asset immediately
       const arrayBuffer = await file.arrayBuffer();
       cacheAsset(
-        Number(projectId),
+        projectId,
         asset.id,
         asset.storage_path,
         asset.mime_type,
@@ -561,11 +752,13 @@
     }
     // Reset active comment when switching files
     activeCommentId = null;
+    void loadCommentsForSelectedFile(file);
     // Awareness update handled by reactive statement
   }
 
   function handleSelectAsset(asset: Asset) {
     selectedAsset = asset;
+    editorComments = [];
     // Keep selectedFile to prevent CodeEditor from being destroyed
     // Awareness update handled by reactive statement
   }
@@ -575,14 +768,16 @@
     selectedAsset = null;
   }
 
-  function handleSetPreviewFile(fileId: number) {
+  function handleSetPreviewFile(fileId: string) {
     previewFileId = fileId;
     if (browser) {
       localStorage.setItem(`preview-file-${projectId}`, String(fileId));
     }
   }
 
-  async function handleDeleteFile(fileId: number) {
+  async function handleDeleteFile(fileId: string) {
+    if (!canWrite) return;
+
     const file = files.find((f) => f.id === fileId);
     if (!file) return;
     deleteTarget = {
@@ -594,16 +789,20 @@
     showDeleteModal = true;
   }
 
-  async function handleDeleteAsset(assetId: number) {
+  async function handleDeleteAsset(assetId: string) {
+    if (!canWrite) return;
+
     const asset = assets.find((a) => a.id === assetId);
     if (!asset) return;
     deleteTarget = { type: "asset", id: assetId, name: asset.filename };
     showDeleteModal = true;
   }
 
-  async function handleRenameFile(fileId: number, newName: string) {
+  async function handleRenameFile(fileId: string, newName: string) {
+    if (!canWrite) return;
+
     try {
-      const updatedFile = await filesApi.update(Number(projectId), fileId, {
+      const updatedFile = await filesApi.update(projectId, fileId, {
         name: newName,
       });
       files = files.map((f) => (f.id === fileId ? updatedFile : f));
@@ -618,9 +817,11 @@
     }
   }
 
-  async function handleRenameAsset(assetId: number, newName: string) {
+  async function handleRenameAsset(assetId: string, newName: string) {
+    if (!canWrite) return;
+
     try {
-      const updatedAsset = await assetsApi.update(Number(projectId), assetId, {
+      const updatedAsset = await assetsApi.update(projectId, assetId, {
         filename: newName,
       });
       assets = assets.map((a) => (a.id === assetId ? updatedAsset : a));
@@ -644,16 +845,22 @@
   }
 
   function handleNewFileFromMenu() {
+    if (!canWrite) return;
+
     // Trigger inline file creation in FileTree
     window.dispatchEvent(new CustomEvent("trigger-new-file"));
   }
 
   function handleNewFolderFromMenu() {
+    if (!canWrite) return;
+
     // Trigger inline folder creation in FileTree
     window.dispatchEvent(new CustomEvent("trigger-new-folder"));
   }
 
   function handleDeleteSelectedItem() {
+    if (!canWrite) return;
+
     // Delete currently selected file or asset
     if (selectedAsset) {
       handleDeleteAsset(selectedAsset.id);
@@ -692,7 +899,9 @@
   // Reactive path computation
   let currentPath = $derived(buildItemPath(selectedAsset || selectedFile));
 
-  async function handleMoveFile(fileId: number, targetFolderId: number | null) {
+  async function handleMoveFile(fileId: string, targetFolderId: string | null) {
+    if (!canWrite) return;
+
     try {
       // Check if already in target location
       const fileToMove = files.find((f) => f.id === fileId);
@@ -702,7 +911,7 @@
       }
 
       const updatedFile = await filesApi.move(
-        Number(projectId),
+        projectId,
         fileId,
         targetFolderId,
       );
@@ -719,9 +928,11 @@
   }
 
   async function handleMoveAsset(
-    assetId: number,
-    targetFolderId: number | null,
+    assetId: string,
+    targetFolderId: string | null,
   ) {
+    if (!canWrite) return;
+
     try {
       // Check if already in target location
       const assetToMove = assets.find((a) => a.id === assetId);
@@ -731,7 +942,7 @@
       }
 
       const updatedAsset = await assetsApi.move(
-        Number(projectId),
+        projectId,
         assetId,
         targetFolderId,
       );
@@ -748,6 +959,7 @@
   }
 
   function handleProjectNameClick() {
+    if (!canManageProject) return;
     isEditingProjectName = true;
     editingProjectName = project?.name || "";
     setTimeout(() => {
@@ -756,6 +968,12 @@
   }
 
   async function handleProjectRenameSubmit() {
+    if (!canManageProject) {
+      isEditingProjectName = false;
+      editingProjectName = "";
+      return;
+    }
+
     const trimmedName = editingProjectName.trim();
 
     if (!project || !trimmedName || trimmedName === project.name) {
@@ -765,7 +983,7 @@
 
     try {
       const updatedProject = await projectsApi.update(
-        Number(projectId),
+        projectId,
         trimmedName,
       );
       project = updatedProject;
@@ -795,6 +1013,12 @@
   }
 
   async function confirmDelete() {
+    if (!canWrite) {
+      showDeleteModal = false;
+      deleteTarget = null;
+      return;
+    }
+
     if (!deleteTarget) return;
 
     const targetId = deleteTarget.id;
@@ -802,15 +1026,15 @@
 
     try {
       if (targetType === "file") {
-        await filesApi.delete(Number(projectId), targetId);
+        await filesApi.delete(projectId, targetId);
         files = files.filter((f) => f.id !== targetId);
         if (selectedFile?.id === targetId) {
           selectedFile = files[0] || null;
         }
       } else {
-        await assetsApi.delete(Number(projectId), targetId);
+        await assetsApi.delete(projectId, targetId);
         // Remove from cache
-        removeCachedAsset(Number(projectId), targetId).catch((err) =>
+        removeCachedAsset(projectId, targetId).catch((err) =>
           console.warn("Failed to remove asset from cache:", err),
         );
         assets = assets.filter((a) => a.id !== targetId);
@@ -826,15 +1050,15 @@
     }
   }
 
-  async function handleGetAssetUrl(assetId: number): Promise<string> {
-    const { url } = await assetsApi.getUrl(Number(projectId), assetId);
+  async function handleGetAssetUrl(assetId: string): Promise<string> {
+    const { url } = await assetsApi.getUrl(projectId, assetId);
     return url;
   }
 
   async function handleGetAssetBlob(asset: Asset): Promise<string> {
     // Try cache first
     const cached = await getCachedAsset(
-      Number(projectId),
+      projectId,
       asset.id,
       asset.storage_path,
     );
@@ -843,13 +1067,13 @@
     }
 
     // Fetch from API and cache
-    const { url } = await assetsApi.getUrl(Number(projectId), asset.id);
+    const { url } = await assetsApi.getUrl(projectId, asset.id);
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
 
     // Cache for future use (fire and forget)
     cacheAsset(
-      Number(projectId),
+      projectId,
       asset.id,
       asset.storage_path,
       asset.mime_type,
@@ -902,10 +1126,11 @@
     }
   }
 
-  function onFileDeleted(fileId: number) {
+  function onFileDeleted(fileId: string) {
     files = files.filter((f) => f.id !== fileId);
     if (selectedFile?.id === fileId) {
       selectedFile = files[0] || null;
+      void loadCommentsForSelectedFile(selectedFile);
     }
 
     // Clean up Yjs data for the deleted file
@@ -931,9 +1156,9 @@
     }
   }
 
-  function onAssetDeleted(assetId: number) {
+  function onAssetDeleted(assetId: string) {
     // Remove from cache
-    removeCachedAsset(Number(projectId), assetId).catch((err) =>
+    removeCachedAsset(projectId, assetId).catch((err) =>
       console.warn("Failed to remove deleted asset from cache:", err),
     );
     assets = assets.filter((a) => a.id !== assetId);
@@ -945,6 +1170,204 @@
   function onProjectUpdated(updatedProject: Project) {
     if (project && updatedProject.id === project.id) {
       project = { ...project, ...updatedProject };
+      if (updatedProject.current_user_role) {
+        currentUserRole = updatedProject.current_user_role as typeof currentUserRole;
+      }
+    }
+  }
+
+  let isRefreshingPermissions = false;
+  let isResettingRealtime = false;
+
+  function destroyRealtimeConnections() {
+    if (yjsConnection) {
+      destroyYjsConnection(yjsConnection);
+      yjsConnection = null;
+    }
+    if (projectSync) {
+      projectSync.destroy();
+      projectSync = null;
+    }
+    if (commentSync) {
+      commentSync.destroy();
+      commentSync = null;
+    }
+  }
+
+  function initRealtimeConnections() {
+    yjsConnection = createProjectYjs(
+      projectId,
+      (status) => {
+        isConnected = status.isConnected;
+        isSynced = status.isSynced;
+        isLocalSynced = status.isLocalSynced;
+      },
+      $auth.user,
+      $auth.token,
+    );
+
+    projectSync = createProjectSync(projectId, {
+      onFileCreated,
+      onFileUpdated,
+      onFileDeleted,
+      onAssetCreated,
+      onAssetUpdated,
+      onAssetDeleted,
+      onProjectUpdated,
+      onUnauthorized: (event) => {
+        void handlePermissionSignal(
+          event.reason || "You no longer have permission for this realtime action",
+        );
+      },
+    }, $auth.token);
+
+    commentSync = createCommentSync(
+      projectId,
+      {
+        onConnected: ({ reconnected }) => {
+          if (reconnected && selectedFile && !selectedFile.is_folder) {
+            void loadCommentsForSelectedFile(selectedFile);
+          }
+        },
+        onThreadCreated: (message) => {
+          if (message.thread) {
+            applyThreadUpdate(message.thread);
+          }
+        },
+        onThreadUpdated: (message) => {
+          if (message.thread) {
+            applyThreadUpdate(message.thread);
+          }
+        },
+        onReplyCreated: (message) => {
+          if (message.reply && message.thread_id) {
+            applyReplyUpdate(message.thread_id, message.reply);
+          }
+        },
+        onPermissionChanged: (message) => {
+          void handlePermissionSignal({
+            reason: message.reason || "Your project permissions have changed",
+            action: message.action,
+            newRole: message.new_role,
+          });
+        },
+        onUnauthorized: (event) => {
+          void handlePermissionSignal(
+            event.reason ||
+              "You no longer have permission for realtime comment updates",
+          );
+        },
+      },
+      $auth.token,
+    );
+  }
+
+  async function resetRealtimeConnectionsForWriteLoss() {
+    if (isResettingRealtime) return;
+    isResettingRealtime = true;
+
+    try {
+      const selectedFileId = selectedFile?.id ?? null;
+
+      // Drop old Yjs doc/provider state so unsynced edits cannot be replayed later.
+      destroyRealtimeConnections();
+      initRealtimeConnections();
+
+      // Force file reselection so the rebuilt editor instance reopens the current file.
+      if (selectedFileId) {
+        const reopenedFile = files.find((file) => file.id === selectedFileId) || null;
+        selectedFile = null;
+        await tick();
+        selectedFile = reopenedFile;
+
+        if (reopenedFile && yjsConnection?.ydoc) {
+          const reopenedYtext = getFileText(yjsConnection.ydoc, reopenedFile.id);
+          if (reopenedYtext && reopenedYtext.length === 0 && reopenedFile.content) {
+            reopenedYtext.insert(0, reopenedFile.content);
+          }
+        }
+      }
+
+      if (selectedFile && !selectedFile.is_folder) {
+        await loadCommentsForSelectedFile(selectedFile);
+      }
+    } finally {
+      isResettingRealtime = false;
+    }
+  }
+
+  async function handlePermissionSignal(
+    signal:
+      | string
+      | {
+          reason: string;
+          action?: "role_updated" | "removed_from_project";
+          newRole?: "owner" | "admin" | "writer" | "commentor" | "reader";
+        },
+  ) {
+    if (isRefreshingPermissions) return;
+    isRefreshingPermissions = true;
+
+    const normalized = typeof signal === "string" ? { reason: signal } : signal;
+    const reason = normalized.reason;
+    const action = normalized.action;
+    const newRole = normalized.newRole;
+
+    const hadWrite = canWrite;
+    const hadComment = canComment;
+
+    try {
+      const nextCanWriteFromRole = (role: string) => ["owner", "admin", "writer"].includes(role);
+      const nextCanCommentFromRole = (role: string) => nextCanWriteFromRole(role) || role === "commentor";
+
+      const hasImmediateRoleUpdate = action === "removed_from_project" || !!newRole;
+
+      if (project && action === "removed_from_project") {
+        project = { ...project, current_user_role: "reader" };
+        currentUserRole = "reader";
+      } else if (project && newRole) {
+        project = { ...project, current_user_role: newRole };
+        currentUserRole = newRole;
+      } else if (!project && newRole) {
+        currentUserRole = newRole;
+      }
+
+      if (!hasImmediateRoleUpdate) {
+        const loaded = await loadProject();
+        if (!loaded) return;
+      } else {
+        // Reconcile with backend source of truth without delaying UI lock.
+        void loadProject();
+      }
+
+      const resolvedRole = currentUserRole;
+      const nextCanWrite = nextCanWriteFromRole(resolvedRole);
+      const nextCanComment = nextCanCommentFromRole(resolvedRole);
+
+      if (hadWrite && !nextCanWrite) {
+        editorNewCommentDraft = null;
+        await resetRealtimeConnectionsForWriteLoss();
+        notifications.show(
+          reason || "Your write access was removed. Editor switched to read-only.",
+          "warning",
+          5000,
+        );
+        return;
+      }
+
+      if (hadComment && !nextCanComment) {
+        editorNewCommentDraft = null;
+        notifications.show(
+          reason || "Your comment access was removed. Comment inputs are disabled.",
+          "warning",
+          5000,
+        );
+        return;
+      }
+
+      notifications.show(reason || "Project permissions were updated.", "info", 3000);
+    } finally {
+      isRefreshingPermissions = false;
     }
   }
 
@@ -959,7 +1382,7 @@
           `preview-file-${projectId}`,
         );
         if (savedPreviewId) {
-          previewFileId = parseInt(savedPreviewId, 10);
+          previewFileId = savedPreviewId;
         }
 
         // Initialize panel widths based on current window size and saved ratio
@@ -984,29 +1407,16 @@
         }
       }
 
-      loadProject();
-      loadFiles();
-      loadAssets();
+      const loaded = await loadProject();
+      if (!loaded) return;
 
-      yjsConnection = createProjectYjs(
-        Number(projectId),
-        (status) => {
-          isConnected = status.isConnected;
-          isSynced = status.isSynced;
-          isLocalSynced = status.isLocalSynced;
-        },
-        $auth.user,
-      );
+      await Promise.all([loadFiles(), loadAssets()]);
 
-      projectSync = createProjectSync(Number(projectId), {
-        onFileCreated,
-        onFileUpdated,
-        onFileDeleted,
-        onAssetCreated,
-        onAssetUpdated,
-        onAssetDeleted,
-        onProjectUpdated,
-      });
+      initRealtimeConnections();
+
+      if (selectedFile && !selectedFile.is_folder) {
+        await loadCommentsForSelectedFile(selectedFile);
+      }
     })();
 
     const handleBeforeUnload = () => {
@@ -1024,8 +1434,7 @@
         !e.altKey &&
         (e.key.toLowerCase() === "s" || e.code === "KeyS")
       ) {
-        // Ctrl+Shift+S for export PDF - capture and stop propagation early
-        // so browser/extension handlers are less likely to win this shortcut.
+        if (!canWrite) return;
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -1050,6 +1459,7 @@
         e.stopPropagation();
         handleSearchReplace();
       } else if (e.key === "F2") {
+        if (!canWrite) return;
         e.preventDefault();
         handleRenameSelectedItem();
       } else if (
@@ -1057,6 +1467,7 @@
         (selectedFile || selectedAsset) &&
         fileTreeHasFocus
       ) {
+        if (!canWrite) return;
         // Only delete file/asset when file tree panel has focus
         e.preventDefault();
         handleDeleteSelectedItem();
@@ -1064,11 +1475,13 @@
         (e.metaKey || e.ctrlKey) &&
         (e.key === "/" || (e.shiftKey && e.key === ":"))
       ) {
+        if (!canWrite) return;
         // Ctrl+/ for line comment (including azerty support where / requires shift)
         e.preventDefault();
         e.stopPropagation();
         handleToggleLineComment();
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "A") {
+        if (!canWrite) return;
         // Ctrl+Shift+A for block comment
         e.preventDefault();
         e.stopPropagation();
@@ -1090,8 +1503,7 @@
   });
 
   onDestroy(() => {
-    if (yjsConnection) destroyYjsConnection(yjsConnection);
-    if (projectSync) projectSync.destroy();
+    destroyRealtimeConnections();
   });
 
   let selectedYtext = $derived(
@@ -1101,7 +1513,7 @@
   );
 
   // Track file observers for Yjs content changes
-  let fileObservers = new Map<number, () => void>();
+  let fileObservers = new Map<string, () => void>();
   let contentVersion = $state(0); // Increment to trigger reactivity
 
   // Initialize file content and set up observers
@@ -1339,6 +1751,7 @@
       separateWindow,
       projectName: project?.name ?? "",
       onCloseSeparatePreview: closeSeparatePreview,
+      onOpenShare: () => (showShareDialog = true),
       onExportPDF: exportAsPDF,
       onExportPNG: exportAsPNG,
       onExportSVG: exportAsSVG,
@@ -1445,6 +1858,7 @@
             class="project-name-button"
             onclick={handleProjectNameClick}
             title={project.name}
+            disabled={!canManageProject}
           >
             {project.name}
           </button>
@@ -1464,6 +1878,7 @@
           onToggleLineComment={handleToggleLineComment}
           onToggleBlockComment={handleToggleBlockComment}
           onAddComment={() => {
+            if (!canComment) return;
             if (editorPane) {
               editorPane.handleAddComment();
               if (activePanel !== "comments") activePanel = "comments";
@@ -1479,6 +1894,8 @@
           {wrapLines}
           {negativePreview}
           {showToolbar}
+          {canWrite}
+          {canComment}
         />
       </div>
 
@@ -1532,17 +1949,18 @@
             onSelectFile={handleSelectFile}
             onSelectAsset={handleSelectAsset}
             onSetPreviewFile={handleSetPreviewFile}
-            onRenameFile={handleRenameFile}
-            onRenameAsset={handleRenameAsset}
-            onMoveFile={handleMoveFile}
-            onMoveAsset={handleMoveAsset}
-            onDeleteFile={handleDeleteFile}
-            onDeleteAsset={handleDeleteAsset}
+            onRenameFile={canWrite ? handleRenameFile : null}
+            onRenameAsset={canWrite ? handleRenameAsset : null}
+            onMoveFile={canWrite ? handleMoveFile : null}
+            onMoveAsset={canWrite ? handleMoveAsset : null}
+            onDeleteFile={canWrite ? handleDeleteFile : null}
+            onDeleteAsset={canWrite ? handleDeleteAsset : null}
             onClearSelection={handleClearSelection}
-            onCreateFile={handleCreateFile}
-            onCreateFolder={handleCreateFolder}
-            onUploadAsset={() => (showUploadAssetModal = true)}
+            onCreateFile={canWrite ? handleCreateFile : null}
+            onCreateFolder={canWrite ? handleCreateFolder : null}
+            onUploadAsset={canWrite ? () => (showUploadAssetModal = true) : null}
             provider={yjsConnection?.provider || null}
+            {canWrite}
           />
         </div>
       {:else if activePanel === "search"}
@@ -1561,7 +1979,9 @@
         <div style="width: {leftPanelWidth}px; height: 100%; overflow: hidden;">
           <CommentsPanel
             comments={editorComments}
-            currentUserId={$auth.user?.id || 0}
+            currentUserId={$auth.user?.id || ""}
+            {canComment}
+            canDeleteComments={canManageProject}
             newCommentDraft={editorNewCommentDraft}
             {activeCommentId}
             {hoveredCommentId}
@@ -1656,13 +2076,14 @@
         {selectedAsset}
         {assets}
         {files}
+        commentsForAnchors={editorComments}
         ytext={selectedYtext}
         provider={yjsConnection?.provider || null}
         {isConnected}
         onGetAssetUrl={handleGetAssetUrl}
         onGetAssetBlob={handleGetAssetBlob}
         ydoc={yjsConnection?.ydoc || null}
-        currentUserId={$auth.user?.id || 0}
+        currentUserId={$auth.user?.id || ""}
         {diagnostics}
         {wrapLines}
         {showToolbar}
@@ -1680,19 +2101,19 @@
         onCommentHover={(commentId: string | null) => {
           hoveredCommentId = commentId;
         }}
-        onCommentsChange={(c: Comment[]) => (editorComments = c)}
-        onNewCommentDraftChange={(
-          d: {
-            text: string;
-            range: { from: number; to: number };
-            selectedText: string;
-          } | null,
-        ) => (editorNewCommentDraft = d)}
+        onNewCommentDraftChange={(d: { text: string; range: { from: number; to: number }; selectedText: string } | null) => editorNewCommentDraft = d}
         onDocChange={() => {
           if (activePanel === "comments") {
             updateCommentPositions();
           }
         }}
+        onCreateComment={handleCreateComment}
+        onResolveComment={handleResolveComment}
+        onDeleteComment={handleDeleteComment}
+        onReplyComment={handleReplyComment}
+        {canWrite}
+        {canComment}
+        canModerateComments={canManageProject}
       />
 
       <div
@@ -1732,6 +2153,7 @@
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
           {negativePreview}
+          onOpenShare={() => (showShareDialog = true)}
           bind:renderSession
           {showToolbar}
           {separateWindow}
@@ -1761,6 +2183,8 @@
       onClose={() => (showUploadAssetModal = false)}
       onUpload={handleUploadAsset}
     />
+
+    <ShareDialog bind:show={showShareDialog} {project} />
   </div>
 {/if}
 

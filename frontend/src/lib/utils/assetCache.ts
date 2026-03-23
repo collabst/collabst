@@ -6,8 +6,8 @@ const STORE_NAME = 'assets';
 
 interface CachedAssetEntry {
   cacheKey: string;
-  projectId: number;
-  assetId: number;
+  projectId: string;
+  assetId: string;
   storagePath: string;
   mimeType: string;
   blob: ArrayBuffer;
@@ -55,8 +55,8 @@ export async function initAssetCache(): Promise<void> {
  * Get a cached asset. Returns null if not cached or if storage_path doesn't match.
  */
 export async function getCachedAsset(
-  projectId: number,
-  assetId: number,
+  projectId: string,
+  assetId: string,
   currentStoragePath: string
 ): Promise<CachedAsset | null> {
   if (!browser || !db) return null;
@@ -104,8 +104,8 @@ export async function getCachedAsset(
  * Store an asset in the cache.
  */
 export async function cacheAsset(
-  projectId: number,
-  assetId: number,
+  projectId: string,
+  assetId: string,
   storagePath: string,
   mimeType: string,
   blob: ArrayBuffer
@@ -148,8 +148,8 @@ export async function cacheAsset(
  * Remove an asset from the cache.
  */
 export async function removeCachedAsset(
-  projectId: number,
-  assetId: number
+  projectId: string,
+  assetId: string
 ): Promise<void> {
   if (!browser || !db) return;
 

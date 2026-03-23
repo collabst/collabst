@@ -29,7 +29,7 @@ ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
 
 def _build_public_profile(user: User, is_self: bool) -> UserPublicProfile:
     return UserPublicProfile(
-        id=user.id,
+        id=user.hash_id,
         username=user.username,
         created_at=user.created_at,
         updated_at=user.updated_at,
@@ -47,11 +47,11 @@ async def get_me(current_user: CurrentUser):
 
 @router.get("/{user_id}", response_model=UserPublicProfile)
 async def get_user_profile(
-    user_id: int,
+    user_id: str,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.hash_id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:

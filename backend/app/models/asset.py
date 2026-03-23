@@ -3,12 +3,14 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import Base
+from app.core.hash_ids import generate_hash_id
 
 
 class Asset(Base):
     __tablename__ = "assets"
 
     id = Column(Integer, primary_key=True, index=True)
+    hash_id = Column(String(20), unique=True, index=True, nullable=False, default=generate_hash_id)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     filename = Column(String, nullable=False)
     path = Column(String, nullable=False, index=True)

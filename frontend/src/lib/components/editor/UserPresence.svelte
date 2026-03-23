@@ -9,7 +9,7 @@
   let { provider }: UserPresenceProps = $props()
 
   let awarenessStates: [number, any][] = $state([])
-  let loadedProfilePics = $state<Record<number, boolean>>({})
+  let loadedProfilePics = $state<Record<string, boolean>>({})
 
   function getUserName(state: any) {
     return state?.user?.name || state?.user?.username || null
@@ -46,15 +46,15 @@
     awarenessStates.filter(([_, state]) => getUserName(state)).length
   )
 
-  function profilePicSrc(userId: number) {
+  function profilePicSrc(userId: string) {
     return getProfilePicUrl(userId)
   }
 
-  function handleAvatarLoad(userId: number) {
+  function handleAvatarLoad(userId: string) {
     loadedProfilePics = { ...loadedProfilePics, [userId]: true }
   }
 
-  function hasLoadedAvatar(userId: number) {
+  function hasLoadedAvatar(userId: string) {
     return !!loadedProfilePics[userId]
   }
 </script>

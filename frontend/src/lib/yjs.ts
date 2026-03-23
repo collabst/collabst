@@ -27,9 +27,10 @@ function generateUserColor(): string {
 }
 
 export function createProjectYjs(
-  projectId: number,
+  projectId: string,
   onStatusChange: (status: { isConnected: boolean; isSynced: boolean; isLocalSynced: boolean }) => void,
-  user?: User | null
+  user?: User | null,
+  token?: string | null
 ): YjsConnection {
   console.log('[YJS] Creating project-wide connection for project:', projectId)
 
@@ -48,7 +49,10 @@ export function createProjectYjs(
     `${WS_URL}/ws`,
     `project-${projectId}`,
     ydoc,
-    { connect: true }
+    {
+      connect: true,
+      params: token ? { token } : {},
+    }
   )
 
   // Set user awareness state for presence
@@ -121,7 +125,7 @@ export function destroyYjsConnection(connection: YjsConnection) {
   connection.ydoc.destroy()
 }
 
-export function getFileText(ydoc: Y.Doc | null, fileId: number): Y.Text | null {
+export function getFileText(ydoc: Y.Doc | null, fileId: string): Y.Text | null {
   if (!ydoc) return null
   return ydoc.getText(`file-${fileId}`)
 }

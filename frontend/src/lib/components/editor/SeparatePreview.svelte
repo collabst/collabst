@@ -7,6 +7,7 @@
   import MoveVertical from "@lucide/svelte/icons/move-vertical";
   import File from "@lucide/svelte/icons/file";
   import Columns2 from "@lucide/svelte/icons/columns-2";
+  import Share2 from "@lucide/svelte/icons/share-2";
   import Download from "@lucide/svelte/icons/download";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
@@ -20,6 +21,7 @@
     onExportPNG?: () => void;
     onExportSVG?: () => void;
     onExportSourcesAsZip?: () => void;
+    onOpenShare?: () => void;
   }
 
   let {
@@ -30,6 +32,7 @@
     onExportPNG = () => { alert("Export as PNG not implemented yet"); },
     onExportSVG = () => { alert("Export as SVG not implemented yet"); },
     onExportSourcesAsZip = () => {},
+    onOpenShare = () => {},
   }: Props = $props();
 
   // iframe reference for communication
@@ -278,8 +281,11 @@
       </Tooltip>
     </div>
     <div class="download-controls">
+      <Tooltip text="Share" position="bottom">
+        <ToolButton icon={Share2} onclick={onOpenShare} position="first"/>
+      </Tooltip>
       <Tooltip text="Export PDF" position="bottom">
-        <ToolButton icon={Download} onclick={onExportPDF} position="first"/>
+        <ToolButton icon={Download} onclick={onExportPDF} position="middle"/>
       </Tooltip>
       <Tooltip text="Export..." position="bottom">
         <DropdownToolButton 

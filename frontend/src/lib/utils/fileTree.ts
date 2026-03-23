@@ -7,7 +7,7 @@ import type { File, FileTreeNode } from '$lib/types'
  */
 export function buildFileTree(files: File[]): FileTreeNode[] {
   // Build map: id -> tree node
-  const fileMap = new Map<number, FileTreeNode>()
+  const fileMap = new Map<string, FileTreeNode>()
 
   files.forEach((f) => {
     fileMap.set(f.id, {
@@ -67,7 +67,7 @@ export function buildFileTree(files: File[]): FileTreeNode[] {
  */
 export function flattenTree(
   nodes: FileTreeNode[],
-  expandedFolders?: Set<number>
+  expandedFolders?: Set<string>
 ): FileTreeNode[] {
   const result: FileTreeNode[] = []
 
@@ -94,7 +94,7 @@ export function flattenTree(
  * @param fileId - File ID to find
  * @returns The found node or null
  */
-export function findNodeById(nodes: FileTreeNode[], fileId: number): FileTreeNode | null {
+export function findNodeById(nodes: FileTreeNode[], fileId: string): FileTreeNode | null {
   for (const node of nodes) {
     if (node.id === fileId) {
       return node
@@ -113,8 +113,8 @@ export function findNodeById(nodes: FileTreeNode[], fileId: number): FileTreeNod
  * @param fileId - File ID to get ancestors for
  * @returns Array of ancestor IDs (from root to parent)
  */
-export function getAncestorIds(files: File[], fileId: number): number[] {
-  const ancestorIds: number[] = []
+export function getAncestorIds(files: File[], fileId: string): string[] {
+  const ancestorIds: string[] = []
   let current = files.find((f) => f.id === fileId)
 
   while (current && current.parent_id !== null) {

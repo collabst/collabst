@@ -23,7 +23,7 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import MoreHorizontal from "@lucide/svelte/icons/ellipsis";
   import { onDestroy } from "svelte";
-  import { setCurrentTracker } from "$lib/codemirror/comments";
+  import { setCurrentTracker, updateCommentsEffect } from "$lib/codemirror/comments";
   import type {
     File as ProjectFile,
     Asset,
@@ -31,7 +31,7 @@
     Diagnostic,
   } from "$lib/types";
   import { revokeBlobUrl } from "$lib/utils/assetCache";
-  import type * as Y from "yjs";
+  import * as Y from "yjs";
   import type { WebsocketProvider } from "y-websocket";
   import type { Component } from "svelte";
 
@@ -42,24 +42,37 @@
     ytext: Y.Text | null;
     provider: WebsocketProvider | null;
     isConnected: boolean;
-    onGetAssetUrl: ((assetId: number) => Promise<string>) | null;
+    onGetAssetUrl: ((assetId: string) => Promise<string>) | null;
     onGetAssetBlob: ((asset: Asset) => Promise<string>) | null;
     ydoc: Y.Doc | null;
-    currentUserId: number;
+    currentUserId: string;
     diagnostics?: Diagnostic[];
     wrapLines?: boolean;
     showToolbar?: boolean;
     separateWindow?: Window | null;
     closeSeparatePreview?: () => void;
-    onRenameAsset?: ((assetId: number) => void) | null;
-    onDeleteAsset?: ((assetId: number) => void) | null;
+    onRenameAsset?: ((assetId: string) => void) | null;
+    onDeleteAsset?: ((assetId: string) => void) | null;
     files?: ProjectFile[];
+    commentsForAnchors?: Comment[];
     onCommentsChange?: (comments: Comment[]) => void;
     onNewCommentDraftChange?: (draft: { text: string; range: { from: number; to: number }; selectedText: string } | null) => void;
     activeCommentId?: string | null;
     onCommentClick?: (commentId: string) => void;
     onCommentHover?: (commentId: string | null) => void;
     onDocChange?: () => void;
+    onCreateComment?: (payload: {
+      file_id: string;
+      content: string;
+      anchor_rel_json: string | null;
+      head_rel_json: string | null;
+    }) => Promise<void> | void;
+    onResolveComment?: (commentId: string) => Promise<void> | void;
+    onDeleteComment?: (commentId: string) => Promise<void> | void;
+    onReplyComment?: (commentId: string, content: string) => Promise<void> | void;
+    canWrite?: boolean;
+    canComment?: boolean;
+    canModerateComments?: boolean;
   }
 
   let {
@@ -81,18 +94,26 @@
     onRenameAsset = null,
     onDeleteAsset = null,
     files = [],
+    commentsForAnchors = [],
     onCommentsChange,
     onNewCommentDraftChange,
     activeCommentId = null,
     onCommentClick,
     onCommentHover,
     onDocChange,
+    onCreateComment = undefined,
+    onResolveComment = undefined,
+    onDeleteComment = undefined,
+    onReplyComment = undefined,
+    canWrite = true,
+    canComment = true,
+    canModerateComments = false,
   }: EditorPaneProps = $props();
 
   // Simple blob URL cache - keyed by asset ID
-  const blobUrlCache: Record<number, string> = {};
+  const blobUrlCache: Record<string, string> = {};
   let currentBlobUrl = $state<string | null>(null);
-  let currentBlobAssetId = $state<number | null>(null);
+  let currentBlobAssetId = $state<string | null>(null);
 
   // Load blob URL for an asset (with caching)
   async function loadAssetBlobUrl(asset: Asset) {
@@ -303,6 +324,55 @@
     }
   });
 
+  function resolveRangeFromComment(comment: Comment): { from: number; to: number } | null {
+    const view = codeEditor?.getView?.();
+    if (!view) return null;
+
+    // Preferred path: resolve persisted Yjs relative anchors against current text.
+    if (comment.anchorRelJson && comment.headRelJson && ytext?.doc) {
+      try {
+        const anchor = Y.createRelativePositionFromJSON(JSON.parse(comment.anchorRelJson));
+        const head = Y.createRelativePositionFromJSON(JSON.parse(comment.headRelJson));
+        const anchorPos = Y.createAbsolutePositionFromRelativePosition(anchor, ytext.doc);
+        const headPos = Y.createAbsolutePositionFromRelativePosition(head, ytext.doc);
+        if (anchorPos && headPos) {
+          return {
+            from: Math.min(anchorPos.index, headPos.index),
+            to: Math.max(anchorPos.index, headPos.index),
+          };
+        }
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  function syncCommentDecorationsFromAnchors() {
+    const view = codeEditor?.getView?.();
+    if (!view) return;
+
+    const ranges = new Map<string, { from: number; to: number }>();
+    for (const comment of commentsForAnchors) {
+      if (comment.resolved) continue;
+      const range = resolveRangeFromComment(comment);
+      if (!range) continue;
+      if (range.to <= range.from) continue;
+      ranges.set(comment.id, range);
+    }
+
+    view.dispatch({
+      effects: updateCommentsEffect.of({ comments: ranges }),
+    });
+  }
+
+  // Keep highlight ranges in sync from DB comments + Yjs anchor resolution.
+  $effect(() => {
+    if (!codeEditor || !selectedFile || !commentsForAnchors) return;
+    syncCommentDecorationsFromAnchors();
+  });
+
   // Reset listeners flag and hide comment button when file changes
   $effect(() => {
     if (selectedFile) {
@@ -322,21 +392,51 @@
     }
   });
 
+  // If permissions are downgraded, immediately hide any pending comment composer UI.
+  $effect(() => {
+    if (!canComment) {
+      if (newCommentDraft) {
+        newCommentDraft = null;
+      }
+      showCommentButton = false;
+    }
+  });
+
   // Scroll the editor to a specific comment's range
   export function scrollToComment(commentId: string) {
-    const tracker = codeEditor?.getCommentTracker();
-    if (tracker) {
-      tracker.scrollToComment(commentId);
+    const comment = commentsForAnchors.find((item) => item.id === commentId);
+    if (!comment) return;
+
+    const range = resolveRangeFromComment(comment);
+    const view = codeEditor?.getView?.();
+    if (view && range) {
+      view.dispatch({
+        selection: { anchor: range.from, head: range.to },
+        scrollIntoView: true,
+      });
     }
   }
 
   // Get the pixel y-positions of all comments relative to editor content top
   export function getCommentPositions(): Map<string, number> {
-    const tracker = codeEditor?.getCommentTracker();
-    if (tracker) {
-      return tracker.getCommentPositions();
+    const positions = new Map<string, number>();
+    const view = codeEditor?.getView?.();
+    if (!view) return positions;
+
+    const scrollDOM = view.scrollDOM;
+    const scrollTop = scrollDOM.scrollTop;
+    const editorRect = scrollDOM.getBoundingClientRect();
+
+    for (const comment of commentsForAnchors) {
+      const range = resolveRangeFromComment(comment);
+      if (!range) continue;
+      const coords = view.coordsAtPos(range.from);
+      if (!coords) continue;
+      const top = coords.top - editorRect.top + scrollTop;
+      positions.set(comment.id, top);
     }
-    return new Map();
+
+    return positions;
   }
 
   // Get the editor scroll DOM for scroll syncing
@@ -527,7 +627,7 @@
   }
 
   // Reset dimensions when asset changes
-  let lastAssetId = $state<number | null>(null);
+  let lastAssetId = $state<string | null>(null);
   $effect(() => {
     if (selectedAsset && selectedAsset.id !== lastAssetId) {
       imageDimensions = null;
@@ -538,6 +638,7 @@
   });
 
   export function handleAddComment() {
+    if (!canComment) return;
     if (!codeEditor) return;
 
     const selection = codeEditor.getSelection();
@@ -556,8 +657,61 @@
     showCommentButton = false;
   }
 
-  export function handleSubmitNewComment(content: string) {
-    if (!codeEditor || !newCommentDraft || !selectedFile || !ydoc) return;
+  function getCommentContextFromSelection(from: number, to: number) {
+    const view = codeEditor?.getView();
+    if (!view) {
+      return {
+        anchorRelJson: null,
+        headRelJson: null,
+      };
+    }
+
+    let anchorRelJson: string | null = null;
+    let headRelJson: string | null = null;
+    if (ytext) {
+      try {
+        const anchor = Y.createRelativePositionFromTypeIndex(ytext, from);
+        const head = Y.createRelativePositionFromTypeIndex(ytext, to);
+        anchorRelJson = JSON.stringify(Y.relativePositionToJSON(anchor));
+        headRelJson = JSON.stringify(Y.relativePositionToJSON(head));
+      } catch (error) {
+        console.warn("Failed to create relative anchor positions for comment:", error);
+      }
+    }
+
+    return {
+      anchorRelJson,
+      headRelJson,
+    };
+  }
+
+  export async function handleSubmitNewComment(content: string) {
+    if (!canComment) return;
+    if (!codeEditor || !newCommentDraft || !selectedFile) return;
+
+    if (onCreateComment) {
+      const context = getCommentContextFromSelection(
+        newCommentDraft.range.from,
+        newCommentDraft.range.to,
+      );
+
+      try {
+        await onCreateComment({
+          file_id: selectedFile.id,
+          content,
+          anchor_rel_json: context.anchorRelJson,
+          head_rel_json: context.headRelJson,
+        });
+      } catch (error) {
+        console.error("Failed to create comment:", error);
+        return;
+      }
+
+      newCommentDraft = null;
+      return;
+    }
+
+    if (!ydoc) return;
 
     const tracker = codeEditor.getCommentTracker();
     if (!tracker) return;
@@ -595,7 +749,18 @@
     newCommentDraft = null;
   }
 
-  export function handleCommentResolve(commentId: string) {
+  export async function handleCommentResolve(commentId: string) {
+    if (!canComment) return;
+
+    if (onResolveComment) {
+      try {
+        await onResolveComment(commentId);
+      } catch (error) {
+        console.error("Failed to resolve comment:", error);
+      }
+      return;
+    }
+
     if (!codeEditor) return;
 
     const tracker = codeEditor.getCommentTracker();
@@ -604,7 +769,18 @@
     tracker.resolveComment(commentId);
   }
 
-  export function handleCommentDelete(commentId: string) {
+  export async function handleCommentDelete(commentId: string) {
+    if (!canModerateComments) return;
+
+    if (onDeleteComment) {
+      try {
+        await onDeleteComment(commentId);
+      } catch (error) {
+        console.error("Failed to delete comment:", error);
+      }
+      return;
+    }
+
     if (!codeEditor) return;
 
     const tracker = codeEditor.getCommentTracker();
@@ -613,7 +789,18 @@
     tracker.removeComment(commentId);
   }
 
-  export function handleCommentReply(commentId: string, content: string) {
+  export async function handleCommentReply(commentId: string, content: string) {
+    if (!canComment) return;
+
+    if (onReplyComment) {
+      try {
+        await onReplyComment(commentId, content);
+      } catch (error) {
+        console.error("Failed to reply to comment:", error);
+      }
+      return;
+    }
+
     if (!codeEditor) return;
 
     const tracker = codeEditor.getCommentTracker();
@@ -960,22 +1147,30 @@
   }
 
   let flatButtons = $derived.by(() => {
-    const leftButtons = currentToolbarButtons.flatMap((group, groupIndex) =>
-      group.map((button, buttonIndex) => ({
-        ...button,
-        section: "left" as const,
-        groupIndex,
-        buttonIndex,
-        originalPosition: button.position || "standalone",
-      })),
-    );
+    const leftButtons = currentToolbarButtons
+      .flatMap((group, groupIndex) =>
+        group.map((button, buttonIndex) => ({
+          ...button,
+          section: "left" as const,
+          groupIndex,
+          buttonIndex,
+          originalPosition: button.position || "standalone",
+        })),
+      )
+      .filter((button) => {
+        const isWriteButton = ["bold", "italic", "underline", "list", "numberedList", "equation", "codeBlock", "upload", "rename", "delete"].includes(button.id);
+        const isCommentButton = button.id === "addComment";
+        if (isWriteButton && !canWrite) return false;
+        if (isCommentButton && !canComment) return false;
+        return true;
+      })
 
     const rightButtonsFlat = rightButtons.map((button, buttonIndex) => ({
-      ...button,
-      section: "right" as const,
-      groupIndex: currentToolbarButtons.length,
-      buttonIndex,
-      originalPosition: button.position || "standalone",
+        ...button,
+        section: "right" as const,
+        groupIndex: currentToolbarButtons.length,
+        buttonIndex,
+        originalPosition: button.position || "standalone",
     }));
 
     return [...leftButtons, ...rightButtonsFlat];
@@ -1295,19 +1490,22 @@
     <div class="editor-wrapper" class:hidden={selectedAsset}>
       <div class="editor-container" bind:this={editorContainer}>
         <div class="editor-content">
-          <CodeEditor
-            bind:this={codeEditor}
-            {ytext}
-            {provider}
-            {ydoc}
-            fileId={selectedFile.id}
-            onTrackerReady={handleTrackerReady}
-            {diagnostics}
-            {fileName}
-            {wrapLines}
-          />
+          {#key `${selectedFile.id}:${canWrite}:${ydoc?.guid ?? "no-doc"}`}
+            <CodeEditor
+              bind:this={codeEditor}
+              {ytext}
+              {provider}
+              {ydoc}
+              fileId={selectedFile.id}
+              onTrackerReady={handleTrackerReady}
+              {diagnostics}
+              {fileName}
+              {wrapLines}
+              editable={canWrite}
+            />
+          {/key}
 
-          {#if showCommentButton}
+          {#if showCommentButton && canComment}
             <div
               class="floating-comment-wrapper"
               style="position: absolute; top: {commentButtonPosition.top}px; left: {commentButtonPosition.left}px;"

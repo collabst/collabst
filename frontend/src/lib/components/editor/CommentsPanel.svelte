@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from "$app/environment";
   import type { Comment } from "$lib/types";
   import type { UserProfile } from "$lib/types";
   import { usersApi } from "$lib/services/api";
@@ -6,7 +7,9 @@
 
   interface CommentsPanelProps {
     comments?: Comment[];
-    currentUserId: number;
+    currentUserId: string;
+    canComment?: boolean;
+    canDeleteComments?: boolean;
     newCommentDraft?: {
       text: string;
       range: { from: number; to: number };
@@ -32,6 +35,8 @@
   let {
     comments = [],
     currentUserId,
+    canComment = true,
+    canDeleteComments = false,
     newCommentDraft = null,
     activeCommentId = null,
     hoveredCommentId = null,
@@ -50,10 +55,14 @@
     onPanelScroll,
   }: CommentsPanelProps = $props();
 
-  let showResolved = $state(false);
+  let showResolved = $state(
+    browser && localStorage.getItem('editor.comments.showResolved') !== null
+      ? localStorage.getItem('editor.comments.showResolved') === 'true'
+      : false
+  );
   let draftCommentText = $state("");
-  let userProfiles = $state<Record<number, UserProfile>>({});
-  let requestedUserIds = $state<Set<number>>(new Set());
+  let userProfiles = $state<Record<string, UserProfile>>({});
+  let requestedUserIds = $state<Set<string>>(new Set());
   let panelScrollEl: HTMLElement | undefined = $state();
   let threadHeights = $state<Map<string, number>>(new Map());
   let isSyncingScroll = false;
@@ -67,7 +76,13 @@
   );
 
   $effect(() => {
-    const userIds = new Set<number>();
+    if (browser) {
+      localStorage.setItem('editor.comments.showResolved', String(showResolved))
+    }
+  })
+
+  $effect(() => {
+    const userIds = new Set<string>();
     for (const comment of comments) {
       userIds.add(comment.authorId);
       for (const reply of comment.replies) {
@@ -76,7 +91,7 @@
     }
 
     const toFetch = [...userIds].filter(
-      (id) => id > 0 && !userProfiles[id] && !requestedUserIds.has(id),
+      (id) => !!id && !userProfiles[id] && !requestedUserIds.has(id),
     );
     if (!toFetch.length) return;
 
@@ -104,7 +119,7 @@
 
   // Focus and clear when draft changes
   $effect(() => {
-    if (newCommentDraft) {
+    if (newCommentDraft && canComment) {
       draftCommentText = "";
       setTimeout(() => {
         const textarea = document.querySelector(
@@ -138,10 +153,12 @@
     onPanelScroll?.(target.scrollTop);
   }
 
-  // Compute positioned comments with overlap resolution
-  // The active comment gets priority placement at its ideal position
+  // Compute positioned comments with overlap resolution.
+  // If no editor-mapped position exists yet, fall back to line-based placement
+  // so DB-backed comments still render after reload/reconnect.
   let positionedComments = $derived.by(() => {
     const MIN_GAP = 4;
+    const LINE_HEIGHT_FALLBACK = 20;
 
     type PositionedItem = {
       type: "draft" | "comment";
@@ -155,7 +172,7 @@
     const items: PositionedItem[] = [];
 
     // Add draft if present
-    if (newCommentDraft && draftPosition != null) {
+    if (canComment && newCommentDraft && draftPosition != null) {
       items.push({
         type: "draft",
         id: "__draft__",
@@ -165,19 +182,26 @@
       });
     }
 
-    // Add visible comments that have positions
-    for (const comment of visibleComments) {
-      const pos = commentPositions.get(comment.id);
-      if (pos != null) {
-        items.push({
-          type: "comment",
-          comment,
-          id: comment.id,
-          idealTop: pos,
-          actualTop: pos,
-          height: threadHeights.get(comment.id) || 80,
-        });
-      }
+    const sortedComments = [...visibleComments].sort((a, b) => {
+      if (a.line !== b.line) return a.line - b.line
+      return a.createdAt.localeCompare(b.createdAt)
+    })
+
+    // Add all visible comments. Use editor-mapped position when available,
+    // otherwise place comment near its persisted line as a fallback.
+    for (const comment of sortedComments) {
+      const mappedPos = commentPositions.get(comment.id);
+      const fallbackPos = Math.max(0, (Math.max(1, comment.line) - 1) * LINE_HEIGHT_FALLBACK);
+      const idealTop = mappedPos ?? fallbackPos;
+
+      items.push({
+        type: "comment",
+        comment,
+        id: comment.id,
+        idealTop,
+        actualTop: idealTop,
+        height: threadHeights.get(comment.id) || 80,
+      });
     }
 
     // Sort by ideal position
@@ -317,6 +341,8 @@
               comment={item.comment}
               {userProfiles}
               {currentUserId}
+              {canComment}
+              {canDeleteComments}
               isActive={item.id === activeCommentId}
               isHovered={item.id === hoveredCommentId}
               {onResolve}
@@ -330,11 +356,11 @@
         {/if}
       {/each}
 
-      {#if isEmptyStateVisible}
+      {#if visibleComments.length === 0 && !(canComment && newCommentDraft)}
         <div class="empty-state">
           <div class="empty-icon">💬</div>
           <p>No comments yet</p>
-          <span>Select text to add a comment</span>
+          <span>{canComment ? 'Select text to add a comment' : 'You have read-only access to comments'}</span>
         </div>
       {/if}
     </div>

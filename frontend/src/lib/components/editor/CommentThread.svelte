@@ -4,8 +4,10 @@
 
   interface CommentThreadProps {
     comment: Comment;
-    userProfiles: Record<number, UserProfile>;
-    currentUserId: number;
+    userProfiles: Record<string, UserProfile>;
+    currentUserId: string;
+    canComment?: boolean;
+    canDeleteComments?: boolean;
     isActive?: boolean;
     isHovered?: boolean;
     onResolve?: (commentId: string) => void;
@@ -20,6 +22,8 @@
     comment,
     userProfiles,
     currentUserId,
+    canComment = true,
+    canDeleteComments = false,
     isActive = false,
     onResolve,
     onDelete,
@@ -43,7 +47,7 @@
   let replyFocused = $state(false);
   let replyTextarea: HTMLTextAreaElement | undefined = $state();
   let showMenu = $state(false);
-  let loadedProfilePics = $state<Record<number, boolean>>({});
+  let loadedProfilePics = $state<Record<string, boolean>>({});
 
   function formatDate(dateStr: string) {
     const date = new Date(dateStr);
@@ -100,26 +104,36 @@
     };
   }
 
-  function authorName(userId: number) {
+  function authorName(userId: string) {
     return userProfiles[userId]?.username || `User ${userId}`;
   }
 
-  function authorColor(userId: number) {
-    const hue = (userId * 47) % 360;
+  function authorColor(userId: string) {
+    const safeUserId = String(userId ?? "");
+    const seed = safeUserId
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hue = (seed * 47) % 360;
     return `hsl(${hue} 55% 45%)`;
   }
 
-  function profilePicSrc(userId: number) {
+  function profilePicSrc(userId: string) {
     return getProfilePicUrl(userId);
   }
 
-  function handleAvatarLoad(userId: number) {
+  function handleAvatarLoad(userId: string) {
     loadedProfilePics = { ...loadedProfilePics, [userId]: true };
   }
 
-  function hasLoadedAvatar(userId: number) {
+  function hasLoadedAvatar(userId: string) {
     return !!loadedProfilePics[userId];
   }
+
+  let canDeleteThisComment = $derived(
+    canDeleteComments,
+  );
+
+  let canShowActionMenu = $derived(canComment || canDeleteThisComment);
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -164,14 +178,16 @@
     </div>
     <div class="comment-actions">
       <div class="menu-container">
-        <button
-          class="action-btn menu-btn"
-          onclick={toggleMenu}
-          title="More actions"
-        >
-          ⋯
-        </button>
-        {#if showMenu}
+        {#if canShowActionMenu}
+          <button
+            class="action-btn menu-btn"
+            onclick={toggleMenu}
+            title="More actions"
+          >
+            ⋯
+          </button>
+        {/if}
+        {#if canShowActionMenu && showMenu}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
@@ -187,11 +203,8 @@
                 <span class="menu-icon">✓</span> Resolve
               </button>
             {/if}
-            {#if comment.authorId === currentUserId}
-              <button
-                class="menu-item menu-item-danger"
-                onclick={handleMenuAction(handleDelete)}
-              >
+            {#if canDeleteThisComment}
+              <button class="menu-item menu-item-danger" onclick={handleMenuAction(handleDelete)}>
                 <span class="menu-icon">✕</span> Delete
               </button>
             {/if}
@@ -240,7 +253,7 @@
     </div>
   {/if}
 
-  {#if !comment.resolved}
+  {#if canComment && !comment.resolved}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div

@@ -4,9 +4,14 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.services.redis_service import redis_service
-from app.api import auth, projects, files, invitations, users, profile_pic
+from app.api import auth, projects, files, invitations, users, profile_pic, comments
 from app.websocket.yjs_server import websocket_endpoint, manager as yjs_manager
 from app.websocket.project_ws import project_websocket_endpoint
+from app.websocket.notifications_ws import notifications_websocket_endpoint
+from app.websocket.auth import (
+    WebSocketAuthError,
+    authenticate_websocket_project,
+)
 
 
 @asynccontextmanager
@@ -43,6 +48,7 @@ app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["u
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["projects"])
 app.include_router(files.router, prefix=f"{settings.API_V1_STR}/projects", tags=["files"])
 app.include_router(invitations.router, prefix=f"{settings.API_V1_STR}/projects", tags=["invitations"])
+app.include_router(comments.router, prefix=f"{settings.API_V1_STR}/projects", tags=["comments"])
 
 
 @app.get("/")
@@ -52,9 +58,36 @@ def read_root():
 
 @app.websocket(f"{settings.API_V1_STR}" + "/ws/{document_id}")
 async def websocket_route(websocket: WebSocket, document_id: str):
-    await websocket_endpoint(websocket, document_id)
+    token = websocket.query_params.get("token")
+    project_ref = document_id.removeprefix("project-")
+    try:
+        context = await authenticate_websocket_project(token=token, project_ref=project_ref)
+    except WebSocketAuthError as e:
+        await websocket.close(code=1008, reason=e.reason)
+        return
+
+    await websocket_endpoint(websocket, document_id, context)
 
 
 @app.websocket(f"{settings.API_V1_STR}" + "/ws/project/{project_id}")
-async def project_websocket_route(websocket: WebSocket, project_id: int):
-    await project_websocket_endpoint(websocket, project_id)
+async def project_websocket_route(websocket: WebSocket, project_id: str):
+    token = websocket.query_params.get("token")
+    try:
+        context = await authenticate_websocket_project(token=token, project_ref=project_id)
+    except WebSocketAuthError as e:
+        await websocket.close(code=1008, reason=e.reason)
+        return
+
+    await project_websocket_endpoint(websocket, project_id, context)
+
+
+@app.websocket(f"{settings.API_V1_STR}" + "/ws/notifications/project/{project_id}")
+async def notifications_websocket_route(websocket: WebSocket, project_id: str):
+    token = websocket.query_params.get("token")
+    try:
+        context = await authenticate_websocket_project(token=token, project_ref=project_id)
+    except WebSocketAuthError as e:
+        await websocket.close(code=1008, reason=e.reason)
+        return
+
+    await notifications_websocket_endpoint(websocket, project_id, context)

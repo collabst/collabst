@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncSession
 import enum
 from app.db.base import Base
+from app.core.hash_ids import generate_hash_id
 
 
 class FileType(str, enum.Enum):
@@ -18,6 +19,7 @@ class File(Base):
     __tablename__ = "files"
 
     id = Column(Integer, primary_key=True, index=True)
+    hash_id = Column(String(20), unique=True, index=True, nullable=False, default=generate_hash_id)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     name = Column(String, nullable=False)
     path = Column(String, nullable=False)
@@ -31,6 +33,7 @@ class File(Base):
     # Relationships
     project = relationship("Project", back_populates="files")
     parent = relationship("File", remote_side=[id], backref="children", foreign_keys=[parent_id])
+    comment_threads = relationship("CommentThread", back_populates="file", cascade="all, delete-orphan")
 
     # Table constraints
     __table_args__ = (

@@ -19,10 +19,10 @@ Flow:
 6. Last client disconnects → Final snapshot saved, Redis cleaned up
 """
 from fastapi import WebSocket, WebSocketDisconnect
-from typing import AsyncIterator
+from typing import AsyncIterator, Awaitable, Callable
 import asyncio
 import time
-from contextlib import asynccontextmanager
+from inspect import isawaitable
 
 from anyio import Lock, Event
 from anyio.abc import TaskStatus
@@ -32,13 +32,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 import redis.asyncio as redis
 
-from pycrdt import Doc
+from pycrdt import Doc, YMessageType, YSyncMessageType
 from pycrdt_websocket import WebsocketServer, YRoom
 from pycrdt_websocket.ystore import BaseYStore
 from pycrdt_websocket.websocket_server import exception_logger
 
 from app.core.config import settings
 from app.models.yjs_state import YjsDocumentState
+from app.models.project_collaborator import CollaboratorRole
+from app.websocket.auth import WebSocketProjectContext, get_current_project_role
 
 
 class FastAPIWebsocket:
@@ -47,9 +49,15 @@ class FastAPIWebsocket:
     This implements the Channel protocol required by pycrdt-websocket.
     """
     
-    def __init__(self, websocket: WebSocket, path: str):
+    def __init__(
+        self,
+        websocket: WebSocket,
+        path: str,
+        message_authorizer: Callable[[bytes], Awaitable[bool] | bool] | None = None,
+    ):
         self._websocket = websocket
         self._path = path
+        self._message_authorizer = message_authorizer
         self._send_lock = Lock()
         self._closed = False
     
@@ -69,7 +77,15 @@ class FastAPIWebsocket:
     
     async def recv(self) -> bytes:
         try:
-            return await self._websocket.receive_bytes()
+            while True:
+                message = await self._websocket.receive_bytes()
+                if self._message_authorizer is None:
+                    return message
+
+                allowed = self._message_authorizer(message)
+                allowed = await allowed if isawaitable(allowed) else allowed
+                if allowed:
+                    return message
         except Exception:
             self._closed = True
             raise
@@ -102,6 +118,7 @@ class RedisYStore(BaseYStore):
     def __init__(
         self,
         path: str,
+        project_id: int,
         redis_client: redis.Redis,
         async_session_factory: sessionmaker,
         snapshot_interval: int = 30,
@@ -110,7 +127,8 @@ class RedisYStore(BaseYStore):
     ):
         """
         Args:
-            path: The room/document path (e.g., "project-123")
+            path: The room/document path (e.g., "project-abc123")
+            project_id: Integer database ID of the project
             redis_client: Redis client for live state
             async_session_factory: SQLAlchemy async session factory for snapshots
             snapshot_interval: Seconds between PostgreSQL snapshots
@@ -118,7 +136,7 @@ class RedisYStore(BaseYStore):
         self._path = path
         self._redis_client = redis_client
         self._async_session_factory = async_session_factory
-        self._project_id = self._extract_project_id(path)
+        self._project_id = project_id
         self._snapshot_interval = snapshot_interval
         self._metadata_callback = metadata_callback
         self._log = log
@@ -140,16 +158,6 @@ class RedisYStore(BaseYStore):
         if self.__start_lock is None:
             self.__start_lock = Lock()
         return self.__start_lock
-
-    def _extract_project_id(self, path: str) -> int | None:
-        """Extract project ID from path (e.g., 'project-123' -> 123)."""
-        path = path.lstrip("/")
-        if path.startswith("project-"):
-            try:
-                return int(path.split("-")[1])
-            except (IndexError, ValueError):
-                return None
-        return None
 
     def _redis_key(self) -> str:
         """Get the Redis key for this document."""
@@ -449,26 +457,63 @@ class YjsConnectionManager:
                 self._room_creation_locks[room_path] = asyncio.Lock()
             return self._room_creation_locks[room_path]
 
-    def _create_ystore(self, path: str) -> RedisYStore:
+    def _create_ystore(self, path: str, project_id: int) -> RedisYStore:
         """Create a RedisYStore for a given path."""
         return RedisYStore(
             path=path,
+            project_id=project_id,
             redis_client=self._redis_client,
             async_session_factory=self._async_session_factory,
             snapshot_interval=settings.YJS_SNAPSHOT_INTERVAL_SECONDS
         )
+
+    @staticmethod
+    def _is_role_at_least(role: CollaboratorRole, minimum: CollaboratorRole) -> bool:
+        order = {
+            CollaboratorRole.READER: 1,
+            CollaboratorRole.COMMENTOR: 2,
+            CollaboratorRole.WRITER: 3,
+            CollaboratorRole.ADMIN: 4,
+            CollaboratorRole.OWNER: 5,
+        }
+        return order.get(role, 0) >= order.get(minimum, 0)
+
+    async def _notify_unauthorized(
+        self,
+        *,
+        context: WebSocketProjectContext,
+        reason: str,
+        code: str,
+    ):
+        try:
+            from app.websocket.project_ws import project_manager
+
+            await project_manager.send_event_to_user(
+                project_id=context.project_ref,
+                user_id=context.user_id,
+                message={
+                    "type": "ws_unauthorized",
+                    "channel": "yjs",
+                    "code": code,
+                    "reason": reason,
+                },
+            )
+        except Exception as e:
+            print(f"[YJS] Failed to notify unauthorized event: {e}")
     
-    async def serve(self, websocket: WebSocket, document_id: str):
+    async def serve(
+        self,
+        websocket: WebSocket,
+        document_id: str,
+        context: WebSocketProjectContext,
+    ):
         """Handle a WebSocket connection for Y.js synchronization."""
         if not self._initialized:
             await self.initialize()
         
         await websocket.accept()
 
-        # Create adapter for FastAPI websocket
-        # The path is used by WebsocketServer to determine the room name
         room_path = f"/{document_id}"
-        ws_adapter = FastAPIWebsocket(websocket, room_path)
 
         print(f"[YJS] Client connecting to room: {room_path}")
 
@@ -478,7 +523,7 @@ class YjsConnectionManager:
             # Check if room exists, if not we need to set up the ystore
             if room_path not in self._websocket_server.rooms:
                 # Pre-create the room with ystore
-                ystore = self._create_ystore(room_path)
+                ystore = self._create_ystore(room_path, context.project_id)
                 room = YRoom(ready=False, ystore=ystore)  # ready=False until we load state
 
                 # Load existing state from PostgreSQL
@@ -492,6 +537,52 @@ class YjsConnectionManager:
                 self._websocket_server.rooms[room_path] = room
                 await self._websocket_server.start_room(room)
                 print(f"[YJS] Created room with persistence: {room_path}")
+
+        async def authorize_message(message: bytes) -> bool:
+            if not message:
+                return True
+
+            message_type = message[0]
+            if message_type != YMessageType.SYNC:
+                return True
+
+            if len(message) < 2:
+                return False
+
+            sync_type = message[1]
+            is_mutating = sync_type in (YSyncMessageType.SYNC_STEP2, YSyncMessageType.SYNC_UPDATE)
+            if not is_mutating:
+                return True
+
+            current_role = await get_current_project_role(
+                project_id=context.project_id,
+                user_id=context.user_id,
+            )
+            if current_role is None:
+                await self._notify_unauthorized(
+                    context=context,
+                    reason="Project access revoked",
+                    code="role_revoked",
+                )
+                return False
+
+            if self._is_role_at_least(current_role, CollaboratorRole.WRITER):
+                return True
+
+            await self._notify_unauthorized(
+                context=context,
+                reason="Insufficient permission for document edit",
+                code="insufficient_role",
+            )
+            return False
+
+        # Create adapter for FastAPI websocket.
+        # The path is used by WebsocketServer to determine the room name.
+        ws_adapter = FastAPIWebsocket(
+            websocket,
+            room_path,
+            message_authorizer=authorize_message,
+        )
         
         try:
             # WebsocketServer.serve handles everything:
@@ -522,6 +613,10 @@ class YjsConnectionManager:
 manager = YjsConnectionManager()
 
 
-async def websocket_endpoint(websocket: WebSocket, document_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    document_id: str,
+    context: WebSocketProjectContext,
+):
     """WebSocket endpoint for YJS document synchronization."""
-    await manager.serve(websocket, document_id)
+    await manager.serve(websocket, document_id, context)

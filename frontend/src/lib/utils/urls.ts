@@ -13,7 +13,7 @@ export const getApiUrl = (): string => {
     return `${import.meta.env.VITE_API_URL}`
 }
 
-export const getProfilePicUrl = (userId: number): string => {
+export const getProfilePicUrl = (userId: string): string => {
   const apiUrl = getApiUrl().replace(/\/$/, '')
   return `${apiUrl}/profile-pic/${userId}`
 }
