@@ -1048,13 +1048,15 @@
 
     const targetId = deleteTarget.id;
     const targetType = deleteTarget.type;
+    const targetName = deleteTarget.type === 'file' ? 'file' : 'asset';
 
     try {
       if (targetType === "file") {
         await filesApi.delete(projectId, targetId);
         files = files.filter((f) => f.id !== targetId);
         if (selectedFile?.id === targetId) {
-          selectedFile = files[0] || null;
+          // Select first remaining file, or null if none
+          selectedFile = files.length > 0 ? files[0] : null;
         }
       } else {
         await assetsApi.delete(projectId, targetId);
@@ -1067,11 +1069,15 @@
           selectedAsset = null;
         }
       }
-    } catch (error) {
-      console.error("Failed to delete:", error);
-    } finally {
+      // Success: show notification and close modal
+      notifications.show(`${targetName} deleted successfully`, "info", 3000);
       showDeleteModal = false;
       deleteTarget = null;
+    } catch (error: any) {
+      console.error("Failed to delete:", error);
+      const message = error?.response?.data?.detail || `Failed to delete ${targetName}`;
+      notifications.show(message, "error", 5000);
+      // Keep modal open on error so user can retry or cancel
     }
   }
 
@@ -1396,7 +1402,35 @@
     }
   }
 
+  // Handle toolbar events from EditorPane
+  function setupEditorPaneEventListeners() {
+    const handleToolbarUpload = () => {
+      if (!canWrite) return;
+      showUploadAssetModal = true;
+    };
+
+    const handleToolbarDeleteFile = () => {
+      if (!canWrite) return;
+      if (selectedAsset) {
+        handleDeleteAsset(selectedAsset.id);
+      } else if (selectedFile) {
+        handleDeleteFile(selectedFile.id);
+      }
+    };
+
+    window.addEventListener("toolbar-upload", handleToolbarUpload);
+    window.addEventListener("toolbar-delete-file", handleToolbarDeleteFile);
+
+    return () => {
+      window.removeEventListener("toolbar-upload", handleToolbarUpload);
+      window.removeEventListener("toolbar-delete-file", handleToolbarDeleteFile);
+    };
+  }
+
   onMount(() => {
+    // Set up toolbar event listeners
+    const unlistenToolbarEvents = setupEditorPaneEventListeners();
+
     // Initialize asset cache and load data asynchronously
     (async () => {
       await initAssetCache();
@@ -1449,6 +1483,7 @@
         yjsConnection.provider.awareness.setLocalState(null);
       }
       closeSeparatePreview();
+      unlistenToolbarEvents();
     };
 
     // Handle keyboard shortcuts: Ctrl+S, Ctrl+Shift+S, F2, Delete, Ctrl+/, Ctrl+Shift+A, Ctrl+F
@@ -1490,10 +1525,11 @@
       } else if (
         e.key === "Delete" &&
         (selectedFile || selectedAsset) &&
-        fileTreeHasFocus
+        fileTreeHasFocus &&
+        !(document.activeElement instanceof HTMLInputElement)
       ) {
         if (!canWrite) return;
-        // Only delete file/asset when file tree panel has focus
+        // Only delete file/asset when file tree panel has focus and no input is being edited
         e.preventDefault();
         handleDeleteSelectedItem();
       } else if (

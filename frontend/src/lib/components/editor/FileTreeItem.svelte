@@ -131,11 +131,15 @@
           inputElement.focus();
           // Select only the filename without extension
           const lastDotIndex = editingName.lastIndexOf(".");
-          if (lastDotIndex > 0) {
-            // Select from start to before the extension
+          // Handle dotfiles: if dot at position 0 (.gitignore), skip the dot
+          if (lastDotIndex === 0) {
+            // Leading dot (dotfile): select from 1 to end
+            inputElement.setSelectionRange(1, editingName.length);
+          } else if (lastDotIndex > 0) {
+            // Normal file with extension: select from start to before extension
             inputElement.setSelectionRange(0, lastDotIndex);
           } else {
-            // No extension, select all
+            // No extension: select all
             inputElement.select();
           }
         }
@@ -184,6 +188,10 @@
     } else if (e.key === "Escape") {
       e.preventDefault();
       handleRenameCancel();
+    } else if (e.key === "Delete" || e.key === "Backspace") {
+      // Allow Delete and Backspace to edit text in rename input
+      // Prevent bubbling to parent keyboard handler that would delete the file
+      e.stopPropagation();
     }
   }
 </script>

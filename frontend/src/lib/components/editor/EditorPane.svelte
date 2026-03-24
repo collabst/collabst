@@ -871,43 +871,45 @@
       try {
         const url = await onGetAssetUrl(selectedAsset.id);
         window.open(url, "_blank");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to download asset:", error);
+        const message = error?.message || "Failed to download file";
+        console.warn("Download failed:", message);
       }
     } else if (selectedFile) {
-      const view = codeEditor?.getView?.();
-      if (view) {
-        const content = view.state.doc.toString();
-        const blob = new Blob([content], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = selectedFile.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+      try {
+        const view = codeEditor?.getView?.();
+        if (view) {
+          const content = view.state.doc.toString();
+          const blob = new Blob([content], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = selectedFile.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      } catch (error) {
+        console.error("Failed to download file:", error);
       }
     }
   }
 
   function handleUploadFile() {
-    console.log("Upload file");
-    // TODO: Implement file upload/replace
+    // Dispatch event to parent to show upload modal
+    window.dispatchEvent(new CustomEvent("toolbar-upload"));
   }
 
   function handleRenameFile() {
-    // Trigger rename in FileTree for currently selected asset
+    // Trigger rename in FileTree for currently selected file/asset
     window.dispatchEvent(new CustomEvent("trigger-file-rename"));
   }
 
   function handleDeleteFile() {
-    if (selectedAsset && onDeleteAsset) {
-      onDeleteAsset(selectedAsset.id);
-    } else {
-      console.log("Delete file");
-      // TODO: Implement file delete
-    }
+    // Dispatch event to parent to handle delete via confirmation modal
+    window.dispatchEvent(new CustomEvent("toolbar-delete-file"));
   }
 
   // Check if file type is text-editable
