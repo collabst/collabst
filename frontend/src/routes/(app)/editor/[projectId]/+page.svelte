@@ -715,57 +715,82 @@
     }
   }
 
-  async function handleUploadAsset(file: File) {
+  async function handleUploadAsset(filesToUpload: File[]) {
     if (!canWrite) return;
+    if (filesToUpload.length === 0) return;
 
-    try {
-      // Determine parent: if selected item is a folder, create inside it; otherwise create at root
-      const parentId = selectedFile?.is_folder ? selectedFile.id : null;
+    // Determine parent once per batch: if selected item is a folder, upload inside it.
+    const parentId = selectedFile?.is_folder ? selectedFile.id : null;
+    let successCount = 0;
+    let failedCount = 0;
+    const renamedItems: string[] = [];
 
-      const createdItem = await assetsApi.upload(projectId, file, parentId);
+    for (const file of filesToUpload) {
+      try {
+        const createdItem = await assetsApi.upload(projectId, file, parentId);
 
-      if ("mime_type" in createdItem) {
-        // Cache uploaded binary assets immediately for quick preview.
-        const arrayBuffer = await file.arrayBuffer();
-        cacheAsset(
-          projectId,
-          createdItem.id,
-          createdItem.storage_path,
-          createdItem.mime_type,
-          arrayBuffer,
-        ).catch((err) => console.warn("Failed to cache uploaded asset:", err));
+        if ("mime_type" in createdItem) {
+          // Cache uploaded binary assets immediately for quick preview.
+          const arrayBuffer = await file.arrayBuffer();
+          cacheAsset(
+            projectId,
+            createdItem.id,
+            createdItem.storage_path,
+            createdItem.mime_type,
+            arrayBuffer,
+          ).catch((err) => console.warn("Failed to cache uploaded asset:", err));
 
-        if (!assets.find((a) => a.id === createdItem.id)) {
-          assets = [...assets, createdItem];
+          if (!assets.find((a) => a.id === createdItem.id)) {
+            assets = [...assets, createdItem];
+          }
+          selectedAsset = createdItem;
+
+          if (createdItem.filename !== file.name) {
+            renamedItems.push(`${file.name} -> ${createdItem.filename}`);
+          }
+        } else {
+          if (!files.find((f) => f.id === createdItem.id)) {
+            files = [...files, createdItem];
+          }
+          selectedFile = createdItem;
+          selectedAsset = null;
+
+          if (createdItem.name !== file.name) {
+            renamedItems.push(`${file.name} -> ${createdItem.name}`);
+          }
         }
-        selectedAsset = createdItem;
-        notifications.show("Asset uploaded successfully", "info");
-        if (createdItem.filename !== file.name) {
-          notifications.show(
-            `Name already used, uploaded as ${createdItem.filename}`,
-            "info",
-          );
-        }
-      } else {
-        if (!files.find((f) => f.id === createdItem.id)) {
-          files = [...files, createdItem];
-        }
-        selectedFile = createdItem;
-        selectedAsset = null;
-        notifications.show("Text file uploaded successfully", "info");
-        if (createdItem.name !== file.name) {
-          notifications.show(
-            `Name already used, uploaded as ${createdItem.name}`,
-            "info",
-          );
-        }
+
+        successCount += 1;
+      } catch (error: any) {
+        failedCount += 1;
+        console.error("Failed to upload file:", file.name, error);
+        const message =
+          error?.response?.data?.detail || `Failed to upload ${file.name}`;
+        notifications.show(message, "error", 5000);
       }
+    }
 
+    if (successCount > 0 && failedCount === 0) {
+      notifications.show(`Uploaded ${successCount} file(s)`, "info");
       showUploadAssetModal = false;
-    } catch (error: any) {
-      console.error("Failed to upload asset:", error);
-      const message = error?.response?.data?.detail || "Failed to upload asset";
-      notifications.show(message, "error", 5000);
+    } else if (successCount > 0 && failedCount > 0) {
+      notifications.show(
+        `Uploaded ${successCount} file(s), ${failedCount} failed`,
+        "warning",
+        5000,
+      );
+      // Keep modal open so user can retry failed files.
+    } else {
+      notifications.show("No files uploaded", "error", 5000);
+    }
+
+    if (renamedItems.length > 0) {
+      const preview = renamedItems.slice(0, 3).join("; ");
+      const suffix =
+        renamedItems.length > 3
+          ? ` (+${renamedItems.length - 3} more)`
+          : "";
+      notifications.show(`Auto-renamed: ${preview}${suffix}`, "info", 5000);
     }
   }
 
