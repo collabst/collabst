@@ -21,6 +21,7 @@
   interface Props {
     files?: ProjectFile[];
     assets?: Asset[];
+    compileEnabled?: boolean;
     mainFilePath?: string;
     onDiagnostics?: (diagnostics: Diagnostic[]) => void;
     projectName?: string;
@@ -39,6 +40,7 @@
   let {
     files = [],
     assets = [],
+    compileEnabled = true,
     mainFilePath = '/main.typ',
     onDiagnostics,
     projectName,
@@ -229,8 +231,8 @@
   
 
   // Track loaded files/assets to detect changes
-  const loadedFiles = new Map<number, { path: string; content: string }>();
-  const loadedAssets = new Map<number, { path: string; storage_path: string }>();
+  const loadedFiles = new Map<string, { path: string; content: string }>();
+  const loadedAssets = new Map<string, { path: string; storage_path: string }>();
 
   // Handle messages from iframe
   function handleIframeMessage(event: MessageEvent) {
@@ -448,10 +450,14 @@
 
         case 'initialized':
           workerReady = true;
-          status = 'Compiler ready - waiting for iframe...';
+          status = compileEnabled
+            ? 'Compiler ready - waiting for iframe...'
+            : 'Preparing files...';
 
-          // Force a sync of files and assets to start compilation
-          syncFilesAndAssets();
+          // Force a sync only when file hydration is ready.
+          if (compileEnabled) {
+            syncFilesAndAssets();
+          }
           reapplyCurrentZoomMode();
           break;
 
@@ -533,6 +539,7 @@
     void files;
     void assets;
     void mainFilePath;
+    void compileEnabled;
 
     if (latestMainFilePath !== mainFilePath) {
       latestMainFilePath = mainFilePath;
@@ -544,8 +551,10 @@
       }
     }
 
-    if (workerReady && initialized) {
+    if (workerReady && initialized && compileEnabled) {
       syncFilesAndAssets();
+    } else if (workerReady && initialized && !compileEnabled) {
+      status = 'Preparing files...';
     }
   });
 
@@ -579,8 +588,9 @@
   // Watch for changes in separateWindow to recompile and send data
   $effect(() => {
     void separateWindow;
+    void compileEnabled;
 
-    if (workerReady && initialized) {
+    if (workerReady && initialized && compileEnabled) {
       forceRecompile();
       syncFilesAndAssets();
     }

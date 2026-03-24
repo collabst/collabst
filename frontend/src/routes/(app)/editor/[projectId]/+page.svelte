@@ -73,6 +73,8 @@
   let project = $state<Project | null>(null);
   let files = $state<ProjectFile[]>([]);
   let assets = $state<Asset[]>([]);
+  let loadingFileIds = $state<Set<string>>(new Set());
+  let isHydratingFiles = $state(false);
   let selectedFile = $state<ProjectFile | null>(null);
   let selectedAsset = $state<Asset | null>(null);
   let previewFileId = $state<string | null>(null);
@@ -459,7 +461,22 @@
   async function loadFiles() {
     try {
       const data = await filesApi.list(projectId);
-      files = data;
+
+      const nonFolderIds = data
+        .filter((file) => !file.is_folder)
+        .map((file) => file.id);
+
+      // Render tree quickly with metadata-first files, then hydrate content progressively.
+      files = data.map((file) =>
+        file.is_folder ? file : { ...file, content: "" },
+      );
+      loadingFileIds = new Set(nonFolderIds);
+      isHydratingFiles = nonFolderIds.length > 0;
+
+      // Let the UI render tree metadata before content hydration begins.
+      if (nonFolderIds.length > 0) {
+        await tick();
+      }
 
       // If project has no files, create main.typ automatically
       if (data.length === 0 && canWrite) {
@@ -472,6 +489,8 @@
           );
           files = [mainFile];
           selectedFile = mainFile;
+          loadingFileIds = new Set();
+          isHydratingFiles = false;
           // Set it as the preview file
           handleSetPreviewFile(mainFile.id);
           return;
@@ -488,8 +507,36 @@
           selectedFile = data[0];
         }
       }
+
+      if (nonFolderIds.length === 0) {
+        isHydratingFiles = false;
+        return;
+      }
+
+      // Hydrate file content progressively after the tree is visible.
+      let hydratedCount = 0;
+      for (const hydrated of data) {
+        if (hydrated.is_folder) continue;
+
+        files = files.map((file) =>
+          file.id === hydrated.id ? { ...file, content: hydrated.content } : file,
+        );
+
+        loadingFileIds = new Set(
+          [...loadingFileIds].filter((fileId) => fileId !== hydrated.id),
+        );
+
+        hydratedCount += 1;
+        if (hydratedCount % 20 === 0) {
+          await tick();
+        }
+      }
+
+      isHydratingFiles = false;
     } catch (error) {
       console.error("Failed to load files:", error);
+      loadingFileIds = new Set();
+      isHydratingFiles = false;
     }
   }
 
@@ -2030,6 +2077,7 @@
           <FileTree
             {files}
             {assets}
+            {loadingFileIds}
             {selectedItem}
             {previewFileId}
             onSelectFile={handleSelectFile}
@@ -2235,6 +2283,7 @@
         <PreviewPane
           files={filesWithContent}
           {assets}
+          compileEnabled={!isHydratingFiles}
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
