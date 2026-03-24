@@ -887,15 +887,6 @@
     let trimmedName = name.trim();
     const { type, parentId } = creatingItem;
 
-    // Add .typ extension to files without an extension
-    if (type === "file") {
-      const hasExtension =
-        trimmedName.includes(".") && trimmedName.lastIndexOf(".") > 0;
-      if (!hasExtension) {
-        trimmedName = trimmedName + ".typ";
-      }
-    }
-
     try {
       if (type === "file" && onCreateFile) {
         await onCreateFile(trimmedName, parentId);

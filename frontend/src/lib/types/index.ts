@@ -45,7 +45,6 @@ export interface File {
   project_id: string
   name: string
   path: string
-  type: 'typst' | 'text' | 'yaml' | 'json' | 'other'
   content: string
   parent_id: string | null
   is_folder: boolean

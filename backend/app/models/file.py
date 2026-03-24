@@ -1,18 +1,9 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Enum as SQLEnum, Boolean, UniqueConstraint, CheckConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncSession
-import enum
 from app.db.base import Base
 from app.core.hash_ids import generate_hash_id
-
-
-class FileType(str, enum.Enum):
-    TYPST = "typst"
-    TEXT = "text"
-    YAML = "yaml"
-    JSON = "json"
-    OTHER = "other"
 
 
 class File(Base):
@@ -23,7 +14,6 @@ class File(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     name = Column(String, nullable=False)
     path = Column(String, nullable=False)
-    type = Column(SQLEnum(FileType), nullable=False, default=FileType.TYPST)
     content = Column(Text, nullable=False, default="")
     parent_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=True, index=True)
     is_folder = Column(Boolean, nullable=False, default=False, index=True)

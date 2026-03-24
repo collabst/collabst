@@ -875,8 +875,19 @@
         console.error("Failed to download asset:", error);
       }
     } else if (selectedFile) {
-      console.log("Download file:", selectedFile.name);
-      // TODO: Implement file download
+      const view = codeEditor?.getView?.();
+      if (view) {
+        const content = view.state.doc.toString();
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = selectedFile.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
     }
   }
 
@@ -886,13 +897,8 @@
   }
 
   function handleRenameFile() {
-    if (selectedAsset && onRenameAsset) {
-      // Trigger rename in FileTree for currently selected asset
-      window.dispatchEvent(new CustomEvent("trigger-file-rename"));
-    } else {
-      console.log("Rename file");
-      // TODO: Implement file rename
-    }
+    // Trigger rename in FileTree for currently selected asset
+    window.dispatchEvent(new CustomEvent("trigger-file-rename"));
   }
 
   function handleDeleteFile() {
@@ -905,12 +911,11 @@
   }
 
   // Check if file type is text-editable
-  let isTextEditable = $derived(
-    selectedFile?.type === "text" ||
-      selectedFile?.type === "yaml" ||
-      selectedFile?.type === "json",
+  type fileType = "asset" | "text" | "typst";
+  let fileExtension = $derived(getFileExtension(fileName));
+  let currentFileType = $derived<fileType>(
+    selectedAsset ? "asset" : selectedFile ? (fileExtension === "TYP" ? "typst" : "text") : "text",
   );
-  let isTypstFile = $derived(selectedFile?.type === "typst");
 
   // Define all toolbar buttons with their metadata
   type ToolbarButton = {
@@ -1006,7 +1011,7 @@
       });
     }
 
-    if (isTypstFile) {
+    if (currentFileType === "typst") {
       buttons.push({
         id: "scrollPreview",
         label: "Scroll preview to cursor",
@@ -1020,39 +1025,6 @@
   });
 
   const assetToolbarButtons: ToolbarButton[][] = [
-    [
-      {
-        id: "download",
-        label: "Download",
-        icon: ArrowDownToLine,
-        onclick: handleDownloadFile,
-        position: "first",
-      },
-      {
-        id: "upload",
-        label: "Upload",
-        icon: ArrowUpFromLine,
-        onclick: handleUploadFile,
-        position: "middle",
-      },
-      {
-        id: "rename",
-        label: "Rename",
-        icon: PencilLine,
-        onclick: handleRenameFile,
-        position: "middle",
-      },
-      {
-        id: "delete",
-        label: "Delete",
-        icon: Trash2,
-        onclick: handleDeleteFile,
-        position: "last",
-      },
-    ],
-  ];
-
-  const nonTypstToolbarButtons: ToolbarButton[][] = [
     [
       {
         id: "download",
@@ -1129,13 +1101,11 @@
 
   // Get current toolbar buttons based on file type
   let currentToolbarButtons = $derived<ToolbarButton[][]>(
-    selectedAsset
+    currentFileType === "asset"
       ? assetToolbarButtons
-      : isTypstFile
+      : currentFileType === "typst"
         ? typstToolbarButtons
-        : isTextEditable
-          ? nonTypstWithCommentButtons
-          : nonTypstToolbarButtons,
+        : nonTypstWithCommentButtons,
   );
 
   // Flattened list of all buttons (left + right) with group info
@@ -1396,16 +1366,6 @@
         }
       };
     }
-  });
-
-  // Debug logging
-  $effect(() => {
-    console.log("File type changed:", {
-      fileName: selectedFile?.name,
-      fileType: selectedFile?.type,
-      isTypstFile,
-      isTextEditable,
-    });
   });
 </script>
 

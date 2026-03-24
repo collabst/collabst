@@ -467,8 +467,6 @@
           const mainFile = await filesApi.create(
             projectId,
             "main.typ",
-            "/",
-            "typst",
             "",
             null,
           );
@@ -667,8 +665,6 @@
       const newFile = await filesApi.create(
         projectId,
         fileName,
-        "/", // Path will be computed by backend
-        "typst",
         "",
         parentId,
       );
@@ -677,6 +673,12 @@
       }
       selectedFile = newFile;
       selectedAsset = null;
+      if (newFile.name !== fileName) {
+        notifications.show(
+          `Name already used, created as ${newFile.name}`,
+          "info",
+        );
+      }
     } catch (error: any) {
       console.error("Failed to create file:", error);
       const message = error?.response?.data?.detail || "Failed to create file";
@@ -720,23 +722,46 @@
       // Determine parent: if selected item is a folder, create inside it; otherwise create at root
       const parentId = selectedFile?.is_folder ? selectedFile.id : null;
 
-      const asset = await assetsApi.upload(projectId, file, parentId);
+      const createdItem = await assetsApi.upload(projectId, file, parentId);
 
-      // Cache the uploaded asset immediately
-      const arrayBuffer = await file.arrayBuffer();
-      cacheAsset(
-        projectId,
-        asset.id,
-        asset.storage_path,
-        asset.mime_type,
-        arrayBuffer,
-      ).catch((err) => console.warn("Failed to cache uploaded asset:", err));
+      if ("mime_type" in createdItem) {
+        // Cache uploaded binary assets immediately for quick preview.
+        const arrayBuffer = await file.arrayBuffer();
+        cacheAsset(
+          projectId,
+          createdItem.id,
+          createdItem.storage_path,
+          createdItem.mime_type,
+          arrayBuffer,
+        ).catch((err) => console.warn("Failed to cache uploaded asset:", err));
 
-      if (!assets.find((a) => a.id === asset.id)) {
-        assets = [...assets, asset];
+        if (!assets.find((a) => a.id === createdItem.id)) {
+          assets = [...assets, createdItem];
+        }
+        selectedAsset = createdItem;
+        notifications.show("Asset uploaded successfully", "info");
+        if (createdItem.filename !== file.name) {
+          notifications.show(
+            `Name already used, uploaded as ${createdItem.filename}`,
+            "info",
+          );
+        }
+      } else {
+        if (!files.find((f) => f.id === createdItem.id)) {
+          files = [...files, createdItem];
+        }
+        selectedFile = createdItem;
+        selectedAsset = null;
+        notifications.show("Text file uploaded successfully", "info");
+        if (createdItem.name !== file.name) {
+          notifications.show(
+            `Name already used, uploaded as ${createdItem.name}`,
+            "info",
+          );
+        }
       }
+
       showUploadAssetModal = false;
-      notifications.show("Asset uploaded successfully", "info");
     } catch (error: any) {
       console.error("Failed to upload asset:", error);
       const message = error?.response?.data?.detail || "Failed to upload asset";

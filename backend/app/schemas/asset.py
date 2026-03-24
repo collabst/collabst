@@ -9,12 +9,6 @@ class AssetBase(BaseModel):
     parent_id: str | None = None
 
 
-class AssetCreate(AssetBase):
-    project_id: str
-    storage_path: str
-    size: int
-
-
 class AssetUpdate(BaseModel):
     filename: str | None = None
     parent_id: str | None = None

@@ -254,16 +254,11 @@ export const filesApi = {
   create: async (
     projectId: string,
     name: string,
-    path: string,
-    type: File['type'],
     content: string,
     parentId: string | null = null,
   ): Promise<File> => {
     const { data } = await api.post<File>(`/projects/${projectId}/files`, {
-      project_id: projectId,
       name,
-      path,
-      type,
       content,
       parent_id: parentId,
       is_folder: false,
@@ -277,10 +272,7 @@ export const filesApi = {
     parentId: string | null = null,
   ): Promise<File> => {
     const { data } = await api.post<File>(`/projects/${projectId}/files`, {
-      project_id: projectId,
       name,
-      path: '/',  // Will be computed by backend
-      type: 'other',
       content: '',
       parent_id: parentId,
       is_folder: true,
@@ -291,7 +283,7 @@ export const filesApi = {
   update: async (
     projectId: string,
     fileId: string,
-    updates: { name?: string; content?: string; path?: string; parent_id?: string | null },
+    updates: { name?: string; content?: string; parent_id?: string | null },
   ): Promise<File> => {
     const { data } = await api.put<File>(`/projects/${projectId}/files/${fileId}`, updates)
     return data
@@ -320,14 +312,18 @@ export const assetsApi = {
     return data
   },
 
-  upload: async (projectId: string, file: globalThis.File, parentId: string | null = null): Promise<Asset> => {
+  upload: async (
+    projectId: string,
+    file: globalThis.File,
+    parentId: string | null = null,
+  ): Promise<File | Asset> => {
     const formData = new FormData()
     formData.append('file', file as unknown as Blob)
     if (parentId !== null) {
       formData.append('parent_id', parentId.toString())
     }
 
-    const { data } = await api.post<Asset>(`/projects/${projectId}/assets/upload`, formData, {
+    const { data } = await api.post<File | Asset>(`/projects/${projectId}/assets/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data

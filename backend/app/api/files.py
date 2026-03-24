@@ -25,7 +25,6 @@ def _serialize_file(file: File, project_hash_id: str, file_id_to_hash: dict[int,
         project_id=project_hash_id,
         name=file.name,
         path=file.path,
-        type=file.type,
         content=file.content,
         parent_id=file_id_to_hash.get(file.parent_id) if file.parent_id else None,
         is_folder=file.is_folder,
@@ -81,53 +80,87 @@ async def validate_parent_folder(db: AsyncSession, parent_ref: str, project_id: 
     return parent
 
 
-async def check_duplicate_name(
+def _name_with_suffix(name: str, suffix_number: int) -> str:
+    """Insert _N before extension, preserving original extension if present."""
+    base, dot, ext = name.rpartition(".")
+    if dot and base:
+        return f"{base}_{suffix_number}.{ext}"
+    return f"{name}_{suffix_number}"
+
+
+async def _get_taken_names(
+    db: AsyncSession,
+    project_id: int,
+    parent_id: int | None,
+    exclude_file_id: int | None = None,
+    exclude_asset_id: int | None = None,
+) -> set[str]:
+    file_query = select(File.name).where(
+        File.project_id == project_id,
+        File.parent_id == parent_id,
+    )
+    if exclude_file_id is not None:
+        file_query = file_query.where(File.id != exclude_file_id)
+
+    asset_query = select(Asset.filename).where(
+        Asset.project_id == project_id,
+        Asset.parent_id == parent_id,
+    )
+    if exclude_asset_id is not None:
+        asset_query = asset_query.where(Asset.id != exclude_asset_id)
+
+    file_result = await db.execute(file_query)
+    asset_result = await db.execute(asset_query)
+    return set(file_result.scalars().all()) | set(asset_result.scalars().all())
+
+
+async def resolve_available_name(
+    db: AsyncSession,
+    project_id: int,
+    parent_id: int | None,
+    proposed_name: str,
+    exclude_file_id: int | None = None,
+    exclude_asset_id: int | None = None,
+) -> str:
+    taken_names = await _get_taken_names(
+        db,
+        project_id,
+        parent_id,
+        exclude_file_id=exclude_file_id,
+        exclude_asset_id=exclude_asset_id,
+    )
+
+    if proposed_name not in taken_names:
+        return proposed_name
+
+    suffix = 1
+    while True:
+        candidate = _name_with_suffix(proposed_name, suffix)
+        if candidate not in taken_names:
+            return candidate
+        suffix += 1
+
+
+async def ensure_name_available_or_raise(
     db: AsyncSession,
     project_id: int,
     parent_id: int | None,
     name: str,
-    exclude_id: int | None = None
+    exclude_file_id: int | None = None,
+    exclude_asset_id: int | None = None,
 ) -> None:
-    """Check for duplicate name in same directory"""
-    query = select(File).where(
-        File.project_id == project_id,
-        File.parent_id == parent_id,
-        File.name == name
+    resolved_name = await resolve_available_name(
+        db,
+        project_id,
+        parent_id,
+        name,
+        exclude_file_id=exclude_file_id,
+        exclude_asset_id=exclude_asset_id,
     )
-
-    if exclude_id is not None:
-        query = query.where(File.id != exclude_id)
-
-    result = await db.execute(query)
-    if result.scalar_one_or_none():
+    if resolved_name != name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"A file or folder named '{name}' already exists in this location"
-        )
-
-
-async def check_duplicate_asset(
-    db: AsyncSession,
-    project_id: int,
-    parent_id: int | None,
-    filename: str,
-    exclude_id: int | None = None
-) -> None:
-    """Check for duplicate asset filename in same directory"""
-    query = select(Asset).where(
-        Asset.project_id == project_id,
-        Asset.parent_id == parent_id,
-        Asset.filename == filename
-    )
-
-    if exclude_id is not None:
-        query = query.where(Asset.id != exclude_id)
-
-    result = await db.execute(query)
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"An asset named '{filename}' already exists in this location"
+            detail=f"An item named '{name}' already exists in this location",
         )
 
 
@@ -206,13 +239,17 @@ async def create_file(
     if file_in.parent_id:
         parent = await validate_parent_folder(db, file_in.parent_id, project.id)
 
-    await check_duplicate_name(db, project.id, parent.id if parent else None, file_in.name)
+    resolved_name = await resolve_available_name(
+        db,
+        project.id,
+        parent.id if parent else None,
+        file_in.name,
+    )
 
     file = File(
         project_id=project.id,
-        name=file_in.name,
-        path=file_in.path,
-        type=file_in.type,
+        name=resolved_name,
+        path="/",
         content=file_in.content,
         parent_id=parent.id if parent else None,
         is_folder=file_in.is_folder,
@@ -304,9 +341,15 @@ async def update_file(
         name_changed = True
 
     if parent_changed or name_changed:
-        await check_duplicate_name(db, project.id, new_parent_id, new_name, exclude_id=file.id)
+        await ensure_name_available_or_raise(
+            db,
+            project.id,
+            new_parent_id,
+            new_name,
+            exclude_file_id=file.id,
+        )
 
-    update_data = file_in.model_dump(exclude_unset=True, exclude={"path", "parent_id"})
+    update_data = file_in.model_dump(exclude_unset=True, exclude={"parent_id"})
     for field, value in update_data.items():
         setattr(file, field, value)
 
@@ -402,7 +445,7 @@ async def delete_file(
     return {"message": "File deleted successfully"}
 
 
-@router.post("/{project_ref}/assets/upload", response_model=AssetSchema)
+@router.post("/{project_ref}/assets/upload", response_model=FileSchema | AssetSchema)
 async def upload_asset(
     project_ref: str,
     file: UploadFile,
@@ -421,12 +464,53 @@ async def upload_asset(
     if parent_id is not None:
         parent = await validate_parent_folder(db, parent_id, project.id)
 
-    await check_duplicate_asset(db, project.id, parent.id if parent else None, file.filename)
+    original_name = file.filename or "uploaded_file"
+    resolved_name = await resolve_available_name(
+        db,
+        project.id,
+        parent.id if parent else None,
+        original_name,
+    )
 
     file_content = await file.read()
     file_size = len(file_content)
 
-    storage_path = f"projects/{project.hash_id}/assets/{file.filename}"
+    try:
+        decoded_content = file_content.decode("utf-8")
+    except UnicodeDecodeError:
+        decoded_content = None
+
+    if decoded_content is not None:
+        created_file = File(
+            project_id=project.id,
+            name=resolved_name,
+            path="/",
+            content=decoded_content,
+            parent_id=parent.id if parent else None,
+            is_folder=False,
+        )
+        db.add(created_file)
+        await db.flush()
+
+        created_file.path = await created_file.compute_path(db)
+
+        await db.commit()
+        await db.refresh(created_file)
+
+        id_to_hash = await _get_project_file_hash_map(db, project.id)
+        serialized_file = _serialize_file(created_file, project.hash_id, id_to_hash)
+
+        await project_manager.broadcast_to_project(
+            project_ref,
+            {
+                "type": "file_created",
+                "file": serialized_file.model_dump(mode="json"),
+            }
+        )
+
+        return serialized_file
+
+    storage_path = f"projects/{project.hash_id}/assets/{resolved_name}"
 
     storage_service.upload_file(
         storage_path,
@@ -437,7 +521,7 @@ async def upload_asset(
 
     asset = Asset(
         project_id=project.id,
-        filename=file.filename,
+        filename=resolved_name,
         path="/",
         storage_path=storage_path,
         mime_type=file.content_type or "application/octet-stream",
@@ -556,7 +640,13 @@ async def update_asset(
     new_filename = asset_in.filename if asset_in.filename is not None else asset.filename
 
     if parent_changed or filename_changed:
-        await check_duplicate_asset(db, project.id, new_parent_id, new_filename, exclude_id=asset.id)
+        await ensure_name_available_or_raise(
+            db,
+            project.id,
+            new_parent_id,
+            new_filename,
+            exclude_asset_id=asset.id,
+        )
 
     update_data = asset_in.model_dump(exclude_unset=True, exclude={"parent_id"})
     for field, value in update_data.items():
