@@ -29,7 +29,7 @@
               <div
                 class="user-dot"
                 style="background: {state.user?.color || '#999'}"
-              />
+              ></div>
               <span class="user-name">{state.user?.name || `User ${clientId}`}</span>
             </div>
           {/each}

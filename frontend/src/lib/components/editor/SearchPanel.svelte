@@ -337,14 +337,32 @@
         {#each fileResults as result, index}
           <div
             class="result-item"
-            onclick={() =>
+            role="button"
+            tabindex="0"
+            onclick={(e) => {
+              if ((e.target as HTMLElement).closest(".btn")) {
+                return;
+              }
               gotoMatch?.(
                 result.filePath,
                 result.startLine,
                 result.startChar,
                 result.endLine,
                 result.endChar,
-              )}
+              );
+            }}
+            onkeydown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                gotoMatch?.(
+                  result.filePath,
+                  result.startLine,
+                  result.startChar,
+                  result.endLine,
+                  result.endChar,
+                );
+              }
+            }}
           >
             <div>
               <div class="line-text">
@@ -361,10 +379,7 @@
               icon={Replace}
               size="sm"
               title="Replace"
-              onclick={(e) => {
-                e.stopPropagation();
-                replaceOne(result.filePath, index);
-              }}
+              onclick={() => replaceOne(result.filePath, index)}
             />
           </div>
         {/each}
