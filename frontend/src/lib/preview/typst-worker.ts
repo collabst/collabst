@@ -24,6 +24,19 @@ async function exportPDF(targetMainFilePath: string) {
 
 console.log('Worker: Starting initialization...');
 
+const originalConsoleWarn = console.warn;
+console.warn = (...args: unknown[]) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes(
+      'using deprecated parameters for the initialization function; pass a single object instead'
+    )
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};
+
 // Shim window for libraries that expect it (only in worker context)
 if (typeof self !== 'undefined' && typeof Window === 'undefined') {
   (self as any).window = self;
