@@ -88,62 +88,67 @@
       return context.getImageData(0, 0, 1, 1).data;
     }
 
-    var defaultBackgroundColor = "rgb(82, 86, 89)";
-    var previewBackgroundColor =
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--vscode-sideBar-background"
-      ) || defaultBackgroundColor;
+    function applyPreviewThemeCssVars() {
+      var defaultBackgroundColor = "rgb(82, 86, 89)";
+      var previewBackgroundColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--vscode-sideBar-background"
+        ) || defaultBackgroundColor;
 
-    var defaultToolbarFgColor = "#fff";
-    var previewToolbarFgColor =
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--vscode-menu-foreground"
-      ) || defaultToolbarFgColor;
+      var defaultToolbarFgColor = "#fff";
+      var previewToolbarFgColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--vscode-menu-foreground"
+        ) || defaultToolbarFgColor;
 
-    var previewForegroundColor = previewToolbarFgColor;
+      var previewForegroundColor = previewToolbarFgColor;
 
-    var defaultToolbarBorderColor = "rgba(0, 0, 0, 0)";
-    var previewToolbarBorderColor =
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--vscode-menu-border"
-      ) || defaultToolbarBorderColor;
+      var defaultToolbarBorderColor = "rgba(0, 0, 0, 0)";
+      var previewToolbarBorderColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--vscode-menu-border"
+        ) || defaultToolbarBorderColor;
 
-    var defaultToolbarBgColor = "rgb(50, 54, 57)";
-    var previewToolbarBgColor =
-      getComputedStyle(document.documentElement).getPropertyValue(
-        "--vscode-menu-background"
-      ) || defaultToolbarBgColor;
+      var defaultToolbarBgColor = "rgb(50, 54, 57)";
+      var previewToolbarBgColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--vscode-menu-background"
+        ) || defaultToolbarBgColor;
 
-    /// Perceptible distance between colors:
-    /// 0~1: cannot distinguish by human eyes
-    /// 1~2: perceptible through close observation
-    /// 2~10: perceptible at a glance
-    if (deltaE(cssColorToRgba(previewBackgroundColor), [255, 255, 255]) < 5) {
-      previewBackgroundColor = defaultBackgroundColor;
-      previewForegroundColor = defaultToolbarFgColor;
+      /// Perceptible distance between colors:
+      /// 0~1: cannot distinguish by human eyes
+      /// 1~2: perceptible through close observation
+      /// 2~10: perceptible at a glance
+      if (deltaE(cssColorToRgba(previewBackgroundColor), [255, 255, 255]) < 5) {
+        previewBackgroundColor = defaultBackgroundColor;
+        previewForegroundColor = defaultToolbarFgColor;
+      }
+
+      // append css variable --typst-preview-background-color
+      document.documentElement.style.setProperty(
+        "--typst-preview-background-color",
+        previewBackgroundColor
+      );
+      document.documentElement.style.setProperty(
+        "--typst-preview-foreground-color",
+        previewForegroundColor
+      );
+      document.documentElement.style.setProperty(
+        "--typst-preview-toolbar-fg-color",
+        previewToolbarFgColor
+      );
+      document.documentElement.style.setProperty(
+        "--typst-preview-toolbar-border-color",
+        previewToolbarBorderColor
+      );
+      document.documentElement.style.setProperty(
+        "--typst-preview-toolbar-bg-color",
+        previewToolbarBgColor
+      );
     }
 
-    // append css variable --typst-preview-background-color
-    document.documentElement.style.setProperty(
-      "--typst-preview-background-color",
-      previewBackgroundColor
-    );
-    document.documentElement.style.setProperty(
-      "--typst-preview-foreground-color",
-      previewForegroundColor
-    );
-    document.documentElement.style.setProperty(
-      "--typst-preview-toolbar-fg-color",
-      previewToolbarFgColor
-    );
-    document.documentElement.style.setProperty(
-      "--typst-preview-toolbar-border-color",
-      previewToolbarBorderColor
-    );
-    document.documentElement.style.setProperty(
-      "--typst-preview-toolbar-bg-color",
-      previewToolbarBgColor
-    );
+    // Delay layout/style reads until all stylesheets are loaded.
+    window.addEventListener("load", applyPreviewThemeCssVars, { once: true });
   </script>
   <script type="module" crossorigin>var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -3431,7 +3436,7 @@ let TypstWorker$1 = (_b = kObject, class TypstWorker {
   }
 });
 const gRendererModule = (module) => new LazyWasmModule(async (bin) => {
-  return await module.default(bin);
+  return await module.default({ module_or_path: bin });
 });
 function createTypstRenderer() {
   return new TypstRendererDriver();
