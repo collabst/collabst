@@ -14,7 +14,7 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import { Loader } from "@lucide/svelte";
+  import Loader from "@lucide/svelte/icons/loader";
 
   export let item: (ProjectFile & FileTreeNode) | Asset;
   export let isSelected: boolean = false;

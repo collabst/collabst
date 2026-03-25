@@ -1,6 +1,7 @@
 <script lang="ts">
   import Hand from "@lucide/svelte/icons/hand";
-    import { X, ListX } from "@lucide/svelte";
+  import X from "@lucide/svelte/icons/x";
+  import ListX from "@lucide/svelte/icons/list-x";
 
   interface UploadAssetModalProps {
     show: boolean;
