@@ -208,7 +208,7 @@
 
   /* Surface Colors - Neutral grey tones */
   --surface-primary: #252526;
-  --surface-secondary: #2b2c2f;
+  --surface-secondary: #222326;
   --surface-tertiary: #323233;
   --surface-hover: rgba(104, 111, 124, 0.25);
   --surface-active: #3f4246;
@@ -285,6 +285,27 @@
 
   --find-transparency: 0.6;
   --find-bg: rgb(6, 7, 10, var(--find-transparency));
+
+  /* Role Badge Colors */
+  --role-owner-bg: rgba(14, 99, 156, 0.3);
+  --role-owner-text: #4fc3f7;
+  --role-owner-border: rgba(79, 195, 247, 0.3);
+
+  --role-admin-bg: rgba(156, 39, 176, 0.3);
+  --role-admin-text: #ba68c8;
+  --role-admin-border: rgba(186, 104, 200, 0.3);
+
+  --role-writer-bg: rgba(76, 175, 80, 0.3);
+  --role-writer-text: #81c784;
+  --role-writer-border: rgba(129, 199, 132, 0.3);
+
+  --role-commentor-bg: rgba(255, 152, 0, 0.25);
+  --role-commentor-text: #ffcc80;
+  --role-commentor-border: rgba(255, 204, 128, 0.35);
+
+  --role-reader-bg: rgba(158, 158, 158, 0.3);
+  --role-reader-text: #bdbdbd;
+  --role-reader-border: rgba(189, 189, 189, 0.3);
 }
 
 /* === Light Theme === */
@@ -317,9 +338,9 @@
   /* Surface Colors - Adjusted to match new scheme */
   --surface-primary: var(--bg-primary);
   /* Top bar background */
-  --surface-secondary: #d4d4d4;
+  --surface-secondary: #c4d6d4;
   /* Comments section background */
-  --surface-tertiary: #c8c8c8;
+  --surface-tertiary: #b4c9c6;
   --surface-hover: rgba(110, 151, 146, 0.2);
   --surface-active: #9ab2b0;
 
@@ -395,6 +416,27 @@
 
   --find-transparency: 0.65;
   --find-bg: rgb(210, 228, 227, var(--find-transparency));
+
+  /* Role Badge Colors */
+  --role-owner-bg: rgba(14, 99, 156, 0.15);
+  --role-owner-text: #0d47a1;
+  --role-owner-border: rgba(13, 71, 161, 0.3);
+
+  --role-admin-bg: rgba(156, 39, 176, 0.15);
+  --role-admin-text: #6a1b9a;
+  --role-admin-border: rgba(106, 27, 154, 0.3);
+
+  --role-writer-bg: rgba(76, 175, 80, 0.15);
+  --role-writer-text: #1b5e20;
+  --role-writer-border: rgba(27, 94, 32, 0.3);
+
+  --role-commentor-bg: rgba(255, 152, 0, 0.16);
+  --role-commentor-text: #e65100;
+  --role-commentor-border: rgba(230, 81, 0, 0.3);
+
+  --role-reader-bg: rgba(120, 120, 120, 0.16);
+  --role-reader-text: #424242;
+  --role-reader-border: rgba(66, 66, 66, 0.3);
 }
 
 /* Apply scrollbar colors */

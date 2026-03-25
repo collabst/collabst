@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { invitationsApi } from '../services/api'
+  import RoleBadge from './ui/RoleBadge.svelte'
   import type { Invitation } from '../types'
 
   let invitations: Invitation[] = []
@@ -52,7 +53,9 @@
       {#each invitations as invitation (invitation.id)}
         <div class="invitation">
           <div class="info">
-            <div class="role">{invitation.role.toUpperCase()}</div>
+            <div class="role-badge-wrap">
+              <RoleBadge role={invitation.role} size="sm" uppercase={true} />
+            </div>
             <div class="email">From: {invitation.invitee_email}</div>
             <div class="date">
               {new Date(invitation.created_at).toLocaleDateString()}
@@ -80,23 +83,24 @@
 
 <style>
   .container {
-    background: rgba(255, 152, 0, 0.12);
-    border: 1px solid rgba(255, 152, 0, 0.4);
-    border-radius: 6px;
     margin-bottom: 1rem;
     overflow: hidden;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 
   .header {
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid rgba(255, 152, 0, 0.3);
+    padding-bottom: 0.25rem;
   }
 
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: 1.5rem;
     font-weight: 600;
-    color: #ffb74d;
+    font-family: "DM Serif Display", Georgia, serif;
+    letter-spacing: -0.015em;
+    color: var(--text-secondary);
   }
 
   .list {
@@ -107,10 +111,10 @@
   }
 
   .invitation {
-    background: #252526;
-    padding: 1rem;
-    border-radius: 4px;
-    border: 1px solid #3e3e42;
+    background: var(--bg-top-bar);
+    padding: 1.25rem 2rem;
+    border-radius: 18px;
+    border: 2px solid var(--border-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -118,36 +122,27 @@
   }
 
   .invitation:hover {
-    background: #2d2d30;
-    border-color: #555;
+    /* background: var(--surface-hover); */
+    border-color: var(--border-secondary);
   }
 
   .info {
     flex: 1;
   }
 
-  .role {
-    display: inline-block;
-    background: rgba(14, 99, 156, 0.3);
-    color: #4fc3f7;
-    border: 1px solid rgba(79, 195, 247, 0.3);
-    padding: 0.25rem 0.625rem;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
+  .role-badge-wrap {
     margin-bottom: 0.5rem;
-    letter-spacing: 0.5px;
   }
 
   .email {
-    font-size: 13px;
-    color: #e8e8e8;
+    font-size: 15px;
+    color: var(--text-primary);
     margin-bottom: 0.25rem;
   }
 
   .date {
-    font-size: 12px;
-    color: #999;
+    font-size: 13px;
+    color: var(--text-tertiary);
   }
 
   .actions {
@@ -166,25 +161,34 @@
   }
 
   .accept {
-    background: rgba(76, 175, 80, 0.2);
-    color: #81c784;
-    border-color: rgba(129, 199, 132, 0.4);
+    background: var(--color-tertiary-500);
+    color: white;
+    font-weight: 700;
+    opacity: 0.9;
   }
 
   .accept:hover {
-    background: rgba(76, 175, 80, 0.3);
-    border-color: rgba(129, 199, 132, 0.6);
+    background: var(--color-tertiary-glow);
+    box-shadow: 0 1px 6px var(--color-tertiary-glow);
+  }
+
+  .accept:active {
+    box-shadow: 0 1px 12px var(--color-tertiary-glow);
   }
 
   .decline {
-    background: rgba(244, 67, 54, 0.2);
-    color: #e57373;
-    border-color: rgba(229, 115, 115, 0.4);
+    background: var(--dialog-cancel-btn-bg);
+    color: var(--dialog-text);
+    opacity: 0.8;
   }
 
   .decline:hover {
-    background: rgba(244, 67, 54, 0.3);
-    border-color: rgba(229, 115, 115, 0.6);
+    background: var(--dialog-cancel-btn-hover);
+  }
+
+  .decline:active {
+    background: var(--dialog-cancel-btn-active);
+    color: var(--text-active);
   }
 
   .loading {

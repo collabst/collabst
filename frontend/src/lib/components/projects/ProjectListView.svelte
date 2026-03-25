@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Project } from "$lib/types";
   import ListActionButton from "./ListActionButton.svelte";
+  import RoleBadge from "$lib/components/ui/RoleBadge.svelte";
   import File from "@lucide/svelte/icons/file";
   import Play from "@lucide/svelte/icons/play";
   import Trash2 from "@lucide/svelte/icons/trash-2";
@@ -12,21 +13,6 @@
   export let onSortByColumn: (column: "name" | "created" | "modified") => void;
   export let onInvite: (projectId: string) => void;
   export let onDelete: (projectId: string) => void;
-
-  function getRoleBadgeClass(role: string): string {
-    switch (role) {
-      case "admin":
-        return "role-admin";
-      case "writer":
-        return "role-writer";
-      case "commentor":
-        return "role-commentor";
-      case "reader":
-        return "role-reader";
-      default:
-        return "role-owner";
-    }
-  }
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -96,11 +82,7 @@
           <File size={18} class="project-file-icon" />
           <span class="project-name">{project.name}</span>
           {#if project.current_user_role}
-            <span
-              class="role-badge {getRoleBadgeClass(project.current_user_role)}"
-            >
-              {project.current_user_role}
-            </span>
+            <RoleBadge role={project.current_user_role} />
           {/if}
         </div>
 
@@ -260,7 +242,7 @@
     gap: 0.75rem;
   }
 
-  .project-file-icon {
+  :global(.project-file-icon) {
     color: var(--text-secondary);
     flex-shrink: 0;
   }
@@ -285,49 +267,4 @@
     pointer-events: auto;
   }
 
-  .role-badge {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .role-owner {
-    background: rgba(14, 99, 156, 0.3);
-    color: #4fc3f7;
-    border: 1px solid rgba(79, 195, 247, 0.3);
-  }
-
-  /* Light theme: darker blue for better contrast */
-  :global([data-theme="light"]) .role-owner {
-    background: rgba(14, 99, 156, 0.15);
-    color: #0d47a1;
-    border: 1px solid rgba(13, 71, 161, 0.3);
-  }
-
-  .role-admin {
-    background: rgba(156, 39, 176, 0.3);
-    color: #ba68c8;
-    border: 1px solid rgba(186, 104, 200, 0.3);
-  }
-
-  .role-writer {
-    background: rgba(76, 175, 80, 0.3);
-    color: #81c784;
-    border: 1px solid rgba(129, 199, 132, 0.3);
-  }
-
-  .role-commentor {
-    background: rgba(255, 152, 0, 0.25);
-    color: #ffcc80;
-    border: 1px solid rgba(255, 204, 128, 0.35);
-  }
-
-  .role-reader {
-    background: rgba(158, 158, 158, 0.3);
-    color: #bdbdbd;
-    border: 1px solid rgba(189, 189, 189, 0.3);
-  }
 </style>
