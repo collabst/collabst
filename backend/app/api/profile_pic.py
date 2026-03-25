@@ -1,8 +1,8 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from fastapi.responses import RedirectResponse, Response
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
@@ -13,12 +13,16 @@ from app.services.storage import storage_service
 router = APIRouter()
 
 
-@router.get("/profile-pic/{user_id}")
+@router.get("/profile-pic/{user_ref}")
 async def get_profile_picture(
-    user_id: int,
+    user_ref: str,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    filters = [User.hash_id == user_ref]
+    if user_ref.isdigit():
+        filters.append(User.id == int(user_ref))
+
+    result = await db.execute(select(User).where(or_(*filters)))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -28,17 +32,11 @@ async def get_profile_picture(
         )
 
     if not user.profile_picture_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile picture not found",
-        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     try:
         url = storage_service.get_presigned_url(user.profile_picture_path, expires=3600)
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile picture not found",
-        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     return RedirectResponse(url=url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
