@@ -235,6 +235,7 @@
 
   let isResizingLeft = false;
   let isResizingRight = false;
+  let activeResizeHandle: HTMLButtonElement | null = null;
   let resizeStartX = 0;
   let resizeStartWidth = 0;
   let editorPane: any = $state(null); // Reference to EditorPane component
@@ -262,6 +263,9 @@
   function handleLeftResizeStart(e: MouseEvent) {
     if (!activePanel) return;
     isResizingLeft = true;
+    activeResizeHandle = e.currentTarget as HTMLButtonElement;
+    activeResizeHandle.style.opacity = "1";
+    activeResizeHandle.style.color = "var(--primary)";
     resizeStartX = e.clientX;
     resizeStartWidth = leftPanelWidth;
     createDragOverlay();
@@ -270,6 +274,9 @@
 
   function handleRightResizeStart(e: MouseEvent) {
     isResizingRight = true;
+    activeResizeHandle = e.currentTarget as HTMLButtonElement;
+    activeResizeHandle.style.opacity = "1";
+    activeResizeHandle.style.color = "var(--primary)";
     resizeStartX = e.clientX;
     resizeStartWidth = previewPanelWidth;
     createDragOverlay();
@@ -345,6 +352,11 @@
   function handleMouseUp() {
     isResizingLeft = false;
     isResizingRight = false;
+    if (activeResizeHandle) {
+      activeResizeHandle.style.opacity = "";
+      activeResizeHandle.style.color = "";
+      activeResizeHandle = null;
+    }
     removeDragOverlay();
   }
 
@@ -2179,9 +2191,9 @@
       {/if}
 
       {#if activePanel}
-        <div
+        <button
+          type="button"
           class="resize-handle"
-          role="separator"
           aria-label="Resize left panel"
           onmousedown={handleLeftResizeStart}
         >
@@ -2201,7 +2213,7 @@
               r="1"
             /><circle cx="12" cy="19" r="1" /></svg
           >
-        </div>
+        </button>
       {/if}
 
       <EditorPane
@@ -2250,9 +2262,9 @@
         canModerateComments={canManageProject}
       />
 
-      <div
+      <button
+        type="button"
         class="resize-handle"
-        role="separator"
         aria-label="Resize right panel"
         onmousedown={handleRightResizeStart}
         style={separateWindow ? "visibility: hidden; position: absolute;" : ""}
@@ -2273,7 +2285,7 @@
             r="1"
           /><circle cx="12" cy="19" r="1" /></svg
         >
-      </div>
+      </button>
 
       <div
         style="width: {previewPanelWidth}px; flex: 0 0 auto; {separateWindow
@@ -2487,6 +2499,8 @@
     align-items: center;
     justify-content: center;
     color: var(--text-tertiary);
+    background: transparent;
+    border: none;
     cursor: col-resize;
     user-select: none;
     overflow: visible;
@@ -2503,11 +2517,6 @@
   .resize-handle:hover {
     color: var(--text-secondary);
     opacity: 0.8;
-  }
-
-  .resize-handle:active {
-    color: var(--primary);
-    opacity: 1;
   }
 
   .loading {
