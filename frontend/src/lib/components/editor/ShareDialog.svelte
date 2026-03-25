@@ -1,49 +1,78 @@
 <script lang="ts">
-  import Copy from '@lucide/svelte/icons/copy'
-  import Link2 from '@lucide/svelte/icons/link-2'
-  import Trash2 from '@lucide/svelte/icons/trash-2'
-  import SendHorizontal from '@lucide/svelte/icons/send-horizontal'
-  import Users from '@lucide/svelte/icons/users'
-  import type { CollaboratorRole, Project, ShareLinksSummary, SharingOverview } from '$lib/types'
-  import { invitationsApi, projectsApi, sharingApi } from '$lib/services/api'
+  import Copy from "@lucide/svelte/icons/copy";
+  import Link2 from "@lucide/svelte/icons/link-2";
+  import Trash2 from "@lucide/svelte/icons/trash-2";
+  import SendHorizontal from "@lucide/svelte/icons/send-horizontal";
+  import Users from "@lucide/svelte/icons/users";
+  import X from "@lucide/svelte/icons/x";
+  import Tooltip from "$lib/components/ui/Tooltip.svelte";
+  import DropdownSettingsButton from "$lib/components/ui/DropdownSettingsButton.svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
+  import { notifications } from "$lib/stores/notifications";
+  import type {
+    CollaboratorRole,
+    Project,
+    ShareLinksSummary,
+    SharingOverview,
+  } from "$lib/types";
+  import { invitationsApi, projectsApi, sharingApi } from "$lib/services/api";
 
   let {
     show = $bindable(false),
     project,
     onClose,
   } = $props<{
-    show?: boolean
-    project: Project
-    onClose?: () => void
-  }>()
+    show?: boolean;
+    project: Project;
+    onClose?: () => void;
+  }>();
 
-  let loading = $state(false)
-  let error = $state<string | null>(null)
-  let overview = $state<SharingOverview | null>(null)
+  let loading = $state(false);
+  let error = $state<string | null>(null);
+  let overview = $state<SharingOverview | null>(null);
 
-  let inviteEmail = $state('')
-  let inviteRole = $state<CollaboratorRole>('writer')
-  let inviteLoading = $state(false)
+  let inviteEmail = $state("");
+  let inviteRole = $state<CollaboratorRole>("writer");
+  let inviteLoading = $state(false);
 
-  type PublicLinkType = 'read' | 'comment' | 'edit'
+  type PublicLinkType = "read" | "comment" | "edit";
 
-  const canManage = $derived(project.current_user_role === 'owner' || project.current_user_role === 'admin')
-  const publicLinks = $derived<ShareLinksSummary>(overview?.public_links ?? { read: null, comment: null, edit: null })
-  const canSeeCommentLink = $derived(project.current_user_role !== 'reader')
-  const canSeeEditLink = $derived(project.current_user_role === 'owner' || project.current_user_role === 'admin' || project.current_user_role === 'writer')
-  const visibleLinkTypes = $derived(([
-    { key: 'read', label: 'Read-only' },
-    ...(canSeeCommentLink ? [{ key: 'comment', label: 'Comment-only' }] : []),
-    ...(canSeeEditLink ? [{ key: 'edit', label: 'Edit' }] : []),
-  ] as { key: PublicLinkType; label: string }[]))
+  const canManage = $derived(
+    project.current_user_role === "owner" ||
+      project.current_user_role === "admin",
+  );
+  const publicLinks = $derived<ShareLinksSummary>(
+    overview?.public_links ?? { read: null, comment: null, edit: null },
+  );
+  const canSeeCommentLink = $derived(project.current_user_role !== "reader");
+  const canSeeEditLink = $derived(
+    project.current_user_role === "owner" ||
+      project.current_user_role === "admin" ||
+      project.current_user_role === "writer",
+  );
+  const visibleLinkTypes = $derived([
+    { key: "read", label: "Read-only" },
+    ...(canSeeCommentLink ? [{ key: "comment", label: "Comment-only" }] : []),
+    ...(canSeeEditLink ? [{ key: "edit", label: "Edit" }] : []),
+  ] as { key: PublicLinkType; label: string }[]);
+  const collaboratorRoleOptions = [
+    { value: "reader", label: "Reader" },
+    { value: "commentor", label: "Commentor" },
+    { value: "writer", label: "Writer" },
+    { value: "admin", label: "Admin" },
+  ];
 
   const members = $derived.by(() => {
-    if (!overview) return []
-    const ownerId = project.owner?.id
-    const ownerExists = !!ownerId && overview.collaborators.some((c) => c.user_id === ownerId || c.role === 'owner')
+    if (!overview) return [];
+    const ownerId = project.owner?.id;
+    const ownerExists =
+      !!ownerId &&
+      overview.collaborators.some(
+        (c) => c.user_id === ownerId || c.role === "owner",
+      );
 
     if (ownerExists || !project.owner) {
-      return overview.collaborators
+      return overview.collaborators;
     }
 
     return [
@@ -51,7 +80,7 @@
         id: 0,
         project_id: project.id,
         user_id: project.owner.id,
-        role: 'owner' as CollaboratorRole,
+        role: "owner" as CollaboratorRole,
         created_at: project.created_at,
         updated_at: project.updated_at,
         user: {
@@ -65,101 +94,119 @@
         },
       },
       ...overview.collaborators,
-    ]
-  })
+    ];
+  });
 
   async function loadOverview() {
-    loading = true
-    error = null
+    loading = true;
+    error = null;
     try {
-      overview = await sharingApi.getOverview(project.id)
+      overview = await sharingApi.getOverview(project.id);
     } catch (err: any) {
-      error = err?.response?.data?.detail || 'Failed to load sharing settings'
+      error = err?.response?.data?.detail || "Failed to load sharing settings";
     } finally {
-      loading = false
+      loading = false;
     }
   }
 
   $effect(() => {
     if (show) {
-      loadOverview()
+      loadOverview();
     }
-  })
+  });
 
   $effect(() => {
-    if (!show) return
+    if (!show) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  })
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   function close() {
-    show = false
-    onClose?.()
+    show = false;
+    onClose?.();
   }
 
   function getAbsoluteUrl(relativePath: string): string {
-    if (typeof window === 'undefined') return relativePath
-    return `${window.location.origin}${relativePath}`
+    if (typeof window === "undefined") return relativePath;
+    return `${window.location.origin}${relativePath}`;
   }
 
-  async function createLink(linkType: 'read' | 'comment' | 'edit') {
-    if (!canManage) return
-    await sharingApi.createPublicLink(project.id, linkType)
-    await loadOverview()
+  async function createLink(linkType: "read" | "comment" | "edit") {
+    if (!canManage) return;
+    await sharingApi.createPublicLink(project.id, linkType);
+    await loadOverview();
   }
 
-  async function revokeLink(linkType: 'read' | 'comment' | 'edit') {
-    if (!canManage) return
-    await sharingApi.revokePublicLink(project.id, linkType)
-    await loadOverview()
+  async function revokeLink(linkType: "read" | "comment" | "edit") {
+    if (!canManage) return;
+    await sharingApi.revokePublicLink(project.id, linkType);
+    await loadOverview();
   }
 
   async function copyLink(url: string) {
-    await navigator.clipboard.writeText(getAbsoluteUrl(url))
+    try {
+      await navigator.clipboard.writeText(getAbsoluteUrl(url));
+      notifications.show("Link copied to clipboard", "info", 2000);
+    } catch {
+      notifications.show("Failed to copy link", "error", 2500);
+    }
   }
 
   async function sendInvitation() {
-    if (!canManage) return
-    if (!inviteEmail.trim()) return
-    inviteLoading = true
+    if (!canManage) return;
+    if (!inviteEmail.trim()) return;
+    inviteLoading = true;
     try {
-      await invitationsApi.send(project.id, inviteEmail.trim(), inviteRole)
-      inviteEmail = ''
-      inviteRole = 'writer'
-      await loadOverview()
+      await invitationsApi.send(project.id, inviteEmail.trim(), inviteRole);
+      inviteEmail = "";
+      inviteRole = "writer";
+      await loadOverview();
     } finally {
-      inviteLoading = false
+      inviteLoading = false;
     }
   }
 
   async function updateMemberRole(userId: string, role: CollaboratorRole) {
-    if (!canManage) return
-    await projectsApi.updateCollaborator(project.id, userId, role)
-    await loadOverview()
+    if (!canManage) return;
+    await projectsApi.updateCollaborator(project.id, userId, role);
+    await loadOverview();
   }
 
   async function removeMember(userId: string) {
-    if (!canManage) return
-    await projectsApi.removeCollaborator(project.id, userId)
-    await loadOverview()
+    if (!canManage) return;
+    await projectsApi.removeCollaborator(project.id, userId);
+    await loadOverview();
   }
 
   async function cancelInvitation(invitationId: string) {
-    if (!canManage) return
-    await invitationsApi.cancel(project.id, invitationId)
-    await loadOverview()
+    if (!canManage) return;
+    await invitationsApi.cancel(project.id, invitationId);
+    await loadOverview();
   }
 </script>
 
 {#if show}
   <div class="overlay" onclick={close} role="presentation">
-    <div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+    <div
+      class="dialog"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
       <header class="dialog-header">
         <h2>Share project</h2>
-        <button class="close-btn" type="button" onclick={close}>✕</button>
+        <IconButton
+          variant="flat"
+          icon={X}
+          size="md"
+          onclick={close}
+          ariaLabel="Close share dialog"
+        />
       </header>
 
       {#if loading}
@@ -175,18 +222,31 @@
               <div class="link-label">{linkType.label}</div>
               {#if link}
                 <input readonly value={getAbsoluteUrl(link.url)} />
-                <button class="icon-btn" type="button" onclick={() => copyLink(link.url)} title="Copy">
-                  <Copy size={14} />
-                </button>
+                <Tooltip text="Copy link" position="top">
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    onclick={() => copyLink(link.url)}
+                    aria-label="Copy link"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </Tooltip>
                 {#if canManage}
-                  <button class="danger-btn" type="button" onclick={() => revokeLink(linkType.key)}>Revoke link</button>
+                  <button
+                    class="danger-btn"
+                    type="button"
+                    onclick={() => revokeLink(linkType.key)}>Revoke link</button
+                  >
                 {/if}
+              {:else if canManage}
+                <button
+                  class="secondary-btn"
+                  type="button"
+                  onclick={() => createLink(linkType.key)}>Create link</button
+                >
               {:else}
-                {#if canManage}
-                  <button class="secondary-btn" type="button" onclick={() => createLink(linkType.key)}>Create link</button>
-                {:else}
-                  <span class="muted">No link</span>
-                {/if}
+                <span class="muted">No link</span>
               {/if}
             </div>
           {/each}
@@ -202,13 +262,21 @@
                 placeholder="collaborator@example.com"
                 disabled={inviteLoading}
               />
-              <select bind:value={inviteRole} disabled={inviteLoading}>
-                <option value="reader">Reader</option>
-                <option value="commentor">Commentor</option>
-                <option value="writer">Writer</option>
-                <option value="admin">Admin</option>
-              </select>
-              <button type="button" class="primary-btn" disabled={inviteLoading} onclick={sendInvitation}>
+              <div
+                class="invite-role-dropdown"
+                class:invite-role-dropdown-disabled={inviteLoading}
+              >
+                <DropdownSettingsButton
+                  bind:value={inviteRole}
+                  options={collaboratorRoleOptions}
+                />
+              </div>
+              <button
+                type="button"
+                class="primary-btn"
+                disabled={inviteLoading}
+                onclick={sendInvitation}
+              >
                 Invite
               </button>
             </div>
@@ -219,9 +287,16 @@
                 {#each overview.invitations as invitation}
                   <div class="pending-item">
                     <span>{invitation.invitee_email} · {invitation.role}</span>
-                    <button class="icon-btn" type="button" onclick={() => cancelInvitation(invitation.id)} title="Cancel invitation">
-                      <Trash2 size={14} />
-                    </button>
+                    <Tooltip text="Cancel invitation" position="top">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        onclick={() => cancelInvitation(invitation.id)}
+                        aria-label="Cancel invitation"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </Tooltip>
                   </div>
                 {/each}
               </div>
@@ -236,25 +311,39 @@
           {:else}
             <div class="member-list">
               {#each members as collaborator}
-                {@const isOwner = collaborator.role === 'owner' || collaborator.user_id === project.owner_id}
+                {@const isOwner =
+                  collaborator.role === "owner" ||
+                  collaborator.user_id === project.owner_id}
                 <div class="member-row">
                   <div class="member-info">
-                    <strong>{collaborator.user?.username || collaborator.user_id}</strong>
+                    <strong
+                      >{collaborator.user?.username ||
+                        collaborator.user_id}</strong
+                    >
                     <span>{collaborator.user?.email}</span>
                   </div>
                   {#if canManage && !isOwner}
-                    <select
-                      value={collaborator.role}
-                      onchange={(e) => updateMemberRole(collaborator.user_id, (e.currentTarget as HTMLSelectElement).value as CollaboratorRole)}
+                    <div class="member-role-dropdown">
+                      <DropdownSettingsButton
+                        value={collaborator.role}
+                        options={collaboratorRoleOptions}
+                        onchange={(value) =>
+                          updateMemberRole(
+                            collaborator.user_id,
+                            value as CollaboratorRole,
+                          )}
+                      />
+                    </div>
+                    <button
+                      class="danger-btn"
+                      type="button"
+                      onclick={() => removeMember(collaborator.user_id)}
+                      >Remove</button
                     >
-                      <option value="reader">Reader</option>
-                      <option value="commentor">Commentor</option>
-                      <option value="writer">Writer</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <button class="danger-btn" type="button" onclick={() => removeMember(collaborator.user_id)}>Remove</button>
                   {:else}
-                    <span class="muted role-pill">{isOwner ? 'owner' : collaborator.role}</span>
+                    <span class="muted role-pill"
+                      >{isOwner ? "owner" : collaborator.role}</span
+                    >
                   {/if}
                 </div>
               {/each}
@@ -287,7 +376,7 @@
     border: 2px solid var(--dialog-border);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-2xl);
-    padding: var(--space-5);
+    padding: 1.75rem 2rem 1.5rem 2rem;
   }
 
   .dialog-header {
@@ -300,31 +389,27 @@
   h2 {
     margin: 0;
     color: var(--dialog-text);
-    font-size: var(--text-2xl);
-  }
-
-  .close-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: var(--text-xl);
+    font-size: 2.3rem;
+    letter-spacing: -0.02em;
+    font-family: "DM Serif Display", Georgia, serif;
   }
 
   .section {
     margin-bottom: var(--space-5);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
+    background-color: color-mix(in srgb, var(--bg-editor), transparent 55%);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5) var(--space-6);
   }
 
   h3 {
-    margin: 0 0 var(--space-3) 0;
+    margin: 0 0 var(--space-4) 0;
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--text-primary);
-    font-size: var(--text-base);
+    color: var(--text-secondary);
+    letter-spacing: -0.02em;
+    font-size: 1.2rem;
+    font-weight: 600;
   }
 
   .link-row,
@@ -356,19 +441,56 @@
     font-size: var(--text-xs);
   }
 
-  input,
-  select {
+  input {
     min-height: 34px;
     border-radius: var(--radius-md);
-    border: 1px solid var(--dialog-input-border);
-    background: var(--bg-primary);
     color: var(--text-primary);
-    padding: 0 var(--space-2);
+    padding: var(--space-2) var(--space-2);
+  }
+
+  input {
+    background: var(--bg-primary);
+    border: 2px solid var(--border-primary);
+  }
+
+  input:hover {
+    border-color: var(--border-secondary);
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--color-tertiary-500);
+  }
+
+  input:read-only {
+    border: 2px solid var(--border-primary);
+    background: none;
+    color: var(--text-tertiary);
+    opacity: 0.9;
   }
 
   .link-row input,
   .invite-row input {
     flex: 1;
+  }
+
+  .invite-role-dropdown,
+  .member-role-dropdown {
+    flex-shrink: 0;
+  }
+
+  .invite-role-dropdown {
+    min-width: 130px;
+  }
+
+  .invite-role-dropdown-disabled {
+    pointer-events: none;
+    opacity: 0.65;
+  }
+
+  .invite-role-dropdown :global(.dropdown-btn),
+  .member-role-dropdown :global(.dropdown-btn) {
+    border-radius: var(--radius-md);
   }
 
   .primary-btn,
@@ -384,18 +506,68 @@
 
   .primary-btn {
     background: var(--color-tertiary-500);
+    border: 2px solid var(--color-tertiary-500);
     color: white;
   }
 
-  .secondary-btn,
-  .icon-btn {
-    background: var(--btn-secondary-bg);
+  .primary-btn:hover {
+    background: var(--color-tertiary-glow);
+    border-color: var(--color-tertiary-glow);
+    box-shadow: 0 1px 6px var(--color-tertiary-glow);
+  }
+
+  .primary-btn:active {
+    box-shadow: 0 1px 12px var(--color-tertiary-glow);
+  }
+
+  .secondary-btn {
+    background: var(--bg-primary);
+    border: 2px solid var(--border-primary);
     color: var(--text-primary);
   }
 
-  .danger-btn {
-    background: var(--status-error-bg);
+  .secondary-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-secondary);
+  }
+
+  .secondary-btn:active {
+    color: var(--text-active);
+    background: var(--surface-active);
+    transform: scaleX(1.02) scaleY(0.98);
+  }
+
+  .icon-btn {
+    background: transparent;
     color: var(--text-primary);
+    padding: 0 0.5rem 0 0.5rem;
+    margin-right: 2rem;
+    scale: 1.2;
+  }
+
+  .icon-btn:hover {
+    color: var(--color-primary-500);
+  }
+
+  .icon-btn:active {
+    color: var(--color-primary-600);
+    transform: scaleX(1.1) scaleY(0.95);
+  }
+
+  .danger-btn {
+    background: var(--color-error);
+    border: 2px solid var(--color-error);
+    color: white;
+  }
+
+  .danger-btn:hover {
+    background: var(--color-error-dark);
+    border-color: var(--color-error-dark);
+    box-shadow: 0 1px 8px var(--color-error-glow);
+  }
+
+  .danger-btn:active {
+    box-shadow: 0 1px 16px var(--color-error-glow);
   }
 
   .state,
