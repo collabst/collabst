@@ -66,6 +66,50 @@ let currentScaleRatio = 1;  // Keep track of current scale ratio
 let currentZoomMode = 'fit-page';  // Keep track of current zoom mode
 let currentZoomValue = 1;  // Keep track of current zoom value
 let inhibNextZoomChange = false; // Flag to inhibit next zoom change notification
+/** @type {MutationObserver | null} */
+let typstAppTransformObserver = null;
+
+const lockedTranslate = 'translate(0px, 0px)';
+
+// Keep #typst-app pinned to origin even when internal rescale logic rewrites transform.
+const centerTypstApp = () => {
+  const typstApp = document.getElementById('typst-app');
+  if (!typstApp) {
+    setTimeout(centerTypstApp, 100);
+    return;
+  }
+
+  typstApp.style.margin = '0 auto';
+
+  if (typstApp.style.transform !== lockedTranslate) {
+    typstApp.style.transform = lockedTranslate;
+  }
+
+  if (typstAppTransformObserver) return;
+
+  typstAppTransformObserver = new MutationObserver(() => {
+    if (typstApp.style.transform !== lockedTranslate) {
+      typstApp.style.transform = lockedTranslate;
+    }
+  });
+
+  typstAppTransformObserver.observe(typstApp, {
+    attributes: true,
+    attributeFilter: ['style'],
+  });
+
+  const typstContainerMain = document.getElementById('typst-container-main');
+  if (typstContainerMain) {
+    const scrollByOriginal = typstContainerMain.scrollBy;
+    typstContainerMain.scrollBy = function (x, y, ...args) {
+      if (x % 1 === 0 && y % 1 === 0) {
+        scrollByOriginal.call(this, x, y, ...args);
+      } else { // Floating point scroll only happens during zooming.
+        // TODO: find a way to scroll smoothly (currently disabled because it causes jitter)
+      }
+    };
+  }
+};
 
 // Send zoom change notification to parent window
 const notifyZoomChange = () => {
@@ -146,6 +190,7 @@ const setupZoomHook = () => {
       notifyZoomChange();
     };
   }
+  centerTypstApp();
   initializeZoom();
 };
 

@@ -191,7 +191,7 @@
         // Add all assets
         for (const asset of assets) {
           try {
-            const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
+            const { url } = await assetsApi.getUrl(asset.project_id, asset.id);
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             const path = asset.path.startsWith('/') ? asset.path.slice(1) : asset.path;
@@ -665,17 +665,17 @@
       title="Typst Preview"
       src="/typst-preview">
     </iframe>
+    {#if !isPreviewZoomInitialized}
+      <div class="preview-loading-overlay">
+        <p>Loading preview...</p>
+      </div>
+    {/if}
     <svg class="corner left" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
       <path d="M 0 0 V 1 A 1 1 0 0 1 1 0 Z"/>
     </svg>
     <svg class="corner right" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
       <path d="M 1 0 V 1 A 1 1 0 0 0 0 0 Z"/>
     </svg>
-    {#if !isPreviewZoomInitialized}
-      <div class="preview-loading-overlay">
-        <p>Loading preview...</p>
-      </div>
-    {/if}
   </div>
 </div>
 

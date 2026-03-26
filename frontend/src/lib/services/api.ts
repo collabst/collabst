@@ -317,39 +317,39 @@ export const assetsApi = {
     file: globalThis.File,
     parentId: string | null = null,
   ): Promise<File | Asset> => {
-    const formData = new FormData()
-    formData.append('file', file as unknown as Blob)
+    const formData = new FormData();
+    formData.append('file', file as unknown as Blob);
     if (parentId !== null) {
       formData.append('parent_id', parentId.toString())
     }
 
     const { data } = await api.post<File | Asset>(`/projects/${projectId}/assets/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return data
+    });
+    return data;
   },
 
   getUrl: async (projectId: string, assetId: string): Promise<{ url: string; filename: string; mime_type: string }> => {
-    const { data } = await api.get(`/projects/${projectId}/assets/${assetId}/url`)
-    return data
+    const { data } = await api.get(`/projects/${projectId}/assets/${assetId}/url`);
+    return data;
   },
 
   update: async (projectId: string, assetId: string, updates: { filename?: string; parent_id?: string | null }): Promise<Asset> => {
-    const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, updates)
-    return data
+    const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, updates);
+    return data;
   },
 
   move: async (projectId: string, assetId: string, newParentId: string | null): Promise<Asset> => {
     const { data } = await api.put<Asset>(`/projects/${projectId}/assets/${assetId}`, {
       parent_id: newParentId
-    })
-    return data
+    });
+    return data;
   },
 
   delete: async (projectId: string, assetId: string): Promise<void> => {
-    await api.delete(`/projects/${projectId}/assets/${assetId}`)
+    await api.delete(`/projects/${projectId}/assets/${assetId}`);
   },
-}
+};
 
 // Comments
 export const commentsApi = {

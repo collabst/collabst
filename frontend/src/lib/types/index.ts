@@ -41,15 +41,15 @@ export interface Collaborator {
 }
 
 export interface File {
-  id: string
-  project_id: string
-  name: string
-  path: string
-  content: string
-  parent_id: string | null
-  is_folder: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  project_id: string;
+  name: string;
+  path: string;
+  content: string;
+  parent_id: string | null;
+  is_folder: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface FileTreeNode extends File {
