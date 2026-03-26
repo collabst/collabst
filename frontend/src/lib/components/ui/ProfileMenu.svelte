@@ -100,8 +100,8 @@
   }
 
   .avatar-trigger {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: 999px;
     border: 1px solid var(--border-primary);
     background: var(--bg-file-panel);

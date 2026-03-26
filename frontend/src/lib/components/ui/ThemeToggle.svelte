@@ -35,6 +35,9 @@
 <style>
   .theme-toggle-wrapper {
     margin-left: 0.75rem;
+    margin-right: 0.1rem;
+    width: 30px;
+    height: 30px;
   }
 
   /* Light theme - show dark theme preview on hover */
