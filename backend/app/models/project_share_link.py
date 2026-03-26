@@ -26,6 +26,7 @@ class ProjectShareLink(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     project = relationship("Project", back_populates="share_links")
+    guest_shares = relationship("GuestShare", back_populates="project_share_link", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("project_id", "link_type", name="uq_project_share_link_type"),

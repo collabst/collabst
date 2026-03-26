@@ -13,7 +13,7 @@ from app.models.invitation import Invitation, InvitationStatus
 from app.models.project import Project
 from app.models.project_collaborator import CollaboratorRole, ProjectCollaborator
 from app.models.project_share_link import ProjectShareLink, ShareLinkType
-from app.models.user import User
+from app.models.user import AuthUser, User
 from app.schemas.collaborator import Collaborator, CollaboratorAdd, CollaboratorUpdate
 from app.schemas.invitation import Invitation as InvitationSchema
 from app.schemas.project import Project as ProjectSchema
@@ -48,7 +48,7 @@ def _serialize_collaborator(collaborator: ProjectCollaborator) -> Collaborator:
     )
 
 
-def _serialize_project(project: Project, current_user_role: str, owner: User, collaborators_count: int) -> ProjectWithRole:
+def _serialize_project(project: Project, current_user_role: str, owner: AuthUser, collaborators_count: int) -> ProjectWithRole:
     return ProjectWithRole(
         id=project.hash_id,
         name=project.name,
@@ -107,7 +107,7 @@ def _filter_links_for_role(links_summary: ShareLinksSummary, role: str) -> Share
     return ShareLinksSummary(read=links_summary.read, comment=None, edit=None)
 
 
-def _serialize_owner_as_collaborator(project: Project, owner: User) -> Collaborator:
+def _serialize_owner_as_collaborator(project: Project, owner: AuthUser) -> Collaborator:
     now = project.updated_at
     return Collaborator(
         id=f"owner-{owner.hash_id}",
@@ -176,10 +176,10 @@ async def list_projects(
         if project.owner_id == current_user.id:
             role = "owner"
         else:
-            user_role = await get_user_project_role(db, project.id, current_user.id)
+            user_role = await get_user_project_role(db, project, current_user)
             role = user_role.value if user_role else "reader"
 
-        owner_result = await db.execute(select(User).where(User.id == project.owner_id))
+        owner_result = await db.execute(select(AuthUser).where(AuthUser.id == project.owner_id))
         owner = owner_result.scalar_one_or_none()
         if not owner:
             continue
@@ -250,17 +250,16 @@ async def get_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
 
-    if current_user is None:
-        role = "reader"
-    elif project.owner_id == current_user.id:
+    if project.owner_id == current_user.id:
         role = "owner"
     else:
-        user_role = await get_user_project_role(db, project.id, current_user.id)
+        user_role = await get_user_project_role(db, project, current_user)
         role = user_role.value if user_role else "reader"
 
-    owner_result = await db.execute(select(User).where(User.id == project.owner_id))
+    owner_result = await db.execute(select(AuthUser).where(AuthUser.id == project.owner_id))
     owner = owner_result.scalar_one_or_none()
     if owner is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project owner not found")
@@ -278,7 +277,8 @@ async def update_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, current_user)
 
     if project_in.name and project_in.name != project.name:
         existing_project = await db.execute(
@@ -299,7 +299,7 @@ async def update_project(
 
     await db.commit()
     await db.refresh(project)
-    owner = await db.get(User, project.owner_id)
+    owner = await db.get(AuthUser, project.owner_id)
 
     await project_manager.broadcast_to_project(
         project.hash_id,
@@ -320,7 +320,7 @@ async def update_project(
         id=project.hash_id,
         name=project.name,
         description=project.description,
-        owner_id=(await db.get(User, project.owner_id)).hash_id,
+        owner_id=(await db.get(AuthUser, project.owner_id)).hash_id,
         created_at=project.created_at,
         updated_at=project.updated_at,
     )
@@ -362,7 +362,8 @@ async def list_collaborators(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
 
     result = await db.execute(
         select(ProjectCollaborator)
@@ -371,7 +372,7 @@ async def list_collaborators(
     )
     collaborators = result.scalars().all()
 
-    owner = await db.get(User, project.owner_id)
+    owner = await db.get(AuthUser, project.owner_id)
     serialized = [_serialize_collaborator(collaborator) for collaborator in collaborators]
     if owner is not None:
         serialized.insert(0, _serialize_owner_as_collaborator(project, owner))
@@ -385,8 +386,15 @@ async def add_collaborator(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, current_user)
     user = await get_user_by_hash(db, collaborator_in.user_id)
+
+    if not isinstance(user, AuthUser):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only authenticated users can be collaborators",
+        )
 
     if collaborator_in.role == CollaboratorRole.OWNER:
         raise HTTPException(
@@ -431,8 +439,15 @@ async def update_collaborator_role(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, current_user)
     user = await get_user_by_hash(db, user_hash_id)
+
+    if not isinstance(user, AuthUser):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only authenticated users can be collaborators",
+        )
 
     if collaborator_in.role == CollaboratorRole.OWNER:
         raise HTTPException(
@@ -477,12 +492,19 @@ async def remove_collaborator(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
     user = await get_user_by_hash(db, user_hash_id)
+
+    if not isinstance(user, AuthUser):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only authenticated users can be collaborators",
+        )
 
     is_leaving_self = user.id == current_user.id
     if not is_leaving_self:
-        await check_can_manage_sharing(db, project_ref, current_user.id)
+        await check_can_manage_sharing(db, project, current_user)
 
     if project.owner_id == user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove the project owner")
@@ -521,7 +543,8 @@ async def list_share_links(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, current_user)
 
     result = await db.execute(
         select(ProjectShareLink).where(
@@ -551,7 +574,8 @@ async def create_or_rotate_share_link(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, current_user)
 
     share_link_type = ShareLinkType(link_type)
     result = await db.execute(
@@ -583,7 +607,8 @@ async def revoke_share_link(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, current_user)
     share_link_type = ShareLinkType(link_type)
 
     result = await db.execute(
@@ -608,9 +633,10 @@ async def get_sharing_overview(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
 
-    user_role = await get_user_project_role(db, project.id, current_user.id)
+    user_role = await get_user_project_role(db, project, current_user)
     role_value = _effective_role_value(project, current_user, user_role)
 
     collaborators_result = await db.execute(
@@ -620,7 +646,7 @@ async def get_sharing_overview(
     )
     collaborators = collaborators_result.scalars().all()
 
-    owner = await db.get(User, project.owner_id)
+    owner = await db.get(AuthUser, project.owner_id)
 
     invitations_result = await db.execute(
         select(Invitation)

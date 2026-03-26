@@ -18,7 +18,7 @@ from app.schemas.comment import (
     CommentThreadCreate,
     CommentThreadUpdate,
 )
-from app.services.hash_lookup import get_file_by_ref
+from app.services.hash_lookup import get_file_by_ref, get_project_by_ref
 from app.services.permissions import check_project_access, get_user_project_role
 from app.websocket.notifications_ws import notifications_manager
 
@@ -67,7 +67,8 @@ async def list_file_threads(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id, CollaboratorRole.READER)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.READER)
     file = await get_file_by_ref(db, file_ref)
     if file.project_id != project.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -95,7 +96,8 @@ async def create_thread(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id, CollaboratorRole.COMMENTOR)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.COMMENTOR)
     file = await get_file_by_ref(db, payload.file_id)
     if file.project_id != project.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -142,7 +144,8 @@ async def create_reply(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id, CollaboratorRole.COMMENTOR)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.COMMENTOR)
     result = await db.execute(
         select(CommentThread)
         .options(selectinload(CommentThread.project))
@@ -185,7 +188,8 @@ async def update_thread(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id, CollaboratorRole.COMMENTOR)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.COMMENTOR)
     result = await db.execute(
         select(CommentThread)
         .options(
@@ -202,7 +206,7 @@ async def update_thread(
     if not thread or thread.project_id != project.id or thread.status == CommentThreadStatus.DELETED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment thread not found")
 
-    user_role = await get_user_project_role(db, project.id, current_user.id)
+    user_role = await get_user_project_role(db, project, current_user)
     can_moderate = _is_moderator(is_owner=(project.owner_id == current_user.id), role=user_role)
     is_author = thread.author_id == current_user.id
 

@@ -1,17 +1,32 @@
-export interface User {
+export interface BaseUser {
   id: string
-  email: string
   display_name: string
-  is_active: boolean
-  is_superuser: boolean
+  user_type: 'auth' | 'guest'
   created_at: string
   updated_at: string
 }
 
+export interface AuthUser extends BaseUser {
+  user_type: 'auth'
+  email: string
+  is_active: boolean
+  is_superuser: boolean
+}
+
+export interface GuestUser extends BaseUser {
+  user_type: 'guest'
+  email?: string
+  is_active?: boolean
+  is_superuser?: boolean
+}
+
+export type User = AuthUser | GuestUser
+
 export interface OwnerInfo {
   id: string
   display_name: string
-  email: string
+  email?: string
+  user_type?: 'auth' | 'guest'
 }
 
 export type ProjectRole = 'owner' | 'admin' | 'writer' | 'commentor' | 'reader'
@@ -76,6 +91,16 @@ export interface AuthResponse {
   refresh_token: string
   token_type: string
   user: User
+}
+
+export interface ShareAccessResponse {
+  project_id: string
+  permission: 'read' | 'comment' | 'edit'
+  project_added_to_workspace: boolean
+  access_token?: string
+  refresh_token?: string
+  token_type?: string
+  user?: User
 }
 
 export interface UserProfile {

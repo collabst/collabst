@@ -37,7 +37,7 @@ class ProjectCollaborator(Base):
 
     # Relationships
     project = relationship("Project", back_populates="collaborators")
-    user = relationship("User", back_populates="collaborations")
+    user = relationship("AuthUser", back_populates="collaborations")
 
     # Ensure one user can only have one role per project
     __table_args__ = (

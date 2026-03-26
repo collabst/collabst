@@ -6,7 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.models.user import User
+from app.models.user import AuthUser
 from app.services.storage import storage_service
 
 
@@ -18,11 +18,11 @@ async def get_profile_picture(
     user_ref: str,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    filters = [User.hash_id == user_ref]
+    filters = [AuthUser.hash_id == user_ref]
     if user_ref.isdigit():
-        filters.append(User.id == int(user_ref))
+        filters.append(AuthUser.id == int(user_ref))
 
-    result = await db.execute(select(User).where(or_(*filters)))
+    result = await db.execute(select(AuthUser).where(or_(*filters)))
     user = result.scalar_one_or_none()
 
     if not user:

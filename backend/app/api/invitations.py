@@ -11,13 +11,22 @@ from app.api.deps import CurrentUser
 from app.db.base import get_db
 from app.models.invitation import Invitation, InvitationStatus
 from app.models.project_collaborator import ProjectCollaborator
-from app.models.user import User
+from app.models.user import AuthUser
 from app.schemas.invitation import Invitation as InvitationSchema
 from app.schemas.invitation import InvitationCreate
 from app.services.hash_lookup import get_invitation_by_ref, get_project_by_ref
 from app.services.permissions import check_can_manage_sharing
 
 router = APIRouter()
+
+
+def _require_auth_user(current_user: CurrentUser) -> AuthUser:
+    if not isinstance(current_user, AuthUser):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only authenticated users can manage invitations",
+        )
+    return current_user
 
 
 def _serialize_invitation(invitation: Invitation) -> InvitationSchema:
@@ -43,9 +52,11 @@ async def send_invitation(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    auth_user = _require_auth_user(current_user)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, auth_user)
 
-    result = await db.execute(select(User).where(User.email == invitation_in.invitee_email))
+    result = await db.execute(select(AuthUser).where(AuthUser.email == invitation_in.invitee_email))
     invitee = result.scalar_one_or_none()
 
     if invitee:
@@ -73,7 +84,7 @@ async def send_invitation(
 
     invitation = Invitation(
         project_id=project.id,
-        inviter_id=current_user.id,
+        inviter_id=auth_user.id,
         invitee_email=invitation_in.invitee_email,
         invitee_id=invitee.id if invitee else None,
         role=invitation_in.role,
@@ -95,11 +106,13 @@ async def list_pending_invitations(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    auth_user = _require_auth_user(current_user)
+
     result = await db.execute(
         select(Invitation)
         .options(selectinload(Invitation.project), selectinload(Invitation.inviter), selectinload(Invitation.invitee))
         .where(
-            or_(Invitation.invitee_email == current_user.email, Invitation.invitee_id == current_user.id),
+            or_(Invitation.invitee_email == auth_user.email, Invitation.invitee_id == auth_user.id),
             Invitation.status == InvitationStatus.PENDING,
             Invitation.expires_at > datetime.utcnow(),
         )
@@ -115,7 +128,9 @@ async def list_project_invitations(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    auth_user = _require_auth_user(current_user)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, auth_user)
 
     result = await db.execute(
         select(Invitation)
@@ -133,9 +148,10 @@ async def accept_invitation(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    auth_user = _require_auth_user(current_user)
     invitation = await get_invitation_by_ref(db, invitation_ref)
 
-    if invitation.invitee_email != current_user.email and invitation.invitee_id != current_user.id:
+    if invitation.invitee_email != auth_user.email and invitation.invitee_id != auth_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This invitation is not for you")
 
     if invitation.status != InvitationStatus.PENDING:
@@ -147,7 +163,7 @@ async def accept_invitation(
     result = await db.execute(
         select(ProjectCollaborator).where(
             ProjectCollaborator.project_id == invitation.project_id,
-            ProjectCollaborator.user_id == current_user.id,
+            ProjectCollaborator.user_id == auth_user.id,
         )
     )
     if result.scalar_one_or_none():
@@ -159,13 +175,13 @@ async def accept_invitation(
     db.add(
         ProjectCollaborator(
             project_id=invitation.project_id,
-            user_id=current_user.id,
+            user_id=auth_user.id,
             role=invitation.role,
         )
     )
 
     invitation.status = InvitationStatus.ACCEPTED
-    invitation.invitee_id = current_user.id
+    invitation.invitee_id = auth_user.id
     await db.commit()
 
     return {"message": "Invitation accepted successfully"}
@@ -177,9 +193,10 @@ async def decline_invitation(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    auth_user = _require_auth_user(current_user)
     invitation = await get_invitation_by_ref(db, invitation_ref)
 
-    if invitation.invitee_email != current_user.email and invitation.invitee_id != current_user.id:
+    if invitation.invitee_email != auth_user.email and invitation.invitee_id != auth_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This invitation is not for you")
 
     if invitation.status != InvitationStatus.PENDING:
@@ -201,7 +218,9 @@ async def cancel_invitation(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_can_manage_sharing(db, project_ref, current_user.id)
+    auth_user = _require_auth_user(current_user)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_can_manage_sharing(db, project, auth_user)
     invitation = await get_invitation_by_ref(db, invitation_ref)
 
     if invitation.project_id != project.id:

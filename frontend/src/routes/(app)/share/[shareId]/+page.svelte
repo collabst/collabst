@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
   import { sharingApi } from '$lib/services/api'
+  import { auth } from '$lib/stores/auth'
   import { notifications } from '$lib/stores/notifications'
 
   let shareId = $derived($page.url.pathname.split('/').filter(Boolean).at(-1) ?? '')
@@ -16,6 +17,20 @@
 
     try {
       const result = await sharingApi.accessByShareHash(shareId)
+
+      auth.setGuestSession(
+        {
+          projectId: result.project_id,
+          permission: result.permission,
+          shareHash: shareId,
+        },
+        {
+          token: result.access_token ?? null,
+          refreshToken: result.refresh_token ?? null,
+          user: result.user ?? null,
+        },
+      )
+
       await goto(`/editor/${result.project_id}`, { replaceState: true })
       notifications.show('Project added to your workspace.', 'info', 3000)
     } catch (error: any) {

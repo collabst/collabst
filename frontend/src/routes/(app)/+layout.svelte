@@ -1,19 +1,19 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { browser } from '$app/environment'
-  import { isAuthenticated } from '$lib/stores/auth'
+  import { hasWorkspaceSession } from '$lib/stores/auth'
   import { NotificationContainer } from '$lib/components/ui'
   import { onMount } from 'svelte'
 
   onMount(() => {
-    // Check authentication on mount (client-side only)
-    if (!$isAuthenticated) {
+    // Allow either authenticated users or active guest workspace sessions.
+    if (!$hasWorkspaceSession) {
       goto('/login', { replaceState: true })
     }
   })
 
-  // Reactive check - redirect if auth changes (client-side only)
-  $: if (browser && !$isAuthenticated) {
+  // Reactive check - redirect if all workspace session state is gone.
+  $: if (browser && !$hasWorkspaceSession) {
     goto('/login', { replaceState: true })
   }
 </script>

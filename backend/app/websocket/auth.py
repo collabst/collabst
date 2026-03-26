@@ -61,11 +61,11 @@ async def _resolve_effective_role(
     db,
     *,
     project: Project,
-    user_id: int,
+    user: User,
 ) -> Optional[CollaboratorRole]:
-    if project.owner_id == user_id:
+    if project.owner_id == user.id:
         return CollaboratorRole.OWNER
-    return await get_user_project_role(db, project.id, user_id)
+    return await get_user_project_role(db, project, user)
 
 
 async def authenticate_websocket_project(
@@ -77,7 +77,7 @@ async def authenticate_websocket_project(
     async with AsyncSessionLocal() as db:
         user = await _get_user_from_token(db, token)
         project = await get_project_by_ref(db, project_ref)
-        role = await _resolve_effective_role(db, project=project, user_id=user.id)
+        role = await _resolve_effective_role(db, project=project, user=user)
 
         if role is None or not _is_role_at_least(role, minimum_role):
             raise WebSocketAuthError("forbidden")
@@ -101,4 +101,7 @@ async def get_current_project_role(
         if not project:
             return None
 
-        return await _resolve_effective_role(db, project=project, user_id=user_id)
+        user = await db.get(User, user_id)
+        if not user:
+            return None
+        return await _resolve_effective_role(db, project=project, user=user)

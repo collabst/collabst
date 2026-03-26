@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser
 from app.core.security import get_password_hash, verify_password
 from app.db.base import get_db
-from app.models.user import User
+from app.models.user import AuthUser
 from app.schemas.user import (
     PasswordChange,
     User as UserSchema,
@@ -27,7 +27,7 @@ MAX_PROFILE_PICTURE_SIZE_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
 
 
-def _build_public_profile(user: User, is_self: bool) -> UserPublicProfile:
+def _build_public_profile(user: AuthUser, is_self: bool) -> UserPublicProfile:
     return UserPublicProfile(
         id=user.hash_id,
         display_name=user.display_name,
@@ -51,7 +51,7 @@ async def get_user_profile(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(User).where(User.hash_id == user_id))
+    result = await db.execute(select(AuthUser).where(AuthUser.hash_id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:

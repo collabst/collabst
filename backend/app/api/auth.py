@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token, generate_refresh_token
 from app.db.base import get_db
-from app.models.user import User
+from app.models.user import AuthUser, User
 from app.models.refresh_token import RefreshToken
 from app.schemas.user import UserCreate, User as UserSchema, Token
 from app.services.user_profile import serialize_user
@@ -28,7 +28,7 @@ async def register(
             detail="Registration is currently disabled.",
         )
 
-    result = await db.execute(select(User).where(User.email == user_in.email))
+    result = await db.execute(select(AuthUser).where(AuthUser.email == user_in.email))
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -42,7 +42,7 @@ async def register(
             detail="Display name cannot be empty",
         )
 
-    user = User(
+    user = AuthUser(
         email=user_in.email,
         display_name=display_name,
         hashed_password=get_password_hash(user_in.password),
@@ -59,7 +59,7 @@ async def login(
     password: Annotated[str, Form()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(AuthUser).where(AuthUser.email == email))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(password, user.hashed_password):

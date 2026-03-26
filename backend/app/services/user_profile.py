@@ -1,8 +1,8 @@
-from app.models.user import User
+from app.models.user import AuthUser
 from app.schemas.user import User as UserSchema
 
 
-def serialize_user(user: User) -> UserSchema:
+def serialize_user(user: AuthUser) -> UserSchema:
     return UserSchema(
         id=user.hash_id,
         email=user.email,

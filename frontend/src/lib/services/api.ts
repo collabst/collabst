@@ -12,6 +12,7 @@ import type {
   ShareLink,
   ShareLinksSummary,
   SharingOverview,
+  ShareAccessResponse,
   CommentThreadDTO,
   CommentThreadCreatePayload,
   CommentThreadUpdatePayload,
@@ -238,8 +239,8 @@ export const sharingApi = {
     await api.delete(`/projects/${projectId}/share-links/${linkType}`)
   },
 
-  accessByShareHash: async (shareHash: string): Promise<{ project_id: string; permission: 'read' | 'comment' | 'edit'; project_added_to_workspace: boolean }> => {
-    const { data } = await api.get(`/projects/share/${shareHash}`)
+  accessByShareHash: async (shareHash: string): Promise<ShareAccessResponse> => {
+    const { data } = await api.get<ShareAccessResponse>(`/projects/share/${shareHash}`)
     return data
   },
 }

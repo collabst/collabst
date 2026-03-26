@@ -13,6 +13,7 @@ from app.models.project_collaborator import CollaboratorRole
 from app.schemas.file import FileCreate, FileUpdate, File as FileSchema
 from app.schemas.asset import Asset as AssetSchema, AssetUpdate
 from app.services.storage import storage_service
+from app.services.hash_lookup import get_project_by_ref
 from app.services.permissions import check_project_access
 from app.websocket.project_ws import project_manager
 
@@ -228,12 +229,8 @@ async def create_file(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(
-        db,
-        project_ref,
-        current_user.id,
-        CollaboratorRole.WRITER,
-    )
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
 
     parent: File | None = None
     if file_in.parent_id:
@@ -283,7 +280,8 @@ async def list_files(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
 
     result = await db.execute(select(File).where(File.project_id == project.id))
     files = result.scalars().all()
@@ -299,12 +297,8 @@ async def update_file(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(
-        db,
-        project_ref,
-        current_user.id,
-        CollaboratorRole.WRITER,
-    )
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
 
     result = await db.execute(
         select(File).where(File.hash_id == file_ref, File.project_id == project.id)
@@ -398,12 +392,8 @@ async def delete_file(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a file or folder (cascade deletes all contents)"""
-    project = await check_project_access(
-        db,
-        project_ref,
-        current_user.id,
-        CollaboratorRole.WRITER,
-    )
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
 
     result = await db.execute(
         select(File).where(File.hash_id == file_ref, File.project_id == project.id)
@@ -453,12 +443,8 @@ async def upload_asset(
     db: Annotated[AsyncSession, Depends(get_db)],
     parent_id: str | None = Form(None),
 ):
-    project = await check_project_access(
-        db,
-        project_ref,
-        current_user.id,
-        CollaboratorRole.WRITER,
-    )
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
 
     parent: File | None = None
     if parent_id is not None:
@@ -556,7 +542,8 @@ async def list_assets(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
 
     result = await db.execute(select(Asset).where(Asset.project_id == project.id))
     assets = result.scalars().all()
@@ -572,7 +559,8 @@ async def get_asset_url(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a presigned URL for accessing an asset from MinIO"""
-    project = await check_project_access(db, project_ref, current_user.id)
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
 
     result = await db.execute(
         select(Asset).where(Asset.hash_id == asset_ref, Asset.project_id == project.id)
@@ -602,12 +590,8 @@ async def update_asset(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an asset (e.g., rename or move to a folder)"""
-    project = await check_project_access(
-        db,
-        project_ref,
-        current_user.id,
-        CollaboratorRole.WRITER,
-    )
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
 
     result = await db.execute(
         select(Asset).where(Asset.hash_id == asset_ref, Asset.project_id == project.id)
@@ -683,12 +667,8 @@ async def delete_asset(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an asset"""
-    project = await check_project_access(
-        db,
-        project_ref,
-        current_user.id,
-        CollaboratorRole.WRITER,
-    )
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
 
     result = await db.execute(
         select(Asset).where(Asset.hash_id == asset_ref, Asset.project_id == project.id)

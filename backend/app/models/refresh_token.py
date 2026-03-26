@@ -15,4 +15,4 @@ class RefreshToken(Base):
     is_revoked = Column(Boolean, default=False)
 
     # Relationships
-    user = relationship("User", backref="refresh_tokens")
+    user = relationship("AuthUser", back_populates="refresh_tokens")

@@ -56,5 +56,5 @@ class Invitation(Base):
 
     # Relationships
     project = relationship("Project")
-    inviter = relationship("User", foreign_keys=[inviter_id])
-    invitee = relationship("User", foreign_keys=[invitee_id])
+    inviter = relationship("AuthUser", foreign_keys=[inviter_id])
+    invitee = relationship("AuthUser", foreign_keys=[invitee_id])
