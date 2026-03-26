@@ -82,7 +82,7 @@ GET /api/v1/projects/{project_id}/collaborators
         "user": {
             "id": 5,
             "email": "john@example.com",
-            "username": "john_doe"
+            "display_name": "John Doe"
         },
         "created_at": "2025-12-11T10:00:00Z",
         "updated_at": "2025-12-11T10:00:00Z"
@@ -116,7 +116,7 @@ POST /api/v1/projects/{project_id}/collaborators
     "user": {
         "id": 5,
         "email": "john@example.com",
-        "username": "john_doe"
+        "display_name": "John Doe"
     },
     "created_at": "2025-12-11T10:00:00Z",
     "updated_at": "2025-12-11T10:00:00Z"
@@ -154,7 +154,7 @@ PUT /api/v1/projects/{project_id}/collaborators/{user_id}
     "user": {
         "id": 5,
         "email": "john@example.com",
-        "username": "john_doe"
+        "display_name": "John Doe"
     },
     "created_at": "2025-12-11T10:00:00Z",
     "updated_at": "2025-12-11T12:00:00Z"
@@ -229,7 +229,7 @@ Now includes collaborators in the response:
             "user": {
                 "id": 5,
                 "email": "john@example.com",
-                "username": "john_doe"
+                "display_name": "John Doe"
             }
         }
     ],

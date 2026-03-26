@@ -4,7 +4,7 @@
   import AuthLayout from "$lib/components/auth/AuthLayout.svelte";
 
   let email = "";
-  let username = "";
+  let displayName = "";
   let password = "";
   let confirmPassword = "";
   let error = "";
@@ -27,7 +27,7 @@
     loading = true;
 
     try {
-      await auth.register(email, username, password);
+      await auth.register(email, displayName, password);
       goto("/projects", { replaceState: true });
     } catch (err: any) {
       error = err.response?.data?.detail || "Registration failed";
@@ -63,11 +63,11 @@
     </div>
 
     <div class="field">
-      <label for="register-username">Displayed Name</label>
+      <label for="register-display-name">Display Name</label>
       <input
-        id="register-username"
+        id="register-display-name"
         type="text"
-        bind:value={username}
+        bind:value={displayName}
         required
         placeholder="Your name"
         autocomplete="name"

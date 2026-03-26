@@ -1,10 +1,10 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
     email: EmailStr
-    username: str
+    display_name: str = Field(min_length=1, max_length=50)
 
 
 class UserCreate(UserBase):
@@ -13,7 +13,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
-    username: str | None = None
+    display_name: str | None = Field(default=None, min_length=1, max_length=50)
     password: str | None = None
 
 
@@ -40,7 +40,7 @@ class TokenData(BaseModel):
 
 class UserPublicProfile(BaseModel):
     id: str
-    username: str
+    display_name: str
     created_at: datetime
     updated_at: datetime
     is_self: bool
@@ -50,7 +50,7 @@ class UserPublicProfile(BaseModel):
 
 
 class UserSettingsUpdate(BaseModel):
-    username: str | None = None
+    display_name: str | None = Field(default=None, min_length=1, max_length=50)
 
 
 class PasswordChange(BaseModel):

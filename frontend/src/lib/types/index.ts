@@ -1,7 +1,7 @@
 export interface User {
   id: string
   email: string
-  username: string
+  display_name: string
   is_active: boolean
   is_superuser: boolean
   created_at: string
@@ -10,7 +10,7 @@ export interface User {
 
 export interface OwnerInfo {
   id: string
-  username: string
+  display_name: string
   email: string
 }
 
@@ -80,7 +80,7 @@ export interface AuthResponse {
 
 export interface UserProfile {
   id: string
-  username: string
+  display_name: string
   created_at: string
   updated_at: string
   is_self: boolean

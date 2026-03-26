@@ -37,8 +37,8 @@ const createAuthStore = () => {
 
       update(state => ({ ...state, token, refreshToken, user }))
     },
-    register: async (email: string, username: string, password: string) => {
-      const newUser = await authApi.register(email, username, password)
+    register: async (email: string, displayName: string, password: string) => {
+      const newUser = await authApi.register(email, displayName, password)
       const response: AuthResponse = await authApi.login(email, password)
       const token = response.access_token
       const refreshToken = response.refresh_token

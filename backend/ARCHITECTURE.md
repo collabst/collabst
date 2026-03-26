@@ -277,7 +277,7 @@ On client connect:
 
 1. **Database Indexes**:
    - Primary keys on all ID columns
-   - Index on email/username for login
+     - Index on email for login
    - Index on project_id for file lookups
 
 2. **Caching**:

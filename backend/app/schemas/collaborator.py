@@ -26,7 +26,7 @@ class CollaboratorUpdate(BaseModel):
 class CollaboratorUser(BaseModel):
     id: str
     email: str
-    username: str
+    display_name: str
 
     model_config = {"from_attributes": True}
 

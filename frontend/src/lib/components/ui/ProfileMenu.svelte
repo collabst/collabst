@@ -59,7 +59,7 @@
       aria-label="Open profile menu"
     >
       <span class="avatar-fallback" class:avatar-fallback-hidden={avatarLoaded}>
-        {($auth.user?.username || "U")[0].toUpperCase()}
+        {($auth.user?.display_name || "U")[0].toUpperCase()}
       </span>
       {#if $auth.user?.id}
         <img
@@ -77,7 +77,7 @@
   {#if showMenu}
     <div class="profile-dropdown">
       <div class="profile-info">
-        <span>{$auth.user?.username || "User"}</span>
+        <span>{$auth.user?.display_name || "User"}</span>
       </div>
       <div class="divider"></div>
       <button class="menu-item" onclick={handleOpenSettings}>

@@ -105,7 +105,7 @@
   }
 
   function authorName(userId: string) {
-    return userProfiles[userId]?.username || `User ${userId}`;
+    return userProfiles[userId]?.display_name || `User ${userId}`;
   }
 
   function authorColor(userId: string) {

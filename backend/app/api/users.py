@@ -30,7 +30,7 @@ ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
 def _build_public_profile(user: User, is_self: bool) -> UserPublicProfile:
     return UserPublicProfile(
         id=user.hash_id,
-        username=user.username,
+        display_name=user.display_name,
         created_at=user.created_at,
         updated_at=user.updated_at,
         is_self=is_self,
@@ -69,14 +69,14 @@ async def update_me(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    if user_in.username and user_in.username != current_user.username:
-        result = await db.execute(select(User).where(User.username == user_in.username))
-        if result.scalar_one_or_none():
+    if user_in.display_name is not None:
+        trimmed_display_name = user_in.display_name.strip()
+        if not trimmed_display_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken",
+                detail="Display name cannot be empty",
             )
-        current_user.username = user_in.username
+        current_user.display_name = trimmed_display_name
 
     await db.commit()
     await db.refresh(current_user)

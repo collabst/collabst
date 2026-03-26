@@ -29,7 +29,7 @@ class Project(ProjectBase):
 class OwnerInfo(BaseModel):
     """Basic owner information."""
     id: str
-    username: str
+    display_name: str
     email: str
 
     model_config = {"from_attributes": True}

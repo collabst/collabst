@@ -1731,11 +1731,11 @@
     if (
       !currentUser ||
       currentUser.id !== user.id ||
-      currentUser.name !== user.username
+      currentUser.name !== user.display_name
     ) {
       awareness.setLocalStateField("user", {
         id: user.id,
-        name: user.username,
+        name: user.display_name,
         color: currentUser?.color || "#3b82f6",
       });
     }

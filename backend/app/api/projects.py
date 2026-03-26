@@ -43,7 +43,7 @@ def _serialize_collaborator(collaborator: ProjectCollaborator) -> Collaborator:
         user={
             "id": collaborator.user.hash_id,
             "email": collaborator.user.email,
-            "username": collaborator.user.username,
+            "display_name": collaborator.user.display_name,
         },
     )
 
@@ -59,7 +59,7 @@ def _serialize_project(project: Project, current_user_role: str, owner: User, co
         current_user_role=current_user_role,
         owner={
             "id": owner.hash_id,
-            "username": owner.username,
+            "display_name": owner.display_name,
             "email": owner.email,
         },
         collaborators_count=collaborators_count,
@@ -119,7 +119,7 @@ def _serialize_owner_as_collaborator(project: Project, owner: User) -> Collabora
         user={
             "id": owner.hash_id,
             "email": owner.email,
-            "username": owner.username,
+            "display_name": owner.display_name,
         },
     )
 

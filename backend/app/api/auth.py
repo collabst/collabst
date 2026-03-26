@@ -35,16 +35,16 @@ async def register(
             detail="Email already registered",
         )
 
-    result = await db.execute(select(User).where(User.username == user_in.username))
-    if result.scalar_one_or_none():
+    display_name = user_in.display_name.strip()
+    if not display_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken",
+            detail="Display name cannot be empty",
         )
 
     user = User(
         email=user_in.email,
-        username=user_in.username,
+        display_name=display_name,
         hashed_password=get_password_hash(user_in.password),
     )
     db.add(user)

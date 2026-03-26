@@ -65,7 +65,7 @@ backend/
 
 ### 1. Authentication & Authorization ✅
 
-- **User Registration**: Email, username, password
+- **User Registration**: Email, display_name, password
 - **Password Security**: Bcrypt hashing with salt
 - **JWT Tokens**: Secure token-based auth
 - **Protected Routes**: Bearer token authentication
@@ -204,7 +204,7 @@ backend/
 ```python
 - id (primary key)
 - email (unique, indexed)
-- username (unique, indexed)
+- display_name (non-unique)
 - hashed_password
 - is_active, is_superuser
 - created_at, updated_at

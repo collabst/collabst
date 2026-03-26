@@ -31,6 +31,6 @@ class Invitation(BaseModel):
 
 class InvitationWithDetails(Invitation):
     project_name: str
-    inviter_username: str
+    inviter_display_name: str
 
     model_config = {"from_attributes": True}

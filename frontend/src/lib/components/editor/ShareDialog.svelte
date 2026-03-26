@@ -86,7 +86,7 @@
         user: {
           id: project.owner.id,
           email: project.owner.email,
-          username: project.owner.username,
+          display_name: project.owner.display_name,
           is_active: true,
           is_superuser: false,
           created_at: project.created_at,
@@ -317,7 +317,7 @@
                 <div class="member-row">
                   <div class="member-info">
                     <strong
-                      >{collaborator.user?.username ||
+                      >{collaborator.user?.display_name ||
                         collaborator.user_id}</strong
                     >
                     <span>{collaborator.user?.email}</span>

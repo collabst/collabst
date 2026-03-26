@@ -40,10 +40,10 @@
     let displayNameInput: HTMLInputElement | undefined = $state();
     let nameRowElement: HTMLDivElement | undefined = $state();
     let previousOpen = false;
-    let previousUserId: number | null = null;
+    let previousUserId: string | null = null;
 
     function resetForm() {
-        displayNameDraft = $auth.user?.username || "";
+        displayNameDraft = $auth.user?.display_name || "";
         initialNameForEdit = displayNameDraft;
         isEditingName = false;
         currentPassword = "";
@@ -81,7 +81,7 @@
 
     async function startNameEdit() {
         if (savingName) return;
-        initialNameForEdit = $auth.user?.username || "";
+        initialNameForEdit = $auth.user?.display_name || "";
         displayNameDraft = initialNameForEdit;
         isEditingName = true;
         await tick();
@@ -114,11 +114,11 @@
         savingName = true;
         try {
             const updatedUser = await usersApi.updateMe({
-                username: trimmedName,
+                display_name: trimmedName,
             });
             auth.setUser(updatedUser);
-            displayNameDraft = updatedUser.username;
-            initialNameForEdit = updatedUser.username;
+            displayNameDraft = updatedUser.display_name;
+            initialNameForEdit = updatedUser.display_name;
             notifications.show("Display name updated", "info", 2000);
         } catch (error: any) {
             displayNameDraft = initialNameForEdit;
@@ -264,7 +264,7 @@
                         class="avatar-fallback"
                         class:avatar-fallback-hidden={avatarLoaded}
                     >
-                        {($auth.user.username || "U")[0].toUpperCase()}
+                        {($auth.user.display_name || "U")[0].toUpperCase()}
                     </span>
                     <img
                         class="avatar-image"
@@ -334,7 +334,7 @@
                                 disabled={savingName}
                                 title="Edit display name"
                             >
-                                {$auth.user.username}
+                                {$auth.user.display_name}
                             </button>
                             <Tooltip text="Edit display name" position="top">
                                 <button

@@ -12,7 +12,7 @@
   let loadedProfilePics = $state<Record<string, boolean>>({})
 
   function getUserName(state: any) {
-    return state?.user?.name || state?.user?.username || null
+    return state?.user?.name || state?.user?.display_name || null
   }
 
   function updateAwareness() {
