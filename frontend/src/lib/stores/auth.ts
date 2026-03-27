@@ -16,14 +16,25 @@ interface AuthState {
   guestAccess: GuestAccessContext | null
 }
 
-const normalizeUser = (user: User): User => {
-  if (!('user_type' in user) || !user.user_type) {
+const normalizeUser = (user: User | Record<string, unknown>): User => {
+  if (!(user as { user_type?: string }).user_type) {
     return {
-      ...user,
+      ...(user as Record<string, unknown>),
       user_type: 'auth'
-    }
+    } as User
   }
-  return user
+  return user as User
+}
+
+const clearLocalSession = () => {
+  if (!browser) {
+    return
+  }
+
+  localStorage.removeItem('token')
+  localStorage.removeItem('refreshToken')
+  localStorage.removeItem('user')
+  localStorage.removeItem('guestAccess')
 }
 
 const createAuthStore = () => {
@@ -73,6 +84,21 @@ const createAuthStore = () => {
 
       update(state => ({ ...state, token, refreshToken, user, guestAccess: null }))
     },
+    guestLogin: async (displayName: string, shareHash: string) => {
+      const response: AuthResponse = await authApi.guestLogin(displayName, shareHash)
+      const token = response.access_token
+      const refreshToken = response.refresh_token
+      const user = normalizeUser(response.user)
+
+      if (browser) {
+        localStorage.setItem('token', token)
+        localStorage.setItem('refreshToken', refreshToken)
+        localStorage.setItem('user', JSON.stringify(user))
+        localStorage.removeItem('guestAccess')
+      }
+
+      update(state => ({ ...state, token, refreshToken, user, guestAccess: null }))
+    },
     logout: async () => {
       const refreshToken = browser ? localStorage.getItem('refreshToken') : null
 
@@ -85,12 +111,7 @@ const createAuthStore = () => {
         }
       }
 
-      if (browser) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
-        localStorage.removeItem('guestAccess')
-      }
+      clearLocalSession()
       set({ user: null, token: null, refreshToken: null, guestAccess: null })
     },
     setUser: (user: User | null) => {
@@ -140,6 +161,10 @@ const createAuthStore = () => {
         localStorage.removeItem('guestAccess')
       }
       update(state => ({ ...state, guestAccess: null }))
+    },
+    resetSession: () => {
+      clearLocalSession()
+      set({ user: null, token: null, refreshToken: null, guestAccess: null })
     }
   }
 }

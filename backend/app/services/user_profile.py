@@ -1,5 +1,5 @@
-from app.models.user import AuthUser
-from app.schemas.user import User as UserSchema
+from app.models.user import AuthUser, User
+from app.schemas.user import SessionUser, User as UserSchema
 
 
 def serialize_user(user: AuthUser) -> UserSchema:
@@ -12,3 +12,21 @@ def serialize_user(user: AuthUser) -> UserSchema:
         created_at=user.created_at,
         updated_at=user.updated_at,
     )
+
+
+def serialize_session_user(user: User) -> SessionUser:
+    user_type_value = user.user_type.value if hasattr(user.user_type, "value") else str(user.user_type)
+    payload = {
+        "id": user.hash_id,
+        "display_name": user.display_name,
+        "user_type": user_type_value,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at,
+    }
+
+    if isinstance(user, AuthUser):
+        payload["email"] = user.email
+        payload["is_active"] = user.is_active
+        payload["is_superuser"] = user.is_superuser
+
+    return SessionUser(**payload)

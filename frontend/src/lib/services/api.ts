@@ -83,6 +83,7 @@ api.interceptors.response.use(
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
+        localStorage.removeItem('guestAccess')
         return Promise.reject(error)
       }
 
@@ -102,6 +103,7 @@ api.interceptors.response.use(
         // Update tokens in localStorage
         localStorage.setItem('token', newAccessToken)
         localStorage.setItem('refreshToken', newRefreshToken)
+        localStorage.setItem('user', JSON.stringify(data.user))
 
         // Update the authorization header
         api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
@@ -118,6 +120,7 @@ api.interceptors.response.use(
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
+        localStorage.removeItem('guestAccess')
 
         // Redirect to login (optional - depends on your app structure)
         if (typeof window !== 'undefined') {
@@ -147,6 +150,17 @@ export const authApi = {
     formData.append('password', password)
 
     const { data } = await api.post<AuthResponse>('/auth/login', formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    return data
+  },
+
+  guestLogin: async (displayName: string, shareHash: string): Promise<AuthResponse> => {
+    const formData = new URLSearchParams()
+    formData.append('display_name', displayName)
+    formData.append('share_hash', shareHash)
+
+    const { data } = await api.post<AuthResponse>('/auth/guest', formData, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     })
     return data

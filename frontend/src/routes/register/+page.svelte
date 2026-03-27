@@ -1,14 +1,23 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { auth } from "$lib/stores/auth";
   import AuthLayout from "$lib/components/auth/AuthLayout.svelte";
 
-  let email = "";
-  let displayName = "";
-  let password = "";
-  let confirmPassword = "";
-  let error = "";
-  let loading = false;
+  let email = $state("");
+  let displayName = $state("");
+  let password = $state("");
+  let confirmPassword = $state("");
+  let error = $state("");
+  let loading = $state(false);
+  let next = $derived($page.url.searchParams.get("next") ?? "/projects");
+
+  function resolveNextPath(path: string): string {
+    if (path.startsWith("/") && !path.startsWith("//")) {
+      return path;
+    }
+    return "/projects";
+  }
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -28,7 +37,7 @@
 
     try {
       await auth.register(email, displayName, password);
-      goto("/projects", { replaceState: true });
+      goto(resolveNextPath(next), { replaceState: true });
     } catch (err: any) {
       error = err.response?.data?.detail || "Registration failed";
     } finally {

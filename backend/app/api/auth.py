@@ -7,10 +7,12 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token, generate_refresh_token
 from app.db.base import get_db
-from app.models.user import AuthUser, User
+from app.models.guest_share import GuestShare
+from app.models.project_share_link import ProjectShareLink
 from app.models.refresh_token import RefreshToken
+from app.models.user import AuthUser, GuestUser, User
 from app.schemas.user import UserCreate, User as UserSchema, Token
-from app.services.user_profile import serialize_user
+from app.services.user_profile import serialize_session_user, serialize_user
 
 router = APIRouter()
 
@@ -90,7 +92,70 @@ async def login(
         "access_token": access_token,
         "refresh_token": refresh_token_str,
         "token_type": "bearer",
-        "user": serialize_user(user)
+        "user": serialize_session_user(user)
+    }
+
+
+@router.post("/guest", response_model=Token)
+async def guest_login(
+    display_name: Annotated[str, Form()],
+    share_hash: Annotated[str, Form()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    normalized_display_name = display_name.strip()
+    if not normalized_display_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Display name cannot be empty",
+        )
+
+    link_result = await db.execute(
+        select(ProjectShareLink).where(
+            ProjectShareLink.hash == share_hash,
+            ProjectShareLink.revoked_at.is_(None),
+        )
+    )
+    link = link_result.scalar_one_or_none()
+    if not link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Share link not found",
+        )
+
+    guest_user = GuestUser(display_name=normalized_display_name)
+    db.add(guest_user)
+    await db.flush()
+
+    db.add(
+        GuestShare(
+            guest_user_id=guest_user.id,
+            project_share_link_id=link.id,
+        )
+    )
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(guest_user.id)}, expires_delta=access_token_expires
+    )
+
+    refresh_token_str = generate_refresh_token()
+    refresh_token_expires = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    db.add(
+        RefreshToken(
+            token=refresh_token_str,
+            user_id=guest_user.id,
+            expires_at=refresh_token_expires,
+        )
+    )
+
+    await db.commit()
+    await db.refresh(guest_user)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer",
+        "user": serialize_session_user(guest_user),
     }
 
 
@@ -149,7 +214,7 @@ async def refresh_token(
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user": serialize_user(user)
+        "user": serialize_session_user(user)
     }
 
 

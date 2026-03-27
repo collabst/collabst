@@ -13,7 +13,8 @@ from app.models.invitation import Invitation, InvitationStatus
 from app.models.project import Project
 from app.models.project_collaborator import CollaboratorRole, ProjectCollaborator
 from app.models.project_share_link import ProjectShareLink, ShareLinkType
-from app.models.user import AuthUser, User
+from app.models.guest_share import GuestShare
+from app.models.user import AuthUser, GuestUser, User
 from app.schemas.collaborator import Collaborator, CollaboratorAdd, CollaboratorUpdate
 from app.schemas.invitation import Invitation as InvitationSchema
 from app.schemas.project import Project as ProjectSchema
@@ -209,7 +210,7 @@ async def access_project_via_share_link(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Share link not found")
 
     project_added_to_workspace = False
-    if current_user and link.project.owner_id != current_user.id:
+    if isinstance(current_user, AuthUser) and link.project.owner_id != current_user.id:
         collab_result = await db.execute(
             select(ProjectCollaborator).where(
                 ProjectCollaborator.project_id == link.project_id,
@@ -236,6 +237,23 @@ async def access_project_via_share_link(
         elif ROLE_HIERARCHY.get(role_from_link, 0) > ROLE_HIERARCHY.get(collaborator.role, 0):
             collaborator.role = role_from_link
             await db.commit()
+    elif isinstance(current_user, GuestUser):
+        guest_share_result = await db.execute(
+            select(GuestShare).where(
+                GuestShare.guest_user_id == current_user.id,
+                GuestShare.project_share_link_id == link.id,
+            )
+        )
+        guest_share = guest_share_result.scalar_one_or_none()
+        if guest_share is None:
+            db.add(
+                GuestShare(
+                    guest_user_id=current_user.id,
+                    project_share_link_id=link.id,
+                )
+            )
+            await db.commit()
+            project_added_to_workspace = True
 
     return ShareLinkAccess(
         project_id=link.project.hash_id,

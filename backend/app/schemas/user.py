@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -27,11 +28,22 @@ class User(UserBase):
     model_config = {"from_attributes": True}
 
 
+class SessionUser(BaseModel):
+    id: str
+    display_name: str
+    user_type: Literal["auth", "guest"]
+    created_at: datetime
+    updated_at: datetime
+    email: EmailStr | None = None
+    is_active: bool | None = None
+    is_superuser: bool | None = None
+
+
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
-    user: User
+    user: SessionUser
 
 
 class TokenData(BaseModel):

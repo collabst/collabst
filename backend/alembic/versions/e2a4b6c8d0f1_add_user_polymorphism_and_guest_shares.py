@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = "e2a4b6c8d0f1"
@@ -19,7 +20,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("user_type", sa.String(length=20), nullable=True, server_default="auth"))
+    user_type_enum = postgresql.ENUM("auth", "guest", name="usertype")
+    user_type_enum.create(op.get_bind(), checkfirst=True)
+
+    op.add_column(
+        "users",
+        sa.Column("user_type", user_type_enum, nullable=False, server_default="auth"),
+    )
     op.execute("UPDATE users SET user_type = 'auth' WHERE user_type IS NULL")
     op.alter_column("users", "user_type", nullable=False)
     op.create_index(op.f("ix_users_user_type"), "users", ["user_type"], unique=False)
@@ -58,3 +65,6 @@ def downgrade() -> None:
 
     op.drop_index(op.f("ix_users_user_type"), table_name="users")
     op.drop_column("users", "user_type")
+
+    user_type_enum = postgresql.ENUM("auth", "guest", name="usertype")
+    user_type_enum.drop(op.get_bind(), checkfirst=True)
