@@ -53,6 +53,7 @@ class TokenData(BaseModel):
 class UserPublicProfile(BaseModel):
     id: str
     display_name: str
+    user_type: Literal["auth", "guest"]
     created_at: datetime
     updated_at: datetime
     is_self: bool

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Comment, UserProfile } from "$lib/types";
   import { getProfilePicUrl } from "$lib/utils/urls";
+  import Feather from "@lucide/svelte/icons/feather"
 
   interface CommentThreadProps {
     comment: Comment;
@@ -108,6 +109,12 @@
     return userProfiles[userId]?.display_name || `User ${userId}`;
   }
 
+  function isGuestAuthor(userId: string) {
+    const profile = userProfiles[userId];
+    if (!profile) return false;
+    return profile.user_type === "guest"
+  }
+
   function authorColor(userId: string) {
     const safeUserId = String(userId ?? "");
     const seed = safeUserId
@@ -172,7 +179,18 @@
         />
       </div>
       <div class="author-details">
-        <span class="author-name">{authorName(comment.authorId)}</span>
+        <span class="author-name">
+          {authorName(comment.authorId)}
+          {#if isGuestAuthor(comment.authorId)}
+            <span
+              class="guest-badge"
+              title="Guest account: temporary access via shared link"
+              aria-label="Guest account"
+            >
+              <Feather size={12} />
+            </span>
+          {/if}
+        </span>
         <span class="comment-time">{formatDate(comment.createdAt)}</span>
       </div>
     </div>
@@ -245,6 +263,15 @@
               />
             </div>
             <span class="reply-author">{authorName(reply.authorId)}</span>
+            {#if isGuestAuthor(reply.authorId)}
+              <span
+                class="guest-badge"
+                title="Guest account: temporary access via shared link"
+                aria-label="Guest account"
+              >
+                <Feather size={11} />
+              </span>
+            {/if}
             <span class="reply-time">{formatDate(reply.createdAt)}</span>
           </div>
           <div class="reply-content">{reply.content}</div>
@@ -389,6 +416,21 @@
     font-weight: 600;
     color: var(--text-primary);
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .guest-badge {
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+  }
+
+  .guest-badge:hover {
+    color: var(--text-primary);
   }
 
   .comment-time {

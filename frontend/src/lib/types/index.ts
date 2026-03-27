@@ -106,6 +106,8 @@ export interface ShareAccessResponse {
 export interface UserProfile {
   id: string
   display_name: string
+  user_type: 'auth' | 'guest'
+  is_guest: boolean
   created_at: string
   updated_at: string
   is_self: boolean
