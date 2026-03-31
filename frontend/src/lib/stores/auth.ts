@@ -3,17 +3,10 @@ import { browser } from '$app/environment'
 import { authApi } from '$lib/services/api'
 import type { User, AuthResponse } from '$lib/types'
 
-interface GuestAccessContext {
-  projectId: string
-  permission: 'read' | 'comment' | 'edit'
-  shareHash: string
-}
-
 interface AuthState {
   user: User | null
   token: string | null
   refreshToken: string | null
-  guestAccess: GuestAccessContext | null
 }
 
 const normalizeUser = (user: User | Record<string, unknown>): User => {
@@ -34,7 +27,6 @@ const clearLocalSession = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('refreshToken')
   localStorage.removeItem('user')
-  localStorage.removeItem('guestAccess')
 }
 
 const createAuthStore = () => {
@@ -42,13 +34,11 @@ const createAuthStore = () => {
   const storedToken = browser ? localStorage.getItem('token') : null
   const storedRefreshToken = browser ? localStorage.getItem('refreshToken') : null
   const storedUser = browser ? localStorage.getItem('user') : null
-  const storedGuestAccess = browser ? localStorage.getItem('guestAccess') : null
 
   const { subscribe, set, update } = writable<AuthState>({
     user: storedUser ? normalizeUser(JSON.parse(storedUser) as User) : null,
     token: storedToken,
-    refreshToken: storedRefreshToken,
-    guestAccess: storedGuestAccess ? JSON.parse(storedGuestAccess) : null
+    refreshToken: storedRefreshToken
   })
 
   return {
@@ -63,10 +53,9 @@ const createAuthStore = () => {
         localStorage.setItem('token', token)
         localStorage.setItem('refreshToken', refreshToken)
         localStorage.setItem('user', JSON.stringify(user))
-        localStorage.removeItem('guestAccess')
       }
 
-      update(state => ({ ...state, token, refreshToken, user, guestAccess: null }))
+      update(state => ({ ...state, token, refreshToken, user }))
     },
     register: async (email: string, displayName: string, password: string) => {
       const newUser = await authApi.register(email, displayName, password)
@@ -79,10 +68,9 @@ const createAuthStore = () => {
         localStorage.setItem('token', token)
         localStorage.setItem('refreshToken', refreshToken)
         localStorage.setItem('user', JSON.stringify(user))
-        localStorage.removeItem('guestAccess')
       }
 
-      update(state => ({ ...state, token, refreshToken, user, guestAccess: null }))
+      update(state => ({ ...state, token, refreshToken, user }))
     },
     guestLogin: async (displayName: string, shareHash: string) => {
       const response: AuthResponse = await authApi.guestLogin(displayName, shareHash)
@@ -94,10 +82,9 @@ const createAuthStore = () => {
         localStorage.setItem('token', token)
         localStorage.setItem('refreshToken', refreshToken)
         localStorage.setItem('user', JSON.stringify(user))
-        localStorage.removeItem('guestAccess')
       }
 
-      update(state => ({ ...state, token, refreshToken, user, guestAccess: null }))
+      update(state => ({ ...state, token, refreshToken, user }))
     },
     logout: async () => {
       const refreshToken = browser ? localStorage.getItem('refreshToken') : null
@@ -112,7 +99,7 @@ const createAuthStore = () => {
       }
 
       clearLocalSession()
-      set({ user: null, token: null, refreshToken: null, guestAccess: null })
+      set({ user: null, token: null, refreshToken: null })
     },
     setUser: (user: User | null) => {
       if (browser && user) {
@@ -127,48 +114,13 @@ const createAuthStore = () => {
       }
       update(state => ({ ...state, token, refreshToken }))
     },
-    setGuestSession: (
-      guestAccess: GuestAccessContext,
-      payload?: { token?: string | null; refreshToken?: string | null; user?: User | null }
-    ) => {
-      const token = payload?.token ?? null
-      const refreshToken = payload?.refreshToken ?? null
-      const user = payload?.user ? normalizeUser(payload.user) : null
-
-      if (browser) {
-        localStorage.setItem('guestAccess', JSON.stringify(guestAccess))
-        if (token) {
-          localStorage.setItem('token', token)
-        }
-        if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken)
-        }
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user))
-        }
-      }
-
-      update(state => ({
-        ...state,
-        guestAccess,
-        token: token ?? state.token,
-        refreshToken: refreshToken ?? state.refreshToken,
-        user: user ?? state.user,
-      }))
-    },
-    clearGuestSession: () => {
-      if (browser) {
-        localStorage.removeItem('guestAccess')
-      }
-      update(state => ({ ...state, guestAccess: null }))
-    },
     resetSession: () => {
       clearLocalSession()
-      set({ user: null, token: null, refreshToken: null, guestAccess: null })
+      set({ user: null, token: null, refreshToken: null })
     }
   }
 }
 
 export const auth = createAuthStore()
 export const isAuthenticated = derived(auth, $auth => !!$auth.token)
-export const hasWorkspaceSession = derived(auth, $auth => !!$auth.token || !!$auth.guestAccess)
+export const hasWorkspaceSession = derived(auth, $auth => !!$auth.token)

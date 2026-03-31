@@ -1,7 +1,7 @@
 from datetime import datetime
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.core.hash_ids import generate_hash_id
@@ -29,5 +29,12 @@ class ProjectShareLink(Base):
     guest_shares = relationship("GuestShare", back_populates="project_share_link", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint("project_id", "link_type", name="uq_project_share_link_type"),
+        Index(
+            "uq_project_share_link_active_type",
+            "project_id",
+            "link_type",
+            unique=True,
+            postgresql_where=revoked_at.is_(None),
+            sqlite_where=revoked_at.is_(None),
+        ),
     )

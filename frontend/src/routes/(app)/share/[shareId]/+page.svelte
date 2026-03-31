@@ -28,17 +28,6 @@
 
     try {
       const result = await sharingApi.accessByShareHash(shareId)
-      const isGuestUser = $auth.user?.user_type === 'guest'
-
-      if (isGuestUser) {
-        auth.setGuestSession({
-          projectId: result.project_id,
-          permission: result.permission,
-          shareHash: shareId,
-        })
-      } else {
-        auth.clearGuestSession()
-      }
 
       await goto(`/editor/${result.project_id}`, { replaceState: true })
       notifications.show('Project added to your workspace.', 'info', 3000)

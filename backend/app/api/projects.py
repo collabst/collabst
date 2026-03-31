@@ -131,6 +131,12 @@ async def create_project(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    if not isinstance(current_user, AuthUser):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guest users cannot create projects",
+        )
+
     existing_project = await db.execute(
         select(Project).where(Project.owner_id == current_user.id, Project.name == project_in.name)
     )
@@ -162,6 +168,12 @@ async def list_projects(
     skip: int = 0,
     limit: int = 100,
 ):
+    if not isinstance(current_user, AuthUser):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guest users cannot access projects dashboard",
+        )
+
     result = await db.execute(
         select(Project)
         .outerjoin(ProjectCollaborator)
@@ -600,16 +612,16 @@ async def create_or_rotate_share_link(
         select(ProjectShareLink).where(
             ProjectShareLink.project_id == project.id,
             ProjectShareLink.link_type == share_link_type,
+            ProjectShareLink.revoked_at.is_(None),
         )
     )
     existing = result.scalar_one_or_none()
 
     if existing:
-        existing.hash = generate_hash_id(32)
-        existing.revoked_at = None
-        await db.commit()
-        await db.refresh(existing)
-        return _serialize_share_link(project.hash_id, existing)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{link_type.capitalize()} share link already exists. Please revoke it before creating a new one.",
+        )
 
     link = ProjectShareLink(project_id=project.id, link_type=share_link_type)
     db.add(link)

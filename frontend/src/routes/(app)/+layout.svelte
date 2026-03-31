@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation'
   import { browser } from '$app/environment'
   import { page } from '$app/stores'
-  import { hasWorkspaceSession } from '$lib/stores/auth'
+  import { auth, hasWorkspaceSession } from '$lib/stores/auth'
   import { NotificationContainer } from '$lib/components/ui'
   import type { Snippet } from 'svelte'
 
@@ -13,13 +13,22 @@
   let { children }: Props = $props()
 
   let isPublicShareRoute = $derived($page.url.pathname.startsWith('/share/'))
+  let isProjectsRoute = $derived($page.url.pathname === '/projects' || $page.url.pathname.startsWith('/projects/'))
+  let isGuestUser = $derived($auth.user?.user_type === 'guest')
 
   $effect(() => {
-    if (!browser || isPublicShareRoute || $hasWorkspaceSession) {
+    if (!browser || isPublicShareRoute) {
       return
     }
 
-    goto('/login', { replaceState: true })
+    if (!$hasWorkspaceSession) {
+      goto('/login', { replaceState: true })
+      return
+    }
+
+    if (isGuestUser && isProjectsRoute) {
+      goto('/login', { replaceState: true })
+    }
   })
 </script>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { auth } from "$lib/stores/auth";
   import { notifications } from "$lib/stores/notifications";
   import { projectsApi, invitationsApi } from "$lib/services/api";
   import { ThemeToggle, ProfileMenu, Tooltip } from "$lib/components/ui";
@@ -96,6 +97,11 @@
   }
 
   onMount(() => {
+    if ($auth.user?.user_type === "guest") {
+      goto("/login", { replaceState: true });
+      return;
+    }
+
     loadProjects();
     // Set mounted immediately to prevent layout shift
     mounted = true;

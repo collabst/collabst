@@ -69,6 +69,14 @@
   import ShareDialog from "$lib/components/editor/ShareDialog.svelte";
 
   let projectId = $derived($page.params.projectId ?? "");
+  let homeHref = $derived(
+    $auth.user?.user_type === "guest" ? "/login" : "/projects",
+  );
+  let homeTooltip = $derived(
+    $auth.user?.user_type === "guest"
+      ? "Back to shared project"
+      : "Back to dashboard",
+  );
 
   let project = $state<Project | null>(null);
   let files = $state<ProjectFile[]>([]);
@@ -464,7 +472,11 @@
       const status = (error as any)?.response?.status;
       if (status === 404 || status === 403) {
         notifications.show("Project not found", "error", 5000);
-        goto("/");
+        if ($auth.user?.user_type === "guest") {
+          goto("/login", { replaceState: true });
+        } else {
+          goto("/");
+        }
       }
       return false;
     }
@@ -1983,8 +1995,8 @@
   <div class="container">
     <header>
       <div class="header-left">
-        <Tooltip text="Back to dashboard" position="bottom">
-          <a href="/projects" class="home-link">
+        <Tooltip text={homeTooltip} position="bottom">
+          <a href={homeHref} class="home-link">
             <IconButton icon={Home} variant="top-bar" size="md" />
           </a>
         </Tooltip>

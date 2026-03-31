@@ -83,7 +83,6 @@ api.interceptors.response.use(
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
-        localStorage.removeItem('guestAccess')
         return Promise.reject(error)
       }
 
@@ -120,7 +119,6 @@ api.interceptors.response.use(
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
-        localStorage.removeItem('guestAccess')
 
         // Redirect to login (optional - depends on your app structure)
         if (typeof window !== 'undefined') {
