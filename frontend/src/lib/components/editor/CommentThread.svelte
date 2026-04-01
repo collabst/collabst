@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Comment, UserProfile } from "$lib/types";
   import { getProfilePicUrl } from "$lib/utils/urls";
-  import Feather from "@lucide/svelte/icons/feather"
+  import VenetianMask from "@lucide/svelte/icons/venetian-mask";
 
   interface CommentThreadProps {
     comment: Comment;
@@ -112,7 +112,7 @@
   function isGuestAuthor(userId: string) {
     const profile = userProfiles[userId];
     if (!profile) return false;
-    return profile.user_type === "guest"
+    return profile.user_type === "guest";
   }
 
   function authorColor(userId: string) {
@@ -136,9 +136,7 @@
     return !!loadedProfilePics[userId];
   }
 
-  let canDeleteThisComment = $derived(
-    canDeleteComments,
-  );
+  let canDeleteThisComment = $derived(canDeleteComments);
 
   let canShowActionMenu = $derived(canComment || canDeleteThisComment);
 </script>
@@ -180,16 +178,16 @@
       </div>
       <div class="author-details">
         <span class="author-name">
-          {authorName(comment.authorId)}
           {#if isGuestAuthor(comment.authorId)}
             <span
               class="guest-badge"
               title="Guest account: temporary access via shared link"
               aria-label="Guest account"
             >
-              <Feather size={12} />
+              <VenetianMask size={16} />
             </span>
           {/if}
+          {authorName(comment.authorId)}
         </span>
         <span class="comment-time">{formatDate(comment.createdAt)}</span>
       </div>
@@ -222,7 +220,10 @@
               </button>
             {/if}
             {#if canDeleteThisComment}
-              <button class="menu-item menu-item-danger" onclick={handleMenuAction(handleDelete)}>
+              <button
+                class="menu-item menu-item-danger"
+                onclick={handleMenuAction(handleDelete)}
+              >
                 <span class="menu-icon">✕</span> Delete
               </button>
             {/if}
@@ -262,16 +263,18 @@
                 onerror={() => {}}
               />
             </div>
-            <span class="reply-author">{authorName(reply.authorId)}</span>
-            {#if isGuestAuthor(reply.authorId)}
-              <span
-                class="guest-badge"
-                title="Guest account: temporary access via shared link"
-                aria-label="Guest account"
-              >
-                <Feather size={11} />
-              </span>
-            {/if}
+            <span class="reply-author">
+              {#if isGuestAuthor(reply.authorId)}
+                <span
+                  class="guest-badge"
+                  title="Guest account: temporary access via shared link"
+                  aria-label="Guest account"
+                >
+                  <VenetianMask size={14} />
+                </span>
+              {/if}
+              {authorName(reply.authorId)}
+            </span>
             <span class="reply-time">{formatDate(reply.createdAt)}</span>
           </div>
           <div class="reply-content">{reply.content}</div>
@@ -584,6 +587,9 @@
     font-weight: 600;
     color: var(--text-primary);
     text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   .reply-time {

@@ -1743,11 +1743,13 @@
     if (
       !currentUser ||
       currentUser.id !== user.id ||
-      currentUser.name !== user.display_name
+      currentUser.name !== user.display_name ||
+      currentUser.user_type !== user.user_type
     ) {
       awareness.setLocalStateField("user", {
         id: user.id,
         name: user.display_name,
+        user_type: user.user_type,
         color: currentUser?.color || "#3b82f6",
       });
     }

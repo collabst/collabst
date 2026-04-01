@@ -61,6 +61,7 @@ export function createProjectYjs(
     provider.awareness.setLocalStateField('user', {
       id: user.id,
       name: user.display_name,
+      user_type: user.user_type,
       color: generateUserColor(),
     })
   }
@@ -99,6 +100,7 @@ export function createProjectYjs(
       provider.awareness.setLocalStateField('user', {
         id: user.id,
         name: user.display_name,
+        user_type: user.user_type,
         color: provider.awareness.getLocalState()?.user?.color || generateUserColor(),
       })
     }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { WebsocketProvider } from 'y-websocket'
   import { getProfilePicUrl } from '$lib/utils/urls'
+  import VenetianMask from '@lucide/svelte/icons/venetian-mask';
 
   interface UserPresenceProps {
     provider: WebsocketProvider | null
@@ -67,6 +68,9 @@
           class="avatar"
           style="background: {state.user?.color || '#999'}; z-index: {100 - index}; --avatar-glow: {state.user?.color || '#999'}70"
         >
+          {#if state.user?.user_type === 'guest'}
+            <VenetianMask size={30} style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; opacity: 0.3;" />
+          {/if}
           {#if state.user?.id}
             <span class="avatar-initial" class:avatar-initial-hidden={hasLoadedAvatar(state.user.id)}>
               {(getUserName(state) || 'U')[0].toUpperCase()}
@@ -85,6 +89,9 @@
             </span>
           {/if}
           <div class="tooltip">
+            {#if state.user?.user_type === 'guest'}
+              <VenetianMask size={14} />
+            {/if}
             {getUserName(state) || `User ${clientId}`}
           </div>
         </div>
@@ -187,6 +194,9 @@
     opacity: 0;
     transition: opacity 0.15s ease;
     border: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
   }
 
   .tooltip::after {
