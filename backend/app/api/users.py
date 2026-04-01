@@ -13,7 +13,8 @@ from app.db.base import get_db
 from app.models.user import AuthUser, User, UserType
 from app.schemas.user import (
     PasswordChange,
-    User as UserSchema,
+    AuthUser as AuthUserSchema,
+    GuestUser as GuestUserSchema,
     UserPublicProfile,
     UserSettingsUpdate,
 )
@@ -45,7 +46,7 @@ def _build_public_profile(user: User, is_self: bool) -> UserPublicProfile:
     )
 
 
-@router.get("/me", response_model=UserSchema)
+@router.get("/me", response_model=AuthUserSchema | GuestUserSchema)
 async def get_me(current_user: CurrentUser):
     return serialize_user(current_user)
 
@@ -68,7 +69,7 @@ async def get_user_profile(
     return _build_public_profile(user, is_self=user.id == current_user.id)
 
 
-@router.patch("/me", response_model=UserSchema)
+@router.patch("/me", response_model=AuthUserSchema | GuestUserSchema)
 async def update_me(
     user_in: UserSettingsUpdate,
     current_user: CurrentUser,
@@ -112,7 +113,7 @@ async def change_password(
     return {"message": "Password updated successfully"}
 
 
-@router.post("/me/profile-picture", response_model=UserSchema)
+@router.post("/me/profile-picture", response_model=AuthUserSchema)
 async def upload_profile_picture(
     file: UploadFile,
     current_user: CurrentUser,
@@ -163,7 +164,7 @@ async def upload_profile_picture(
     return serialize_user(current_user)
 
 
-@router.delete("/me/profile-picture", response_model=UserSchema)
+@router.delete("/me/profile-picture", response_model=AuthUserSchema | GuestUserSchema)
 async def delete_profile_picture(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],

@@ -1,9 +1,9 @@
-from app.models.user import AuthUser, User
-from app.schemas.user import SessionUser, User as UserSchema
+from app.models.user import AuthUser, User, GuestUser
+from app.schemas.user import SessionUser, AuthUser as AuthUserSchema, GuestUser as GuestUserSchema
 
 
-def serialize_user(user: AuthUser) -> UserSchema:
-    return UserSchema(
+def serialize_auth_user(user: AuthUser) -> AuthUserSchema:
+    return AuthUserSchema(
         id=user.hash_id,
         email=user.email,
         display_name=user.display_name,
@@ -12,6 +12,27 @@ def serialize_user(user: AuthUser) -> UserSchema:
         created_at=user.created_at,
         updated_at=user.updated_at,
     )
+
+
+def serialize_guest_user(user: GuestUser) -> GuestUserSchema:
+    return GuestUserSchema(
+        id=user.hash_id,
+        email=None,
+        display_name=user.display_name,
+        is_active=None,
+        is_superuser=None,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
+
+
+def serialize_user(user: User) -> AuthUserSchema | GuestUserSchema:
+    if isinstance(user, AuthUser):
+        return serialize_auth_user(user)
+    elif isinstance(user, GuestUser):
+        return serialize_guest_user(user)
+    else:
+        raise ValueError("Unsupported user type")
 
 
 def serialize_session_user(user: User) -> SessionUser:

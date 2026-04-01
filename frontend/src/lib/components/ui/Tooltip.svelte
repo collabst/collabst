@@ -183,6 +183,7 @@
 <style>
   .tooltip-wrapper {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
   }
 </style>

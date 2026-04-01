@@ -11,7 +11,7 @@ from app.models.guest_share import GuestShare
 from app.models.project_share_link import ProjectShareLink
 from app.models.refresh_token import RefreshToken
 from app.models.user import AuthUser, GuestUser, User
-from app.schemas.user import UserCreate, User as UserSchema, Token
+from app.schemas.user import UserCreate, AuthUser as UserSchema, Token
 from app.services.user_profile import serialize_session_user, serialize_user
 
 router = APIRouter()

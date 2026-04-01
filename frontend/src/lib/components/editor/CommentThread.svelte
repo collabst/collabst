@@ -2,6 +2,7 @@
   import type { Comment, UserProfile } from "$lib/types";
   import { getProfilePicUrl } from "$lib/utils/urls";
   import VenetianMask from "@lucide/svelte/icons/venetian-mask";
+    import Tooltip from "../ui/Tooltip.svelte";
 
   interface CommentThreadProps {
     comment: Comment;
@@ -179,13 +180,11 @@
       <div class="author-details">
         <span class="author-name">
           {#if isGuestAuthor(comment.authorId)}
-            <span
-              class="guest-badge"
-              title="Guest account: temporary access via shared link"
-              aria-label="Guest account"
+            <Tooltip
+              text="Guest account: temporary access via shared link"
             >
               <VenetianMask size={16} />
-            </span>
+            </Tooltip>
           {/if}
           {authorName(comment.authorId)}
         </span>
@@ -265,13 +264,11 @@
             </div>
             <span class="reply-author">
               {#if isGuestAuthor(reply.authorId)}
-                <span
-                  class="guest-badge"
-                  title="Guest account: temporary access via shared link"
-                  aria-label="Guest account"
+                <Tooltip
+                  text="Guest account: temporary access via shared link"
                 >
                   <VenetianMask size={14} />
-                </span>
+                </Tooltip>
               {/if}
               {authorName(reply.authorId)}
             </span>

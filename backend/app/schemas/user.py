@@ -3,12 +3,12 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
-class UserBase(BaseModel):
-    email: EmailStr
+class User(BaseModel):
     display_name: str = Field(min_length=1, max_length=50)
 
 
-class UserCreate(UserBase):
+class UserCreate(User):
+    email: EmailStr
     password: str
 
 
@@ -18,10 +18,19 @@ class UserUpdate(BaseModel):
     password: str | None = None
 
 
-class User(UserBase):
+class AuthUser(User):
     id: str
+    email: EmailStr
     is_active: bool
     is_superuser: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class GuestUser(User):
+    id: str
     created_at: datetime
     updated_at: datetime
 

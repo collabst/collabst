@@ -275,44 +275,49 @@
                         onerror={() => (avatarLoaded = false)}
                     />
 
-                    <div class="avatar-overlay">
-                        <Tooltip text="Change profile picture" position="top">
-                            <button
-                                type="button"
-                                class="avatar-action"
-                                onclick={openFileBrowser}
-                                disabled={savingAvatar}
-                                aria-label="Change profile picture"
-                            >
-                                <Pencil size={15} />
-                            </button>
-                        </Tooltip>
-                        {#if avatarLoaded}
+                    {#if $auth.user.user_type === "auth"}
+                        <div class="avatar-overlay">
                             <Tooltip
-                                text="Remove profile picture"
+                                text="Change profile picture"
                                 position="top"
                             >
                                 <button
                                     type="button"
-                                    class="avatar-action avatar-action-danger"
-                                    onclick={askDeleteAvatar}
+                                    class="avatar-action"
+                                    onclick={openFileBrowser}
                                     disabled={savingAvatar}
-                                    aria-label="Remove profile picture"
+                                    aria-label="Change profile picture"
                                 >
-                                    <Trash2 size={15} />
+                                    <Pencil size={15} />
                                 </button>
                             </Tooltip>
-                        {/if}
-                    </div>
+                            {#if avatarLoaded}
+                                <Tooltip
+                                    text="Remove profile picture"
+                                    position="top"
+                                >
+                                    <button
+                                        type="button"
+                                        class="avatar-action avatar-action-danger"
+                                        onclick={askDeleteAvatar}
+                                        disabled={savingAvatar}
+                                        aria-label="Remove profile picture"
+                                    >
+                                        <Trash2 size={15} />
+                                    </button>
+                                </Tooltip>
+                            {/if}
+                        </div>
 
-                    <input
-                        bind:this={fileInput}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp,image/gif"
-                        class="hidden-file-input"
-                        onchange={handleAvatarUpload}
-                        disabled={savingAvatar}
-                    />
+                        <input
+                            bind:this={fileInput}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            class="hidden-file-input"
+                            onchange={handleAvatarUpload}
+                            disabled={savingAvatar}
+                        />
+                    {/if}
                 </div>
 
                 <div class="hero-meta">
@@ -350,45 +355,51 @@
                         {/if}
                     </div>
                     <p class="hero-email">{$auth.user.email}</p>
-                    <p>Member since {joinedOn($auth.user.created_at)}</p>
+                    {#if $auth.user.user_type === "auth"}
+                        <p>Member since {joinedOn($auth.user.created_at)}</p>
+                    {:else}
+                        <p>Guest temporary account</p>
+                    {/if}
                 </div>
             </section>
 
-            <section class="section">
-                <h3>Password</h3>
-                <div class="fields">
-                    <Input
-                        type="password"
-                        label="Current password"
-                        bind:value={currentPassword}
-                        fullWidth
-                    />
-                    <Input
-                        type="password"
-                        label="New password"
-                        bind:value={newPassword}
-                        fullWidth
-                    />
-                    <Input
-                        type="password"
-                        label="Confirm new password"
-                        bind:value={confirmPassword}
-                        fullWidth
-                    />
-                </div>
-                <div class="password-actions">
-                    <Button
-                        variant="secondary"
-                        onclick={handleChangePassword}
-                        disabled={savingPassword ||
-                            !currentPassword ||
-                            !newPassword ||
-                            !confirmPassword}
-                    >
-                        Change password
-                    </Button>
-                </div>
-            </section>
+            {#if $auth.user.user_type === "auth"}
+                <section class="section">
+                    <h3>Password</h3>
+                    <div class="fields">
+                        <Input
+                            type="password"
+                            label="Current password"
+                            bind:value={currentPassword}
+                            fullWidth
+                        />
+                        <Input
+                            type="password"
+                            label="New password"
+                            bind:value={newPassword}
+                            fullWidth
+                        />
+                        <Input
+                            type="password"
+                            label="Confirm new password"
+                            bind:value={confirmPassword}
+                            fullWidth
+                        />
+                    </div>
+                    <div class="password-actions">
+                        <Button
+                            variant="secondary"
+                            onclick={handleChangePassword}
+                            disabled={savingPassword ||
+                                !currentPassword ||
+                                !newPassword ||
+                                !confirmPassword}
+                        >
+                            Change password
+                        </Button>
+                    </div>
+                </section>
+            {/if}
         </div>
     {/if}
 </Modal>
