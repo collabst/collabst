@@ -54,10 +54,12 @@ class FastAPIWebsocket:
         websocket: WebSocket,
         path: str,
         message_authorizer: Callable[[bytes], Awaitable[bool] | bool] | None = None,
+        outgoing_message_authorizer: Callable[[bytes], Awaitable[bool] | bool] | None = None,
     ):
         self._websocket = websocket
         self._path = path
         self._message_authorizer = message_authorizer
+        self._outgoing_message_authorizer = outgoing_message_authorizer
         self._send_lock = Lock()
         self._closed = False
     
@@ -94,6 +96,16 @@ class FastAPIWebsocket:
         if self._closed:
             return
         try:
+            if self._outgoing_message_authorizer is not None:
+                allowed = self._outgoing_message_authorizer(message)
+                allowed = await allowed if isawaitable(allowed) else allowed
+                if not allowed:
+                    self._closed = True
+                    try:
+                        await self._websocket.close(code=1008, reason="Insufficient read permission")
+                    except Exception:
+                        pass
+                    return
             async with self._send_lock:
                 await self._websocket.send_bytes(message)
         except Exception:
@@ -576,12 +588,43 @@ class YjsConnectionManager:
             )
             return False
 
+        async def authorize_outgoing_message(message: bytes) -> bool:
+            if not message:
+                return True
+
+            message_type = message[0]
+            if message_type not in (YMessageType.SYNC, YMessageType.AWARENESS):
+                return True
+
+            current_role = await get_current_project_role(
+                project_id=context.project_id,
+                user_id=context.user_id,
+            )
+            if current_role is None:
+                await self._notify_unauthorized(
+                    context=context,
+                    reason="Project access revoked",
+                    code="role_revoked",
+                )
+                return False
+
+            if self._is_role_at_least(current_role, CollaboratorRole.READER):
+                return True
+
+            await self._notify_unauthorized(
+                context=context,
+                reason="Insufficient permission for document read",
+                code="insufficient_role",
+            )
+            return False
+
         # Create adapter for FastAPI websocket.
         # The path is used by WebsocketServer to determine the room name.
         ws_adapter = FastAPIWebsocket(
             websocket,
             room_path,
             message_authorizer=authorize_message,
+            outgoing_message_authorizer=authorize_outgoing_message,
         )
         
         try:
