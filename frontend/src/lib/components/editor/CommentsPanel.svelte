@@ -22,6 +22,7 @@
     editorContentHeight?: number;
     draftPosition?: number | null;
     onResolve?: (commentId: string) => void;
+    onReopen?: (commentId: string) => void;
     onDelete?: (commentId: string) => void;
     onReply?: (commentId: string, content: string) => void;
     onSubmitNew?: (content: string) => void;
@@ -45,6 +46,7 @@
     editorContentHeight = 2000,
     draftPosition = null,
     onResolve,
+    onReopen,
     onDelete,
     onReply,
     onSubmitNew,
@@ -56,9 +58,9 @@
   }: CommentsPanelProps = $props();
 
   let showResolved = $state(
-    browser && localStorage.getItem('editor.comments.showResolved') !== null
-      ? localStorage.getItem('editor.comments.showResolved') === 'true'
-      : false
+    browser && localStorage.getItem("editor.comments.showResolved") !== null
+      ? localStorage.getItem("editor.comments.showResolved") === "true"
+      : false,
   );
   let draftCommentText = $state("");
   let userProfiles = $state<Record<string, UserProfile>>({});
@@ -77,9 +79,12 @@
 
   $effect(() => {
     if (browser) {
-      localStorage.setItem('editor.comments.showResolved', String(showResolved))
+      localStorage.setItem(
+        "editor.comments.showResolved",
+        String(showResolved),
+      );
     }
-  })
+  });
 
   $effect(() => {
     const userIds = new Set<string>();
@@ -183,15 +188,18 @@
     }
 
     const sortedComments = [...visibleComments].sort((a, b) => {
-      if (a.line !== b.line) return a.line - b.line
-      return a.createdAt.localeCompare(b.createdAt)
-    })
+      if (a.line !== b.line) return a.line - b.line;
+      return a.createdAt.localeCompare(b.createdAt);
+    });
 
     // Add all visible comments. Use editor-mapped position when available,
     // otherwise place comment near its persisted line as a fallback.
     for (const comment of sortedComments) {
       const mappedPos = commentPositions.get(comment.id);
-      const fallbackPos = Math.max(0, (Math.max(1, comment.line) - 1) * LINE_HEIGHT_FALLBACK);
+      const fallbackPos = Math.max(
+        0,
+        (Math.max(1, comment.line) - 1) * LINE_HEIGHT_FALLBACK,
+      );
       const idealTop = mappedPos ?? fallbackPos;
 
       items.push({
@@ -273,14 +281,29 @@
       },
     };
   }
+
+  function handleShowResolvedChange() {
+    const filterLabel = document.querySelector(".filter-label") as HTMLElement;
+    if (filterLabel) {
+      const text = showResolved
+        ? `Hide resolved (${resolvedCount})`
+        : `Show resolved (${resolvedCount})`;
+      filterLabel.textContent = text;
+    }
+  }
 </script>
 
 <div class="comments-panel">
   {#if resolvedCount > 0}
     <div class="filter-section">
       <label class="filter-toggle">
-        <input type="checkbox" bind:checked={showResolved} />
-        <span>Show resolved ({resolvedCount})</span>
+        <input
+          class="filter-checkbox"
+          type="checkbox"
+          bind:checked={showResolved}
+          onchange={handleShowResolvedChange}
+        />
+        <span class="filter-label">Show resolved ({resolvedCount})</span>
       </label>
     </div>
   {/if}
@@ -292,7 +315,9 @@
   >
     <div
       class="panel-content"
-      style={isEmptyStateVisible ? undefined : `height: ${editorContentHeight}px;`}
+      style={isEmptyStateVisible
+        ? undefined
+        : `height: ${editorContentHeight}px;`}
     >
       {#each positionedComments as item (item.id)}
         {#if item.type === "draft"}
@@ -346,6 +371,7 @@
               isActive={item.id === activeCommentId}
               isHovered={item.id === hoveredCommentId}
               {onResolve}
+              {onReopen}
               {onDelete}
               {onReply}
               {onSelect}
@@ -360,7 +386,11 @@
         <div class="empty-state">
           <div class="empty-icon">💬</div>
           <p>No comments yet</p>
-          <span>{canComment ? 'Select text to add a comment' : 'You have read-only access to comments'}</span>
+          <span
+            >{canComment
+              ? "Select text to add a comment"
+              : "You have read-only access to comments"}</span
+          >
         </div>
       {/if}
     </div>
@@ -387,15 +417,25 @@
     gap: 8px;
     cursor: pointer;
     font-size: 12px;
-    color: var(--text-secondary);
     user-select: none;
   }
 
-  .filter-toggle input[type="checkbox"] {
-    cursor: pointer;
-    width: 14px;
-    height: 14px;
-    accent-color: var(--color-primary-600);
+  .filter-checkbox {
+    display: none;
+  }
+
+  .filter-label {
+    position: relative;
+    color: var(--text-tertiary);
+  }
+
+  .filter-label:hover {
+    color: var(--text-secondary);
+  }
+
+  .filter-label:active {
+    color: var(--text-primary);
+    transform: translateY(1px);
   }
 
   .panel-scroll {

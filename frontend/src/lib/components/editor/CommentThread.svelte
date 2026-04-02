@@ -2,7 +2,8 @@
   import type { Comment, UserProfile } from "$lib/types";
   import { getProfilePicUrl } from "$lib/utils/urls";
   import VenetianMask from "@lucide/svelte/icons/venetian-mask";
-    import Tooltip from "../ui/Tooltip.svelte";
+  import Tooltip from "../ui/Tooltip.svelte";
+  import Ellipsis from "@lucide/svelte/icons/ellipsis";
 
   interface CommentThreadProps {
     comment: Comment;
@@ -13,6 +14,7 @@
     isActive?: boolean;
     isHovered?: boolean;
     onResolve?: (commentId: string) => void;
+    onReopen?: (commentId: string) => void;
     onDelete?: (commentId: string) => void;
     onReply?: (commentId: string, content: string) => void;
     onSelect?: (commentId: string) => void;
@@ -28,6 +30,7 @@
     canDeleteComments = false,
     isActive = false,
     onResolve,
+    onReopen,
     onDelete,
     onReply,
     onSelect,
@@ -70,6 +73,10 @@
     onResolve?.(comment.id);
   }
 
+  function handleReopen() {
+    onReopen?.(comment.id);
+  }
+
   function handleDelete() {
     onDelete?.(comment.id);
   }
@@ -92,6 +99,12 @@
   function toggleMenu(e: MouseEvent) {
     e.stopPropagation();
     showMenu = !showMenu;
+    if (showMenu) {
+      // Add event listener to close menu when clicking outside
+      document.addEventListener("click", closeMenu);
+    } else {
+      document.removeEventListener("click", closeMenu);
+    }
   }
 
   function closeMenu() {
@@ -194,13 +207,14 @@
     <div class="comment-actions">
       <div class="menu-container">
         {#if canShowActionMenu}
-          <button
-            class="action-btn menu-btn"
-            onclick={toggleMenu}
-            title="More actions"
-          >
-            ⋯
-          </button>
+          <Tooltip text="More actions">
+            <button
+              class="menu-btn"
+              onclick={toggleMenu}
+            >
+              <Ellipsis size={16} />
+            </button>
+          </Tooltip>
         {/if}
         {#if canShowActionMenu && showMenu}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -216,6 +230,13 @@
                 onclick={handleMenuAction(handleResolve)}
               >
                 <span class="menu-icon">✓</span> Resolve
+              </button>
+            {:else}
+              <button
+                class="menu-item"
+                onclick={handleMenuAction(handleReopen)}
+              >
+                <span class="menu-icon">⟳</span> Reopen
               </button>
             {/if}
             {#if canDeleteThisComment}
@@ -293,6 +314,7 @@
         bind:value={replyText}
         placeholder="Reply..."
         rows="1"
+        onclick={() => onSelect?.(comment.id)}
         onfocus={() => (replyFocused = true)}
         onblur={() => (replyFocused = false)}
         onkeydown={(e: KeyboardEvent) => {
@@ -455,12 +477,6 @@
     position: relative;
   }
 
-  .menu-btn {
-    font-size: 8px;
-    letter-spacing: 1px;
-    line-height: 1;
-  }
-
   .menu-backdrop {
     position: fixed;
     inset: 0;
@@ -510,23 +526,26 @@
     text-align: center;
   }
 
-  .action-btn {
+  .menu-btn {
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 2px 8px 6px 8px;
-    border-radius: 99px;
+    border-radius: 50%;
     font-size: 18px;
     transition: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem;
   }
 
-  .action-btn:hover {
+  .menu-btn:hover {
     background: var(--surface-hover);
     color: var(--text-primary);
   }
 
-  .action-btn:active {
+  .menu-btn:active {
     transform: scaleX(1.1) scaleY(0.9);
   }
 
@@ -604,10 +623,15 @@
   }
 
   .reply-form {
+    display: none;
     margin-top: 8px;
-    display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .comment-thread:hover .reply-form,
+  .comment-thread.active .reply-form {
+    display: flex;
   }
 
   .reply-form textarea {

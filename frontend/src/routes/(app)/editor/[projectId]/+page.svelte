@@ -711,6 +711,15 @@
     applyThreadUpdate(thread);
   }
 
+  async function handleReopenComment(commentId: string) {
+    if (!canComment) return;
+
+    const thread = await commentsApi.updateThread(projectId, commentId, {
+      status: "open",
+    });
+    applyThreadUpdate(thread);
+  }
+
   async function handleDeleteComment(commentId: string) {
     if (!canManageProject) return;
 
@@ -2151,6 +2160,8 @@
             {draftPosition}
             onResolve={(commentId: string) =>
               editorPane?.handleCommentResolve(commentId)}
+            onReopen={(commentId: string) =>
+              editorPane?.handleCommentReopen(commentId)}
             onDelete={(commentId: string) =>
               editorPane?.handleCommentDelete(commentId)}
             onReply={(commentId: string, content: string) =>
@@ -2271,6 +2282,7 @@
         onResolveComment={handleResolveComment}
         onDeleteComment={handleDeleteComment}
         onReplyComment={handleReplyComment}
+        onReopenComment={handleReopenComment}
         {canWrite}
         {canComment}
         canModerateComments={canManageProject}

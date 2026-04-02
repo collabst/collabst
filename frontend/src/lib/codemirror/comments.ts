@@ -312,6 +312,13 @@ export class CommentRangeTracker {
     }
   }
 
+  reopenComment(commentId: string) {
+    const commentData = this.yComments.get(commentId)
+    if (commentData) {
+      this.yComments.set(commentId, { ...commentData, resolved: false })
+    }
+  }
+
   getComment(commentId: string): Comment | null {
     const data = this.yComments.get(commentId)
     if (!data) return null

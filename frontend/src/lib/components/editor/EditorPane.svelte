@@ -68,6 +68,7 @@
       head_rel_json: string | null;
     }) => Promise<void> | void;
     onResolveComment?: (commentId: string) => Promise<void> | void;
+    onReopenComment?: (commentId: string) => Promise<void> | void;
     onDeleteComment?: (commentId: string) => Promise<void> | void;
     onReplyComment?: (commentId: string, content: string) => Promise<void> | void;
     canWrite?: boolean;
@@ -105,6 +106,7 @@
     onResolveComment = undefined,
     onDeleteComment = undefined,
     onReplyComment = undefined,
+    onReopenComment = undefined,
     canWrite = true,
     canComment = true,
     canModerateComments = false,
@@ -767,6 +769,26 @@
     if (!tracker) return;
 
     tracker.resolveComment(commentId);
+  }
+
+  export async function handleCommentReopen(commentId: string) {
+    if (!canComment) return;
+
+    if (onReopenComment) {
+      try {
+        await onReopenComment(commentId);
+      } catch (error) {
+        console.error("Failed to reopen comment:", error);
+      }
+      return;
+    }
+
+    if (!codeEditor) return;
+
+    const tracker = codeEditor.getCommentTracker();
+    if (!tracker) return;
+
+    tracker.reopenComment(commentId);
   }
 
   export async function handleCommentDelete(commentId: string) {
