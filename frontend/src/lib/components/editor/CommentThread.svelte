@@ -161,7 +161,7 @@
   class="comment-thread"
   class:resolved={comment.resolved}
   class:active={isActive}
-  class:hovered={isHovered}
+  class:hovered={isHovered || showMenu}
   bind:this={threadElement}
   onclick={() => onSelect?.(comment.id)}
   onmouseenter={() => onHover?.(comment.id)}
