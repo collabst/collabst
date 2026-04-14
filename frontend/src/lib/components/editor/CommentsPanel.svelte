@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from "$app/environment";
+  import { fade } from "svelte/transition";
   import type { Comment } from "$lib/types";
   import type { UserProfile } from "$lib/types";
   import { usersApi } from "$lib/services/api";
@@ -159,11 +160,8 @@
   }
 
   // Compute positioned comments with overlap resolution.
-  // If no editor-mapped position exists yet, fall back to line-based placement
-  // so DB-backed comments still render after reload/reconnect.
   let positionedComments = $derived.by(() => {
     const MIN_GAP = 4;
-    const LINE_HEIGHT_FALLBACK = 20;
 
     type PositionedItem = {
       type: "draft" | "comment";
@@ -192,22 +190,17 @@
       return a.createdAt.localeCompare(b.createdAt);
     });
 
-    // Add all visible comments. Use editor-mapped position when available,
-    // otherwise place comment near its persisted line as a fallback.
+    // Skip comments without a mapped position (not yet computed)
     for (const comment of sortedComments) {
       const mappedPos = commentPositions.get(comment.id);
-      const fallbackPos = Math.max(
-        0,
-        (Math.max(1, comment.line) - 1) * LINE_HEIGHT_FALLBACK,
-      );
-      const idealTop = mappedPos ?? fallbackPos;
+      if (mappedPos == null) continue;
 
       items.push({
         type: "comment",
         comment,
         id: comment.id,
-        idealTop,
-        actualTop: idealTop,
+        idealTop: mappedPos,
+        actualTop: mappedPos,
         height: threadHeights.get(comment.id) || 80,
       });
     }
@@ -215,15 +208,21 @@
     // Sort by ideal position
     items.sort((a, b) => a.idealTop - b.idealTop);
 
-    // Find the active item index (selected comment gets priority)
-    const activeIdx = items.findIndex((item) => item.id === activeCommentId);
+    // Find the interactive item that must stay accessible (clamped to >= 0).
+    // Draft takes priority (user is typing a new comment), then active comment
+    // (user may be typing a reply).
+    let anchorIdx = items.findIndex((item) => item.type === "draft");
+    if (anchorIdx < 0) {
+      anchorIdx = items.findIndex((item) => item.id === activeCommentId);
+    }
 
-    if (activeIdx >= 0) {
-      // Active comment stays at its ideal position
-      items[activeIdx].actualTop = items[activeIdx].idealTop;
+    if (anchorIdx >= 0) {
+      // Anchor item stays at its ideal position, clamped to >= 0
+      // so the user can always interact with it
+      items[anchorIdx].actualTop = Math.max(0, items[anchorIdx].idealTop);
 
-      // Push items BELOW the active one downward
-      for (let i = activeIdx + 1; i < items.length; i++) {
+      // Push items BELOW the anchor downward
+      for (let i = anchorIdx + 1; i < items.length; i++) {
         const prev = items[i - 1];
         const minTop = prev.actualTop + prev.height + MIN_GAP;
         if (items[i].actualTop < minTop) {
@@ -231,8 +230,10 @@
         }
       }
 
-      // Push items ABOVE the active one upward
-      for (let i = activeIdx - 1; i >= 0; i--) {
+      // Push items ABOVE the anchor upward — they CAN go out of bounds
+      // (negative top). Non-interactive comments can be pushed off-screen
+      // to keep the anchor item in place.
+      for (let i = anchorIdx - 1; i >= 0; i--) {
         const next = items[i + 1];
         const maxBottom = next.actualTop - MIN_GAP;
         if (items[i].actualTop + items[i].height > maxBottom) {
@@ -282,15 +283,7 @@
     };
   }
 
-  function handleShowResolvedChange() {
-    const filterLabel = document.querySelector(".filter-label") as HTMLElement;
-    if (filterLabel) {
-      const text = showResolved
-        ? `Hide resolved (${resolvedCount})`
-        : `Show resolved (${resolvedCount})`;
-      filterLabel.textContent = text;
-    }
-  }
+
 </script>
 
 <div class="comments-panel">
@@ -301,7 +294,6 @@
           class="filter-checkbox"
           type="checkbox"
           bind:checked={showResolved}
-          onchange={handleShowResolvedChange}
         />
         <span class="filter-label">Show resolved ({resolvedCount})</span>
       </label>
@@ -325,6 +317,7 @@
             class="positioned-thread"
             style="top: {item.actualTop}px;"
             use:measureThread={"__draft__"}
+            in:fade={{ duration: 150 }}
           >
             <div class="new-comment-draft">
               <textarea
@@ -361,6 +354,7 @@
             class="positioned-thread"
             style="top: {item.actualTop}px;"
             use:measureThread={item.id}
+            in:fade={{ duration: 150 }}
           >
             <CommentThread
               comment={item.comment}

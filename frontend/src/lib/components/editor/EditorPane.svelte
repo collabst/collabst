@@ -419,23 +419,20 @@
     }
   }
 
-  // Get the pixel y-positions of all comments relative to editor content top
+  // Get the pixel y-positions of all comments relative to editor content top.
+  // Uses lineBlockAt() which works for ALL lines (even non-rendered ones)
+  // via CodeMirror's internal height map, unlike coordsAtPos() which returns
+  // null for off-screen text.
   export function getCommentPositions(): Map<string, number> {
     const positions = new Map<string, number>();
     const view = codeEditor?.getView?.();
     if (!view) return positions;
 
-    const scrollDOM = view.scrollDOM;
-    const scrollTop = scrollDOM.scrollTop;
-    const editorRect = scrollDOM.getBoundingClientRect();
-
     for (const comment of commentsForAnchors) {
       const range = resolveRangeFromComment(comment);
       if (!range) continue;
-      const coords = view.coordsAtPos(range.from);
-      if (!coords) continue;
-      const top = coords.top - editorRect.top + scrollTop;
-      positions.set(comment.id, top);
+      const block = view.lineBlockAt(range.from);
+      positions.set(comment.id, block.top);
     }
 
     return positions;

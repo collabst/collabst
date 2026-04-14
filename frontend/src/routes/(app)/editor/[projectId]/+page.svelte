@@ -128,24 +128,42 @@
   let editorScrollCleanup: (() => void) | null = null;
   let isSyncingFromPanel = false;
 
-  // Update comment positions from the editor
+  // Cached vertical offset between editor and panel scroll areas.
+  // Only changes on resize or panel visibility, not on scroll.
+  let cachedVerticalOffset = 0;
+  let cachedPanelScrollEl: HTMLElement | null = null;
+
+  function recomputeVerticalOffset() {
+    const scrollDOM = editorPane?.getEditorScrollDOM();
+    if (!cachedPanelScrollEl) {
+      cachedPanelScrollEl = document.querySelector(".panel-scroll");
+    }
+    if (scrollDOM && cachedPanelScrollEl) {
+      cachedVerticalOffset =
+        scrollDOM.getBoundingClientRect().top -
+        cachedPanelScrollEl.getBoundingClientRect().top;
+    }
+  }
+
   function updateCommentPositions() {
     if (!editorPane) return;
     const positions = editorPane.getCommentPositions();
+
+    const offset = cachedVerticalOffset;
+    if (Math.abs(offset) > 0.5) {
+      for (const [id, pos] of positions) {
+        positions.set(id, pos + offset);
+      }
+    }
+
     commentPositions = positions;
 
-    // Update draft position
+    // Update draft position using lineBlockAt (works for all positions)
     if (editorNewCommentDraft) {
       const view = editorPane.getEditorView();
       if (view) {
-        const scrollDOM = view.scrollDOM;
-        const coords = view.coordsAtPos(editorNewCommentDraft.range.from);
-        if (coords) {
-          draftPosition =
-            coords.top -
-            scrollDOM.getBoundingClientRect().top +
-            scrollDOM.scrollTop;
-        }
+        const block = view.lineBlockAt(editorNewCommentDraft.range.from);
+        draftPosition = block.top + offset;
       }
     } else {
       draftPosition = null;
@@ -154,14 +172,16 @@
     // Update content height
     const scrollDOM = editorPane.getEditorScrollDOM();
     if (scrollDOM) {
-      editorContentHeight = scrollDOM.scrollHeight;
+      editorContentHeight = scrollDOM.scrollHeight + Math.max(0, offset);
     }
   }
 
   // Set up scroll listener and position updates when comments panel is visible
   $effect(() => {
     if (activePanel === "comments" && editorPane) {
-      // Initial position update
+      // Compute offset once when panel becomes visible
+      cachedPanelScrollEl = null;
+      recomputeVerticalOffset();
       updateCommentPositions();
 
       // Set up scroll listener
@@ -190,15 +210,20 @@
   // Re-compute positions when comments change
   $effect(() => {
     if (activePanel === "comments" && editorComments) {
-      // Use a small delay to let decorations settle
-      setTimeout(updateCommentPositions, 50);
+      // Compute immediately so new comments get correct positions right away
+      // (lineBlockAt works without waiting for decorations to settle)
+      updateCommentPositions();
     }
   });
 
   // Re-compute positions when draft changes
   $effect(() => {
-    if (activePanel === "comments" && editorNewCommentDraft) {
-      setTimeout(updateCommentPositions, 50);
+    if (activePanel === "comments") {
+      if (editorNewCommentDraft) {
+        updateCommentPositions();
+      } else {
+        draftPosition = null;
+      }
     }
   });
 

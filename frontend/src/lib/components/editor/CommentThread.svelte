@@ -39,15 +39,6 @@
     isHovered = false,
   }: CommentThreadProps = $props();
 
-  let threadElement: HTMLElement | undefined = $state();
-
-  // Auto-scroll into view when this thread becomes active
-  $effect(() => {
-    if (isActive && threadElement) {
-      threadElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  });
-
   let replyText = $state("");
   let replyFocused = $state(false);
   let replyTextarea: HTMLTextAreaElement | undefined = $state();
@@ -162,7 +153,6 @@
   class:resolved={comment.resolved}
   class:active={isActive}
   class:hovered={isHovered || showMenu}
-  bind:this={threadElement}
   onclick={() => onSelect?.(comment.id)}
   onmouseenter={() => onHover?.(comment.id)}
   onmouseleave={() => onHoverEnd?.(comment.id)}
