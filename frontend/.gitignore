@@ -25,3 +25,6 @@ dist-ssr
 
 .svelte-kit
 .env
+
+# Build output
+build

@@ -1,5 +1,3 @@
-import { browser } from '$app/environment'
-
 /**
  * Utility functions to generate dynamic API and WebSocket URLs
  * based on the current browser hostname instead of hardcoding
@@ -10,7 +8,11 @@ import { browser } from '$app/environment'
  * Uses http/https based on current protocol
  */
 export const getApiUrl = (): string => {
-    return `${import.meta.env.VITE_API_URL}`
+  const configuredUrl = import.meta.env.VITE_API_URL
+  if (!configuredUrl) {
+    return '/api/v1'
+  }
+  return `${configuredUrl}`
 }
 
 export const getProfilePicUrl = (userId: string): string => {
@@ -23,9 +25,11 @@ export const getProfilePicUrl = (userId: string): string => {
  * Automatically converts http -> ws and https -> wss
  */
 export const getWsUrl = (): string => {
-  const apiUrl = new URL(import.meta.env.VITE_API_URL)
+  const configuredApiUrl = getApiUrl()
+  const apiUrl = configuredApiUrl.startsWith('http://') || configuredApiUrl.startsWith('https://')
+    ? new URL(configuredApiUrl)
+    : new URL(configuredApiUrl, window.location.origin)
+
   const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-  console.log(`${wsProtocol}//${apiUrl.hostname}`)
-  const port = apiUrl.port ? `:${apiUrl.port}` : ''
   return `${wsProtocol}//${apiUrl.host}${apiUrl.pathname}`
 }

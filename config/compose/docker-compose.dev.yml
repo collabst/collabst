@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: collabst-postgres
+    container_name: collabst-dev-postgres
     ports:
       - "${POSTGRES_PORT}:5432"
     environment:
@@ -18,7 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: collabst-redis
+    container_name: collabst-dev-redis
     ports:
       - "${REDIS_PORT}:6379"
     volumes:
@@ -31,36 +31,36 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: collabst-minio
+    container_name: collabst-dev-minio
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-        - "${MINIO_PORT}:9000"
-        - "${MINIO_CONSOLE_PORT}:9001"
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:${MINIO_PORT}/minio/health/live" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
   backend:
     build:
-      context: ./backend
+      context: ../../backend
       dockerfile: Dockerfile.dev
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-    container_name: collabst-backend
+    container_name: collabst-dev-backend
     volumes:
-      - ./backend:/app:z
+      - ../../backend:/app:z
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/collabst
-      REDIS_URL: redis://redis:${REDIS_PORT}/0
-      MINIO_ENDPOINT: minio:${MINIO_PORT}
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: ${MINIO_URL}
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
@@ -73,6 +73,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED}
       API_V1_STR: ${API_V1_STR}
+      ENVIRONMENT: development
     ports:
       - "${BACKEND_PORT}:8000"
     depends_on:
@@ -85,18 +86,17 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../../frontend
       dockerfile: Dockerfile.dev
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-    container_name: collabst-frontend
+    container_name: collabst-dev-frontend
     ports:
       - "${FRONTEND_PORT}:5173"
     volumes:
-      - ./frontend:/app:z
+      - ../../frontend:/app:z
     environment:
-      - VITE_API_PORT=${BACKEND_PORT}
       - VITE_API_URL=${VITE_API_URL}
       - VITE_WEB_URL=${WEB_URL}
     depends_on:

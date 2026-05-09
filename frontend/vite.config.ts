@@ -13,15 +13,16 @@ export default defineConfig({
       usePolling: true,
       interval: 100
     },
-      allowedHosts: [getAllowedHost()]
+    allowedHosts: [getAllowedHost()]
   }
 })
-  function getAllowedHost() {
-    const url = process.env.VITE_WEB_URL
-    if (!url) return 'localhost'
-    try {
-      return new URL(url).hostname
-    } catch {
-      return url // fallback if not a full URL
-    }
+
+function getAllowedHost() {
+  const url = process.env.VITE_WEB_URL
+  if (!url) return 'localhost'
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url // fallback if not a full URL
   }
+}

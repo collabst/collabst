@@ -29,13 +29,23 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Short-lived access token
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # Long-lived refresh token with sliding expiration
 
+    ENVIRONMENT: str = "development"
     WEB_URL: str = "http://localhost:5173"
-    
-
-    CORS_ORIGINS: list[str] = [WEB_URL]
+    CORS_ORIGINS: str = ""
+    FRONTEND_DIST_DIR: str = "/app/frontend-dist"
 
     # Registration enabled/disabled
     REGISTRATION_ENABLED: bool = True
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        if self.CORS_ORIGINS.strip():
+            return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        return [self.WEB_URL]
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.lower() == "production"
 
 
 settings = Settings()

@@ -1,4 +1,15 @@
-.PHONY: help setup start stop restart logs clean build rebuild status
+.PHONY: help setup start startd stop restart logs status build clean \
+	build-prod start-prod startd-prod stop-prod restart-prod logs-prod status-prod
+
+COMPOSE := docker-compose
+CONFIG_DIR := config
+COMPOSE_DIR := $(CONFIG_DIR)/compose
+ENV_DIR := $(CONFIG_DIR)/env
+ENV_FILE := $(ENV_DIR)/.env
+DEV_COMPOSE_FILE := $(COMPOSE_DIR)/docker-compose.dev.yml
+PROD_COMPOSE_FILE := $(COMPOSE_DIR)/docker-compose.prod.yml
+DEV_COMPOSE := $(COMPOSE) --env-file $(ENV_FILE) -f $(DEV_COMPOSE_FILE)
+PROD_COMPOSE := $(COMPOSE) --env-file $(ENV_FILE) -f $(PROD_COMPOSE_FILE)
 
 # Default target
 help:
@@ -6,11 +17,20 @@ help:
 	@echo "=============================="
 	@echo ""
 	@echo "Setup & Start:"
-	@echo "  make setup           - Set up environment (create .env file)"
+	@echo "  make setup           - Set up environment (create config/env/.env file)"
 	@echo "  make start           - Start development environment"
 	@echo "  make startd          - Start development environment in detached mode"
 	@echo "  make stop            - Stop development environment"
 	@echo "  make restart         - Restart development environment"
+	@echo ""
+	@echo "Production:"
+	@echo "  make build-prod      - Build production backend image"
+	@echo "  make start-prod      - Start production environment"
+	@echo "  make startd-prod     - Start production environment in detached mode"
+	@echo "  make stop-prod       - Stop production environment"
+	@echo "  make restart-prod    - Restart production environment"
+	@echo "  make logs-prod       - View production logs"
+	@echo "  make status-prod     - Check production service status"
 	@echo ""
 	@echo "Development:"
 	@echo "  make logs            - View logs from all services"
@@ -31,48 +51,48 @@ help:
 # Setup environment
 setup:
 	@echo "Setting up Collabst development environment..."
-	@sh ./scripts/setup.sh
+	@bash ./scripts/setup.dev.sh
 
 # Start development environment
 start:
 	@echo "Starting Collabst..."
-	@docker-compose -f docker-compose.dev.yml up $(ARGS)
+	@$(DEV_COMPOSE) up $(ARGS)
 
 # Detached start
 startd:
 	@echo "Starting Collabst in detached mode..."
-	@docker-compose -f docker-compose.dev.yml up -d $(ARGS)
+	@$(DEV_COMPOSE) up -d $(ARGS)
 
 # Stop development environment
 stop:
 	@echo "Stopping Collabst..."
-	@docker-compose -f docker-compose.dev.yml down $(ARGS)
+	@$(DEV_COMPOSE) down $(ARGS)
 
 # Restart services
 restart:
 	@echo "Restarting Collabst..."
 ifdef SERVICE
-	@docker-compose -f docker-compose.dev.yml restart $(SERVICE) $(ARGS)
+	@$(DEV_COMPOSE) restart $(SERVICE) $(ARGS)
 else
-	@docker-compose -f docker-compose.dev.yml restart $(ARGS)
+	@$(DEV_COMPOSE) restart $(ARGS)
 endif
 
 # View logs
 logs:
 ifdef SERVICE
-	@docker-compose -f docker-compose.dev.yml logs -f $(SERVICE)
+	@$(DEV_COMPOSE) logs -f $(SERVICE)
 else
-	@docker-compose -f docker-compose.dev.yml logs -f
+	@$(DEV_COMPOSE) logs -f
 endif
 
 # Check service status
 status:
-	@docker-compose -f docker-compose.dev.yml ps
+	@$(DEV_COMPOSE) ps
 
 # Build
 build:
 	@echo "Building and starting Collabst..."
-	@docker-compose -f docker-compose.dev.yml build $(ARGS)
+	@$(DEV_COMPOSE) build $(ARGS)
 
 # Clean up
 clean:
@@ -81,8 +101,49 @@ clean:
 	@echo "Are you sure? (y/N)"
 	@read ans; \
 	if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
-		docker-compose -f docker-compose.dev.yml down --rmi all --volumes --remove-orphans; \
+		$(DEV_COMPOSE) down --rmi all --volumes --remove-orphans; \
 		echo "Cleanup completed."; \
 	else \
 		echo "Cleanup aborted."; \
 	fi
+
+# Build production image
+build-prod:
+	@echo "Building Collabst production backend image..."
+	@$(PROD_COMPOSE) build backend $(ARGS)
+
+# Start production environment
+start-prod:
+	@echo "Starting Collabst production environment..."
+	@$(PROD_COMPOSE) up $(ARGS)
+
+# Detached production start
+startd-prod:
+	@echo "Starting Collabst production environment in detached mode..."
+	@$(PROD_COMPOSE) up -d $(ARGS)
+
+# Stop production environment
+stop-prod:
+	@echo "Stopping Collabst production environment..."
+	@$(PROD_COMPOSE) down $(ARGS)
+
+# Restart production services
+restart-prod:
+	@echo "Restarting Collabst production environment..."
+ifdef SERVICE
+	@$(PROD_COMPOSE) restart $(SERVICE) $(ARGS)
+else
+	@$(PROD_COMPOSE) restart $(ARGS)
+endif
+
+# View production logs
+logs-prod:
+ifdef SERVICE
+	@$(PROD_COMPOSE) logs -f $(SERVICE)
+else
+	@$(PROD_COMPOSE) logs -f
+endif
+
+# Check production service status
+status-prod:
+	@$(PROD_COMPOSE) ps

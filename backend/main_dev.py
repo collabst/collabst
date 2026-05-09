@@ -1,17 +1,16 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api import auth, comments, files, invitations, profile_pic, projects, users
 from app.core.config import settings
 from app.services.redis_service import redis_service
-from app.api import auth, projects, files, invitations, users, profile_pic, comments
-from app.websocket.yjs_server import websocket_endpoint, manager as yjs_manager
-from app.websocket.project_ws import project_websocket_endpoint
+from app.websocket.auth import WebSocketAuthError, authenticate_websocket_project
 from app.websocket.notifications_ws import notifications_websocket_endpoint
-from app.websocket.auth import (
-    WebSocketAuthError,
-    authenticate_websocket_project,
-)
+from app.websocket.project_ws import project_websocket_endpoint
+from app.websocket.yjs_server import manager as yjs_manager
+from app.websocket.yjs_server import websocket_endpoint
 
 
 @asynccontextmanager
@@ -19,9 +18,9 @@ async def lifespan(app: FastAPI):
     # Initialize services
     await redis_service.connect()
     await yjs_manager.initialize()
-    
+
     yield
-    
+
     # Cleanup services
     await yjs_manager.shutdown()
     await redis_service.disconnect()
@@ -36,7 +35,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

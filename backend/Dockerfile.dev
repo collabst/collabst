@@ -25,9 +25,9 @@ WORKDIR /app
 USER app
 
 # Copy entrypoint
-COPY --chown=app:app scripts/entrypoint.sh /app/scripts/entrypoint.sh
-RUN chmod +x /app/scripts/entrypoint.sh
+COPY --chown=app:app scripts/entrypoint.dev.sh /app/scripts/entrypoint.dev.sh
+RUN chmod +x /app/scripts/entrypoint.dev.sh
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+ENTRYPOINT ["/app/scripts/entrypoint.dev.sh"]
