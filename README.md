@@ -83,9 +83,24 @@ If you want to learn more about the design choices behind Collabst's interface, 
 ## 🏗️ How to Install
 
 ### Quick Setup🏃‍♀️‍➡️
-If you already have docker-compose and npm installed, you can simply clone this repo and launch the makefile:
 
-***TODO***
+Make sure you have **Docker** and **Docker Compose** installed, then run:
+
+```bash
+# 1. Download the compose file and env template
+curl -o docker-compose.yml https://raw.githubusercontent.com/collabst/collabst/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/collabst/collabst/main/.env.example
+
+# 2. Fill in your values (URLs, passwords, secret key)
+nano .env
+
+# 3. Start
+docker compose up -d
+```
+
+Your instance will be available at the `WEB_URL` you configured.
+
+> **Tip:** Generate a secure secret key with `openssl rand -hex 32`.
 
 ### Detailed Setup📜
 For the complete setup instructions, you can follow the [`SETUP.md`](/SETUP.md) file.

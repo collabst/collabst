@@ -1,5 +1,63 @@
 # Collabst Setup Guide
 
+This guide covers both **self-hosting** (running your own instance) and **local development**.
+
+---
+
+## Self-Hosting (Production)
+
+### Prerequisites
+
+- **Docker** (version 20.10 or higher)
+- **Docker Compose** (version 2.0 or higher)
+- A server with a domain name pointing to it
+
+### 1. Download the required files
+
+```bash
+curl -o docker-compose.yml https://raw.githubusercontent.com/collabst/collabst/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/collabst/collabst/main/.env.example
+```
+
+### 2. Configure your environment
+
+```bash
+nano .env
+```
+
+Required values to set:
+- `WEB_URL` — your public URL (e.g. `https://collabst.yourdomain.com`)
+- `MINIO_URL` — storage URL (e.g. `storage.yourdomain.com`)
+- `CORS_ORIGINS` — same as `WEB_URL`
+- `POSTGRES_PASSWORD` — strong password
+- `MINIO_ROOT_PASSWORD` — strong password
+- `SECRET_KEY` — generate with `openssl rand -hex 32`
+
+### 3. Start
+
+```bash
+docker compose up -d
+```
+
+### Updating to a new version
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### Managing the instance
+
+```bash
+docker compose logs -f          # View logs
+docker compose logs -f backend  # Backend logs only
+docker compose down             # Stop
+docker compose down -v          # Stop and delete all data
+```
+
+---
+
+## Local Development
 
 This guide will help you set up and run Collabst locally using the Makefile and Docker Compose.
 
