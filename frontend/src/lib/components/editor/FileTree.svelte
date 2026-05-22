@@ -17,7 +17,6 @@
   interface Props {
     files: ProjectFile[];
     assets: Asset[];
-    loadingFileIds?: Set<string>;
     selectedItem: ProjectFile | Asset | null;
     previewFileId?: string | null;
     onSelectFile: (file: ProjectFile) => void;
@@ -46,7 +45,6 @@
   let {
     files,
     assets,
-    loadingFileIds = new Set<string>(),
     selectedItem,
     previewFileId = null,
     onSelectFile,
@@ -1011,7 +1009,6 @@
               <FileTreeItem
                 item={itemWithSelection.item}
                 isSelected={itemWithSelection.isSelected}
-                isLoadingContent={!item.isAsset && !item.is_folder && loadingFileIds.has(item.id)}
                 usersViewing={itemWithSelection.usersViewing}
                 isPreview={!item.isAsset && previewFileId === item.id}
                 onSelect={() => handleSelect(item)}

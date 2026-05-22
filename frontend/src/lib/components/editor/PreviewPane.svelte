@@ -11,7 +11,7 @@
   import Download from "@lucide/svelte/icons/download";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { browser } from '$app/environment';
-  import type { File as ProjectFile, Asset, Diagnostic } from '$lib/types';
+  import type { FileWithContent as ProjectFile, Asset, Diagnostic } from '$lib/types';
   import { assetsApi } from "../../services/api";
   import { getCachedAsset, cacheAsset } from '$lib/utils/assetCache';
   import { theme as themeStore } from '$lib/stores/theme';

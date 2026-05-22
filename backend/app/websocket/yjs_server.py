@@ -513,6 +513,76 @@ class YjsConnectionManager:
         except Exception as e:
             print(f"[YJS] Failed to notify unauthorized event: {e}")
     
+    async def write_file_content(
+        self,
+        project_id: int,
+        project_hash_id: str,
+        file_hash_id: str,
+        content: str,
+    ) -> None:
+        """Insert initial content into a file's Y.Text in the project's Yjs doc.
+
+        Called by the REST API when a file is created with non-empty content.
+        If the project's room is live, mutates the in-memory ydoc — the YRoom's
+        update observer broadcasts to connected clients and persists via the
+        ystore. If the room is dormant, loads persisted state, applies the
+        insertion, and writes back to both Redis and PostgreSQL.
+
+        Holding `room_lock` for the whole operation serializes concurrent
+        writes per project. The `len(text) == 0` check makes it idempotent so
+        a retry after a partial failure does not duplicate content.
+        """
+        if not content:
+            return
+
+        if not self._initialized:
+            await self.initialize()
+
+        room_path = f"/project-{project_hash_id}"
+        room_lock = await self._get_room_lock(room_path)
+
+        async with room_lock:
+            if self._websocket_server and room_path in self._websocket_server.rooms:
+                room = self._websocket_server.rooms[room_path]
+                text = room.ydoc.get(f"file-{file_hash_id}", type="text")
+                if len(text) == 0:
+                    text.insert(0, content)
+                return
+
+            async with self._async_session_factory() as session:
+                result = await session.execute(
+                    select(YjsDocumentState).where(YjsDocumentState.project_id == project_id)
+                )
+                yjs_state = result.scalar_one_or_none()
+
+                doc = Doc()
+                if yjs_state and yjs_state.state:
+                    doc.apply_update(yjs_state.state)
+
+                text = doc.get(f"file-{file_hash_id}", type="text")
+                if len(text) > 0:
+                    return
+                text.insert(0, content)
+
+                update_bytes = doc.get_update()
+                if not update_bytes:
+                    return
+
+                # Redis first to match encode_state_as_update: if the PostgreSQL
+                # commit fails, Redis still holds the new state and readers stay
+                # consistent until the next snapshot loop reconciles.
+                try:
+                    await self._redis_client.set(f"yjs:doc:{room_path}", update_bytes)
+                except Exception as e:
+                    print(f"[YJS] Error writing seeded state to Redis: {e}")
+
+                if yjs_state:
+                    yjs_state.state = update_bytes
+                else:
+                    yjs_state = YjsDocumentState(project_id=project_id, state=update_bytes)
+                    session.add(yjs_state)
+                await session.commit()
+
     async def serve(
         self,
         websocket: WebSocket,

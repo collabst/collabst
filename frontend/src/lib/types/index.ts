@@ -60,11 +60,17 @@ export interface File {
   project_id: string;
   name: string;
   path: string;
-  content: string;
   parent_id: string | null;
   is_folder: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// A File enriched with its live content snapshot (read from the Yjs Y.Text).
+// Used by code paths that need to read file contents (preview, search, export).
+// The base File type never carries content because Yjs is the source of truth.
+export interface FileWithContent extends File {
+  content: string;
 }
 
 export interface FileTreeNode extends File {

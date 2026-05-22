@@ -14,11 +14,9 @@
   import FolderOpen from "@lucide/svelte/icons/folder-open";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import Loader from "@lucide/svelte/icons/loader";
 
   export let item: (ProjectFile & FileTreeNode) | Asset;
   export let isSelected: boolean = false;
-  export let isLoadingContent: boolean = false;
   export let isPreview: boolean = false;
   export let onSelect: () => void;
   export let onSetPreview: (() => void) | undefined = undefined;
@@ -248,11 +246,6 @@
       {:else}
         <span class="name">{getFileName(item)}</span>
       {/if}
-      {#if isLoadingContent && !isEditing}
-        <span class="loading-badge">
-          <Loader size={12} />
-        </span>
-      {/if}
       {#if usersViewing.length > 0}
         <div class="user-indicators">
           {#each usersViewing as user}
@@ -408,10 +401,6 @@
     min-width: 0;
     padding: 2px 6px;
     margin: 0;
-  }
-
-  .loading-badge {
-    color: var(--text-primary);
   }
 
   .name-input {

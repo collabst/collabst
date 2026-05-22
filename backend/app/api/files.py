@@ -16,6 +16,7 @@ from app.services.storage import storage_service
 from app.services.hash_lookup import get_project_by_ref
 from app.services.permissions import check_project_access
 from app.websocket.project_ws import project_manager
+from app.websocket.yjs_server import manager as yjs_manager
 
 router = APIRouter()
 
@@ -26,7 +27,6 @@ def _serialize_file(file: File, project_hash_id: str, file_id_to_hash: dict[int,
         project_id=project_hash_id,
         name=file.name,
         path=file.path,
-        content=file.content,
         parent_id=file_id_to_hash.get(file.parent_id) if file.parent_id else None,
         is_folder=file.is_folder,
         created_at=file.created_at,
@@ -247,7 +247,6 @@ async def create_file(
         project_id=project.id,
         name=resolved_name,
         path="/",
-        content=file_in.content,
         parent_id=parent.id if parent else None,
         is_folder=file_in.is_folder,
     )
@@ -256,6 +255,16 @@ async def create_file(
     await db.flush()
 
     file.path = await file.compute_path(db)
+
+    # Seed Yjs with the initial content before committing the file row so a
+    # Yjs write failure rolls back the DB. Folders never have content.
+    if not file_in.is_folder and file_in.content:
+        await yjs_manager.write_file_content(
+            project_id=project.id,
+            project_hash_id=project.hash_id,
+            file_hash_id=file.hash_id,
+            content=file_in.content,
+        )
 
     await db.commit()
     await db.refresh(file)
@@ -471,7 +480,6 @@ async def upload_asset(
             project_id=project.id,
             name=resolved_name,
             path="/",
-            content=decoded_content,
             parent_id=parent.id if parent else None,
             is_folder=False,
         )
@@ -479,6 +487,14 @@ async def upload_asset(
         await db.flush()
 
         created_file.path = await created_file.compute_path(db)
+
+        if decoded_content:
+            await yjs_manager.write_file_content(
+                project_id=project.id,
+                project_hash_id=project.hash_id,
+                file_hash_id=created_file.hash_id,
+                content=decoded_content,
+            )
 
         await db.commit()
         await db.refresh(created_file)

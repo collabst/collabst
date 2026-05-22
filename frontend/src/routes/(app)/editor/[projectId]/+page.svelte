@@ -81,8 +81,6 @@
   let project = $state<Project | null>(null);
   let files = $state<ProjectFile[]>([]);
   let assets = $state<Asset[]>([]);
-  let loadingFileIds = $state<Set<string>>(new Set());
-  let isHydratingFiles = $state(false);
   let selectedFile = $state<ProjectFile | null>(null);
   let selectedAsset = $state<Asset | null>(null);
   let previewFileId = $state<string | null>(null);
@@ -446,8 +444,8 @@
   let projectSync: any = null;
   let commentSync: any = null;
   let isConnected = $state(false);
-  let isSynced = false;
-  let isLocalSynced = false;
+  let isSynced = $state(false);
+  let isLocalSynced = $state(false);
   let hasConnectedBefore = false;
 
   // Watch connection status changes
@@ -510,22 +508,7 @@
   async function loadFiles() {
     try {
       const data = await filesApi.list(projectId);
-
-      const nonFolderIds = data
-        .filter((file) => !file.is_folder)
-        .map((file) => file.id);
-
-      // Render tree quickly with metadata-first files, then hydrate content progressively.
-      files = data.map((file) =>
-        file.is_folder ? file : { ...file, content: "" },
-      );
-      loadingFileIds = new Set(nonFolderIds);
-      isHydratingFiles = nonFolderIds.length > 0;
-
-      // Let the UI render tree metadata before content hydration begins.
-      if (nonFolderIds.length > 0) {
-        await tick();
-      }
+      files = data;
 
       // If project has no files, create main.typ automatically
       if (data.length === 0 && canWrite) {
@@ -538,9 +521,6 @@
           );
           files = [mainFile];
           selectedFile = mainFile;
-          loadingFileIds = new Set();
-          isHydratingFiles = false;
-          // Set it as the preview file
           handleSetPreviewFile(mainFile.id);
           return;
         } catch (error) {
@@ -549,43 +529,14 @@
       }
 
       if (data.length > 0 && !selectedFile) {
-        // Select preview file if set, otherwise select first file
         if (previewFileId) {
           selectedFile = data.find((f) => f.id === previewFileId) || data[0];
         } else {
           selectedFile = data[0];
         }
       }
-
-      if (nonFolderIds.length === 0) {
-        isHydratingFiles = false;
-        return;
-      }
-
-      // Hydrate file content progressively after the tree is visible.
-      let hydratedCount = 0;
-      for (const hydrated of data) {
-        if (hydrated.is_folder) continue;
-
-        files = files.map((file) =>
-          file.id === hydrated.id ? { ...file, content: hydrated.content } : file,
-        );
-
-        loadingFileIds = new Set(
-          [...loadingFileIds].filter((fileId) => fileId !== hydrated.id),
-        );
-
-        hydratedCount += 1;
-        if (hydratedCount % 20 === 0) {
-          await tick();
-        }
-      }
-
-      isHydratingFiles = false;
     } catch (error) {
       console.error("Failed to load files:", error);
-      loadingFileIds = new Set();
-      isHydratingFiles = false;
     }
   }
 
@@ -1272,12 +1223,6 @@
     if (!files.find((f) => f.id === file.id)) {
       files = [...files, file];
     }
-    if (yjsConnection?.ydoc) {
-      const ytext = getFileText(yjsConnection.ydoc, file.id);
-      if (ytext && ytext.length === 0 && file.content) {
-        ytext.insert(0, file.content);
-      }
-    }
   }
 
   function onFileUpdated(file: ProjectFile) {
@@ -1440,13 +1385,6 @@
         selectedFile = null;
         await tick();
         selectedFile = reopenedFile;
-
-        if (reopenedFile && yjsConnection?.ydoc) {
-          const reopenedYtext = getFileText(yjsConnection.ydoc, reopenedFile.id);
-          if (reopenedYtext && reopenedYtext.length === 0 && reopenedFile.content) {
-            reopenedYtext.insert(0, reopenedFile.content);
-          }
-        }
       }
 
       if (selectedFile && !selectedFile.is_folder) {
@@ -1707,27 +1645,20 @@
   let fileObservers = new Map<string, () => void>();
   let contentVersion = $state(0); // Increment to trigger reactivity
 
-  // Initialize file content and set up observers
+  // Observe file content changes to trigger preview updates. Content itself
+  // is seeded server-side; the client never inserts into ytext on load.
   $effect(() => {
     if (browser && yjsConnection?.ydoc && files.length > 0) {
       const ydoc = yjsConnection.ydoc;
 
-      // Clear old observers
       fileObservers.forEach((unobserve) => unobserve());
       fileObservers.clear();
 
-      // Initialize file content and observe changes
       files.forEach((file) => {
         const ytext = getFileText(ydoc, file.id);
         if (ytext) {
-          // Initialize if empty
-          if (ytext.length === 0 && file.content) {
-            ytext.insert(0, file.content);
-          }
-
-          // Observe changes to trigger preview updates
           const handler = () => {
-            contentVersion++; // Trigger reactivity
+            contentVersion++;
           };
           ytext.observe(handler);
           fileObservers.set(file.id, () => ytext.unobserve(handler));
@@ -1804,7 +1735,7 @@
 
       return {
         ...file,
-        content: ytextForFile ? ytextForFile.toString() : file.content,
+        content: ytextForFile ? ytextForFile.toString() : "",
       };
     });
   });
@@ -2137,7 +2068,6 @@
           <FileTree
             {files}
             {assets}
-            {loadingFileIds}
             {selectedItem}
             {previewFileId}
             onSelectFile={handleSelectFile}
@@ -2346,7 +2276,7 @@
         <PreviewPane
           files={filesWithContent}
           {assets}
-          compileEnabled={!isHydratingFiles}
+          compileEnabled={isSynced || isLocalSynced}
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
           projectName={project.name}

@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, UniqueConstraint, CheckConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import Base
@@ -14,7 +14,6 @@ class File(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     name = Column(String, nullable=False)
     path = Column(String, nullable=False)
-    content = Column(Text, nullable=False, default="")
     parent_id = Column(Integer, ForeignKey("files.id", ondelete="CASCADE"), nullable=True, index=True)
     is_folder = Column(Boolean, nullable=False, default=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -28,7 +27,6 @@ class File(Base):
     # Table constraints
     __table_args__ = (
         UniqueConstraint("project_id", "parent_id", "name", name="unique_name_in_directory"),
-        CheckConstraint("is_folder = false OR content = ''", name="folders_no_content"),
     )
 
     async def compute_path(self, db: AsyncSession) -> str:
