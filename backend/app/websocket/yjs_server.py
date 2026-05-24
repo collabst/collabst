@@ -32,7 +32,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 import redis.asyncio as redis
 
-from pycrdt import Doc, YMessageType, YSyncMessageType
+from pycrdt import Doc, Text, YMessageType, YSyncMessageType
 from pycrdt_websocket import WebsocketServer, YRoom
 from pycrdt_websocket.ystore import BaseYStore
 from pycrdt_websocket.websocket_server import exception_logger
@@ -544,7 +544,7 @@ class YjsConnectionManager:
         async with room_lock:
             if self._websocket_server and room_path in self._websocket_server.rooms:
                 room = self._websocket_server.rooms[room_path]
-                text = room.ydoc.get(f"file-{file_hash_id}", type="text")
+                text = room.ydoc.get(f"file-{file_hash_id}", type=Text)
                 if len(text) == 0:
                     text.insert(0, content)
                 return
@@ -559,7 +559,7 @@ class YjsConnectionManager:
                 if yjs_state and yjs_state.state:
                     doc.apply_update(yjs_state.state)
 
-                text = doc.get(f"file-{file_hash_id}", type="text")
+                text = doc.get(f"file-{file_hash_id}", type=Text)
                 if len(text) > 0:
                     return
                 text.insert(0, content)

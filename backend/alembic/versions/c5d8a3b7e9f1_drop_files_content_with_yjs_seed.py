@@ -24,7 +24,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.sql import table, column
 
-from pycrdt import Doc
+from pycrdt import Doc, Text
 
 
 revision: str = "c5d8a3b7e9f1"
@@ -86,7 +86,7 @@ def _seed_existing_projects(conn) -> None:
 
         mutated = False
         for hash_id, content in entries:
-            text = doc.get(f"file-{hash_id}", type="text")
+            text = doc.get(f"file-{hash_id}", type=Text)
             if len(text) == 0:
                 text.insert(0, content)
                 mutated = True
