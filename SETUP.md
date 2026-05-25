@@ -59,7 +59,7 @@ docker compose down -v          # Stop and delete all data
 
 ## Local Development
 
-This guide will help you set up and run Collabst locally using the Makefile and Docker Compose.
+This guide will help you set up and run Collabst locally using the Makefile and Docker Compose. You can also use Taskfile if you prefer, you can run `task --list` to see all available commands.
 
 ## Quick Start
 

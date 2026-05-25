@@ -1,0 +1,173 @@
+version: '3'
+
+dotenv:
+  - config/env/.env
+
+vars:
+  COMPOSE: docker-compose
+  CONFIG_DIR: config
+  COMPOSE_DIR: '{{.CONFIG_DIR}}/compose'
+  ENV_DIR: '{{.CONFIG_DIR}}/env'
+  ENV_FILE: '{{.ENV_DIR}}/.env'
+  DEV_COMPOSE_FILE: '{{.COMPOSE_DIR}}/docker-compose.dev.yml'
+  PROD_COMPOSE_FILE: '{{.COMPOSE_DIR}}/docker-compose.prod.yml'
+  DEV_COMPOSE: '{{.COMPOSE}} --env-file {{.ENV_FILE}} -f {{.DEV_COMPOSE_FILE}}'
+  PROD_COMPOSE: '{{.COMPOSE}} --env-file {{.ENV_FILE}} -f {{.PROD_COMPOSE_FILE}}'
+  ARGS: ''
+  SERVICE: ''
+
+tasks:
+  default:
+    desc: List tasks
+    cmds:
+      - '{{.TASK_EXE}} --list'
+
+  setup:
+    desc: Set up local environment
+    summary: |
+      Creates the config/env/.env file and other development setup assets.
+      You can edit config/env/.env before starting the environment.
+    cmds:
+      - echo "Setting up Collabst development environment..."
+      - bash ./scripts/setup.dev.sh
+
+  dev:start:
+    desc: Start development environment
+    summary: |
+      Use ARGS to pass docker-compose options, for example:
+      task dev:start ARGS="--build"
+    cmds:
+      - echo "Starting Collabst..."
+      - '{{.DEV_COMPOSE}} up {{.ARGS}}'
+
+  dev:startd:
+    desc: Start development environment (detached)
+    summary: |
+      Use ARGS to pass docker-compose options, for example:
+      task dev:startd ARGS="--build"
+    cmds:
+      - echo "Starting Collabst in detached mode..."
+      - '{{.DEV_COMPOSE}} up -d {{.ARGS}}'
+
+  dev:stop:
+    desc: Stop development environment
+    cmds:
+      - echo "Stopping Collabst..."
+      - '{{.DEV_COMPOSE}} down {{.ARGS}}'
+
+  dev:restart:
+    desc: Restart development environment
+    summary: |
+      Use SERVICE to target a specific service, for example:
+      task dev:restart SERVICE=backend
+    cmds:
+      - echo "Restarting Collabst..."
+      - |
+        if [ -n "{{.SERVICE}}" ]; then
+          {{.DEV_COMPOSE}} restart {{.SERVICE}} {{.ARGS}}
+        else
+          {{.DEV_COMPOSE}} restart {{.ARGS}}
+        fi
+
+  dev:logs:
+    desc: View development logs
+    summary: |
+      Use SERVICE to target a specific service, for example:
+      task dev:logs SERVICE=backend
+    cmds:
+      - |
+        if [ -n "{{.SERVICE}}" ]; then
+          {{.DEV_COMPOSE}} logs -f {{.SERVICE}}
+        else
+          {{.DEV_COMPOSE}} logs -f
+        fi
+
+  dev:status:
+    desc: Check development service status
+    cmds:
+      - '{{.DEV_COMPOSE}} ps'
+
+  dev:build:
+    desc: Build development containers
+    cmds:
+      - echo "Building Collabst containers..."
+      - '{{.DEV_COMPOSE}} build {{.ARGS}}'
+
+  dev:clean:
+    desc: Remove development containers, images, and volumes
+    summary: |
+      This removes containers, networks, images, and volumes for the dev stack.
+    cmds:
+      - echo "Cleaning up Collabst..."
+      - echo "This will remove all containers, networks, images, and volumes associated with Collabst."
+      - echo "Are you sure? (y/N)"
+      - |
+        read ans; \
+        if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
+          {{.DEV_COMPOSE}} down --rmi all --volumes --remove-orphans; \
+          echo "Cleanup completed."; \
+        else \
+          echo "Cleanup aborted."; \
+        fi
+
+  prod:build:
+    desc: Build production backend image
+    cmds:
+      - echo "Building Collabst production backend image..."
+      - '{{.PROD_COMPOSE}} build backend {{.ARGS}}'
+
+  prod:start:
+    desc: Start production environment
+    summary: |
+      Use ARGS to pass docker-compose options, for example:
+      task prod:start ARGS="--build"
+    cmds:
+      - echo "Starting Collabst production environment..."
+      - '{{.PROD_COMPOSE}} up {{.ARGS}}'
+
+  prod:startd:
+    desc: Start production environment (detached)
+    summary: |
+      Use ARGS to pass docker-compose options, for example:
+      task prod:startd ARGS="--build"
+    cmds:
+      - echo "Starting Collabst production environment in detached mode..."
+      - '{{.PROD_COMPOSE}} up -d {{.ARGS}}'
+
+  prod:stop:
+    desc: Stop production environment
+    cmds:
+      - echo "Stopping Collabst production environment..."
+      - '{{.PROD_COMPOSE}} down {{.ARGS}}'
+
+  prod:restart:
+    desc: Restart production environment
+    summary: |
+      Use SERVICE to target a specific service, for example:
+      task prod:restart SERVICE=backend
+    cmds:
+      - echo "Restarting Collabst production environment..."
+      - |
+        if [ -n "{{.SERVICE}}" ]; then
+          {{.PROD_COMPOSE}} restart {{.SERVICE}} {{.ARGS}}
+        else
+          {{.PROD_COMPOSE}} restart {{.ARGS}}
+        fi
+
+  prod:logs:
+    desc: View production logs
+    summary: |
+      Use SERVICE to target a specific service, for example:
+      task prod:logs SERVICE=backend
+    cmds:
+      - |
+        if [ -n "{{.SERVICE}}" ]; then
+          {{.PROD_COMPOSE}} logs -f {{.SERVICE}}
+        else
+          {{.PROD_COMPOSE}} logs -f
+        fi
+
+  prod:status:
+    desc: Check production service status
+    cmds:
+      - '{{.PROD_COMPOSE}} ps'
