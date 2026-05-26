@@ -18,6 +18,7 @@ import type {
   CommentThreadUpdatePayload,
   CommentReplyDTO,
   CommentReplyCreatePayload,
+  ProjectThumbnail,
 } from '../types'
 import { getApiUrl } from '../utils/urls'
 
@@ -208,6 +209,21 @@ export const projectsApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/projects/${id}`)
+  },
+
+  getThumbnail: async (id: string): Promise<ProjectThumbnail> => {
+    const { data } = await api.get<ProjectThumbnail>(`/projects/${id}/thumbnail`)
+    return data
+  },
+
+  uploadThumbnail: async (id: string, file: Blob): Promise<ProjectThumbnail> => {
+    const formData = new FormData()
+    formData.append('file', file, 'thumbnail.png')
+
+    const { data } = await api.put<ProjectThumbnail>(`/projects/${id}/thumbnail`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return data
   },
 
   // Collaborators

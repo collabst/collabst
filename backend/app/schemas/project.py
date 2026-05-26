@@ -20,6 +20,7 @@ class ProjectUpdate(BaseModel):
 class Project(ProjectBase):
     id: str
     owner_id: str
+    thumbnail_updated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -40,3 +41,8 @@ class ProjectWithRole(Project):
     current_user_role: Literal['owner', 'admin', 'writer', 'commentor', 'reader']
     owner: Optional[OwnerInfo] = None
     collaborators_count: int = 0
+
+
+class ProjectThumbnail(BaseModel):
+    url: str
+    updated_at: datetime

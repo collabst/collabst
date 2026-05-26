@@ -1,15 +1,17 @@
 <script lang="ts">
   import type { Project } from "$lib/types";
   import GridActionButton from "./GridActionButton.svelte";
+  import ProjectThumbnail from "./ProjectThumbnail.svelte";
   import RoleBadge from "$lib/components/ui/RoleBadge.svelte";
-  import fileIcon from "../../../assets/collabst-file.svg";
   import Play from "@lucide/svelte/icons/play";
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import UserPlus from "@lucide/svelte/icons/user-plus";
 
-  export let projects: Project[];
-  export let onInvite: (projectId: string) => void;
-  export let onDelete: (projectId: string) => void;
+  let { projects, onInvite, onDelete } = $props<{
+    projects: Project[];
+    onInvite: (projectId: string) => void;
+    onDelete: (projectId: string) => void;
+  }>();
 </script>
 
 <div class="projects-grid">
@@ -28,7 +30,7 @@
         ></a>
 
         <div class="file-icon-container">
-          <img src={fileIcon} alt="Project file" class="file-icon" />
+          <ProjectThumbnail {project} />
 
           <div class="action-buttons">
             <GridActionButton
@@ -109,7 +111,7 @@
     transform: translateY(-4px);
   }
 
-  .project-card:hover .file-icon {
+  .project-card:hover :global(.project-thumbnail) {
     animation: jiggleAnimation 0.4s ease;
   }
 
@@ -138,13 +140,6 @@
     margin-bottom: 0.75rem;
     z-index: 2;
     pointer-events: none;
-  }
-
-  .file-icon {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
   }
 
   .action-buttons {

@@ -37,6 +37,7 @@ export interface Project {
   name: string
   description: string | null
   owner_id: string
+  thumbnail_updated_at?: string | null
   created_at: string
   updated_at: string
   collaborators?: Collaborator[]
@@ -149,6 +150,11 @@ export interface ShareLinksSummary {
   read: ShareLink | null
   comment: ShareLink | null
   edit: ShareLink | null
+}
+
+export interface ProjectThumbnail {
+  url: string
+  updated_at: string
 }
 
 export interface SharingOverview {

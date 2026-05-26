@@ -2279,6 +2279,8 @@
           compileEnabled={isSynced || isLocalSynced}
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
+          {projectId}
+          thumbnailUploadEnabled={canWrite}
           projectName={project.name}
           {negativePreview}
           onOpenShare={() => (showShareDialog = true)}

@@ -12,7 +12,7 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { browser } from '$app/environment';
   import type { FileWithContent as ProjectFile, Asset, Diagnostic } from '$lib/types';
-  import { assetsApi } from "../../services/api";
+  import { assetsApi, projectsApi } from "../../services/api";
   import { getCachedAsset, cacheAsset } from '$lib/utils/assetCache';
   import { theme as themeStore } from '$lib/stores/theme';
   import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
@@ -24,6 +24,8 @@
     compileEnabled?: boolean;
     mainFilePath?: string;
     onDiagnostics?: (diagnostics: Diagnostic[]) => void;
+    projectId?: string;
+    thumbnailUploadEnabled?: boolean;
     projectName?: string;
     negativePreview?: boolean;
     showToolbar?: boolean;
@@ -43,6 +45,8 @@
     compileEnabled = true,
     mainFilePath = '/main.typ',
     onDiagnostics,
+    projectId,
+    thumbnailUploadEnabled = true,
     projectName,
     negativePreview = false,
     showToolbar = true,
@@ -228,6 +232,16 @@
   let initialized = false;
   let workerReady = false;
   let latestMainFilePath: string | null = null;
+  const THUMBNAIL_WIDTH = 320;
+  const THUMBNAIL_UPLOAD_DEBOUNCE_MS = 3000;
+  const THUMBNAIL_MIN_UPLOAD_INTERVAL_MS = 120000;
+  const THUMBNAIL_CAPTURE_RETRIES = 20;
+  const THUMBNAIL_CAPTURE_RETRY_MS = 100;
+  let thumbnailUploadTimeout: ReturnType<typeof setTimeout> | null = null;
+  let thumbnailThrottleTimeout: ReturnType<typeof setTimeout> | null = null;
+  let thumbnailUploadInFlight = false;
+  let lastThumbnailUploadAt = 0;
+  let lastUploadedThumbnailSignature: string | null = null;
   
 
   // Track loaded files/assets to detect changes
@@ -427,6 +441,168 @@
     });
   }
 
+  function scheduleThumbnailUpload() {
+    if (!projectId || !thumbnailUploadEnabled || !previewIframe) return;
+    if (thumbnailUploadTimeout) clearTimeout(thumbnailUploadTimeout);
+
+    thumbnailUploadTimeout = setTimeout(() => {
+      thumbnailUploadTimeout = null;
+      requestThumbnailUpload();
+    }, THUMBNAIL_UPLOAD_DEBOUNCE_MS);
+  }
+
+  function requestThumbnailUpload() {
+    if (!projectId || !thumbnailUploadEnabled || !previewIframe) return;
+
+    const elapsed = Date.now() - lastThumbnailUploadAt;
+    const wait = lastThumbnailUploadAt
+      ? Math.max(0, THUMBNAIL_MIN_UPLOAD_INTERVAL_MS - elapsed)
+      : 0;
+
+    if (wait === 0) {
+      if (thumbnailThrottleTimeout) {
+        clearTimeout(thumbnailThrottleTimeout);
+        thumbnailThrottleTimeout = null;
+      }
+      void uploadCurrentThumbnail();
+      return;
+    }
+
+    if (thumbnailThrottleTimeout) clearTimeout(thumbnailThrottleTimeout);
+    thumbnailThrottleTimeout = setTimeout(() => {
+      thumbnailThrottleTimeout = null;
+      void uploadCurrentThumbnail();
+    }, wait);
+  }
+
+  async function uploadCurrentThumbnail() {
+    if (!projectId || !thumbnailUploadEnabled || thumbnailUploadInFlight) return;
+
+    thumbnailUploadInFlight = true;
+    try {
+      const thumbnail = await captureCurrentThumbnail();
+      if (!thumbnail || thumbnail.signature === lastUploadedThumbnailSignature) {
+        return;
+      }
+
+      await projectsApi.uploadThumbnail(projectId, thumbnail.blob);
+      lastThumbnailUploadAt = Date.now();
+      lastUploadedThumbnailSignature = thumbnail.signature;
+    } catch (error) {
+      console.warn('Failed to update project thumbnail:', error);
+    } finally {
+      thumbnailUploadInFlight = false;
+    }
+  }
+
+  async function captureCurrentThumbnail(): Promise<{ blob: Blob; signature: string } | null> {
+    const page = await waitForPreviewPage();
+    if (!page) return null;
+
+    const { svg, pageRect } = page;
+    const pageWidth = Number(pageRect.getAttribute('data-page-width'));
+    const pageHeight = Number(pageRect.getAttribute('data-page-height'));
+    if (!Number.isFinite(pageWidth) || !Number.isFinite(pageHeight) || pageWidth <= 0 || pageHeight <= 0) {
+      return null;
+    }
+
+    const { x, y } = parsePageTranslate(pageRect.getAttribute('transform') || '');
+    const height = Math.round(THUMBNAIL_WIDTH * (pageHeight / pageWidth));
+    const pageNumber = pageRect.getAttribute('data-page-number') || '0';
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    clone.querySelectorAll('.typst-svg-cursor').forEach((cursor) => cursor.remove());
+    clone.querySelectorAll('.typst-page').forEach((page) => {
+      if (page.getAttribute('data-page-number') !== pageNumber) page.remove();
+    });
+    clone.querySelectorAll('rect.typst-page-inner').forEach((rect) => {
+      if (rect.getAttribute('data-page-number') !== pageNumber) rect.remove();
+    });
+    clone.querySelectorAll('clipPath[id^="typst-page-clip-"]').forEach((clipPath) => {
+      if (clipPath.id !== `typst-page-clip-${pageNumber}`) clipPath.remove();
+    });
+    clone.querySelectorAll('.typst-preview-svg-page-number').forEach((pageNumberLabel) => pageNumberLabel.remove());
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('viewBox', `${x} ${y} ${pageWidth} ${pageHeight}`);
+    clone.setAttribute('width', `${THUMBNAIL_WIDTH}`);
+    clone.setAttribute('height', `${height}`);
+    clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+    const serializedSvg = new XMLSerializer().serializeToString(clone);
+    const blob = await renderSvgToPng(serializedSvg, THUMBNAIL_WIDTH, height);
+    if (!blob) return null;
+
+    return {
+      blob,
+      signature: await getBlobSignature(blob),
+    };
+  }
+
+  async function waitForPreviewPage(): Promise<{ svg: SVGSVGElement; pageRect: SVGRectElement } | null> {
+    for (let attempt = 0; attempt < THUMBNAIL_CAPTURE_RETRIES; attempt++) {
+      const doc = previewIframe?.contentDocument;
+      const svg = doc?.querySelector('#typst-app svg') as SVGSVGElement | null;
+      const pageRect = doc?.querySelector('rect.typst-page-inner') as SVGRectElement | null;
+
+      if (svg && pageRect) {
+        return { svg, pageRect };
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, THUMBNAIL_CAPTURE_RETRY_MS));
+    }
+
+    return null;
+  }
+
+  function parsePageTranslate(transform: string): { x: number; y: number } {
+    const match = transform.match(/translate\(([-+\d.eE]+)[,\s]+([-+\d.eE]+)\)/);
+    return {
+      x: match ? Number(match[1]) || 0 : 0,
+      y: match ? Number(match[2]) || 0 : 0,
+    };
+  }
+
+  async function renderSvgToPng(svg: string, width: number, height: number): Promise<Blob | null> {
+    const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    try {
+      const image = new Image();
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Failed to load rendered SVG thumbnail'));
+        image.src = url;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) return null;
+
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+
+      return await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function getBlobSignature(blob: Blob): Promise<string> {
+    const buffer = await blob.arrayBuffer();
+    if (!globalThis.crypto?.subtle) return `${blob.size}:${buffer.byteLength}`;
+
+    const hash = await globalThis.crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(hash))
+      .slice(0, 16)
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
   // Worker Setup
   onMount(() => {
     if (!browser) return;
@@ -486,6 +662,7 @@
             } else {
               // Send vector data to iframe
               sendVectorDataToIframe(vectorData, isFirstCompile);
+              scheduleThumbnailUpload();
             }
 
             status = `Ready (${compileTime}ms)`;
@@ -565,6 +742,12 @@
     }
     if (worker) {
       worker.terminate();
+    }
+    if (thumbnailUploadTimeout) {
+      clearTimeout(thumbnailUploadTimeout);
+    }
+    if (thumbnailThrottleTimeout) {
+      clearTimeout(thumbnailThrottleTimeout);
     }
   });
 

@@ -1,7 +1,8 @@
+import io
 from datetime import datetime
 from typing import Annotated, List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,7 +19,7 @@ from app.models.user import AuthUser, GuestUser, User
 from app.schemas.collaborator import Collaborator, CollaboratorAdd, CollaboratorUpdate
 from app.schemas.invitation import Invitation as InvitationSchema
 from app.schemas.project import Project as ProjectSchema
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectWithRole
+from app.schemas.project import ProjectCreate, ProjectThumbnail, ProjectUpdate, ProjectWithRole
 from app.schemas.sharing import ShareLink, ShareLinkAccess, ShareLinksSummary, SharingOverview
 from app.services.hash_lookup import get_project_by_ref, get_user_by_hash
 from app.services.permissions import (
@@ -27,10 +28,14 @@ from app.services.permissions import (
     check_project_access,
     get_user_project_role,
 )
+from app.services.storage import storage_service
 from app.websocket.project_ws import project_manager
 from app.websocket.notifications_ws import notifications_manager
 
 router = APIRouter()
+
+MAX_THUMBNAIL_SIZE_BYTES = 1024 * 1024
+THUMBNAIL_CONTENT_TYPE = "image/png"
 
 
 def _serialize_collaborator(collaborator: ProjectCollaborator) -> Collaborator:
@@ -55,6 +60,7 @@ def _serialize_project(project: Project, current_user_role: str, owner: AuthUser
         name=project.name,
         description=project.description,
         owner_id=owner.hash_id,
+        thumbnail_updated_at=project.thumbnail_updated_at,
         created_at=project.created_at,
         updated_at=project.updated_at,
         current_user_role=current_user_role,
@@ -156,6 +162,7 @@ async def create_project(
         name=project.name,
         description=project.description,
         owner_id=current_user.hash_id,
+        thumbnail_updated_at=project.thumbnail_updated_at,
         created_at=project.created_at,
         updated_at=project.updated_at,
     )
@@ -300,6 +307,83 @@ async def get_project(
     return _serialize_project(project, role, owner, collaborators_count)
 
 
+@router.get("/{project_ref}/thumbnail", response_model=ProjectThumbnail)
+async def get_project_thumbnail(
+    project_ref: str,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user)
+
+    if not project.thumbnail_storage_path or not project.thumbnail_updated_at:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project thumbnail not found",
+        )
+
+    try:
+        url = storage_service.get_presigned_url(project.thumbnail_storage_path, expires=3600)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project thumbnail not found",
+        )
+
+    return ProjectThumbnail(url=url, updated_at=project.thumbnail_updated_at)
+
+
+@router.put("/{project_ref}/thumbnail", response_model=ProjectThumbnail)
+async def upload_project_thumbnail(
+    project_ref: str,
+    file: UploadFile,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    project = await get_project_by_ref(db, project_ref)
+    project = await check_project_access(db, project, current_user, CollaboratorRole.WRITER)
+
+    if file.content_type != THUMBNAIL_CONTENT_TYPE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Project thumbnail must be a PNG image",
+        )
+
+    file_content = await file.read()
+    file_size = len(file_content)
+
+    if file_size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty",
+        )
+
+    if file_size > MAX_THUMBNAIL_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Project thumbnail must be smaller than 1MB",
+        )
+
+    object_name = f"projects/{project.hash_id}/thumbnail.png"
+    old_updated_at = project.updated_at
+
+    storage_service.upload_file(
+        object_name,
+        file_data=io.BytesIO(file_content),
+        length=file_size,
+        content_type=THUMBNAIL_CONTENT_TYPE,
+    )
+
+    project.thumbnail_storage_path = object_name
+    project.thumbnail_updated_at = datetime.utcnow()
+    project.updated_at = old_updated_at
+    await db.commit()
+    await db.refresh(project)
+
+    url = storage_service.get_presigned_url(object_name, expires=3600)
+    return ProjectThumbnail(url=url, updated_at=project.thumbnail_updated_at)
+
+
 @router.put("/{project_ref}", response_model=ProjectSchema)
 async def update_project(
     project_ref: str,
@@ -340,6 +424,9 @@ async def update_project(
                 "name": project.name,
                 "description": project.description,
                 "owner_id": owner.hash_id if owner else "",
+                "thumbnail_updated_at": project.thumbnail_updated_at.isoformat()
+                if project.thumbnail_updated_at
+                else None,
                 "created_at": project.created_at.isoformat(),
                 "updated_at": project.updated_at.isoformat(),
             },
@@ -351,6 +438,7 @@ async def update_project(
         name=project.name,
         description=project.description,
         owner_id=(await db.get(AuthUser, project.owner_id)).hash_id,
+        thumbnail_updated_at=project.thumbnail_updated_at,
         created_at=project.created_at,
         updated_at=project.updated_at,
     )
@@ -371,14 +459,18 @@ async def delete_project(
         )
 
     from app.models.asset import Asset
-    from app.services.storage import storage_service
-
     assets_result = await db.execute(select(Asset).where(Asset.project_id == project.id))
     assets = assets_result.scalars().all()
 
     for asset in assets:
         try:
             storage_service.delete_file(asset.storage_path)
+        except Exception:
+            pass
+
+    if project.thumbnail_storage_path:
+        try:
+            storage_service.delete_file(project.thumbnail_storage_path)
         except Exception:
             pass
 
