@@ -46,6 +46,7 @@
     Diagnostic,
     CommentThreadDTO,
     CommentReplyDTO,
+    UploadItem,
   } from "$lib/types";
   import type { YjsConnection } from "$lib/yjs";
   import PreviewPane from "$lib/components/editor/PreviewPane.svelte";
@@ -771,23 +772,79 @@
     }
   }
 
-  async function handleUploadAsset(filesToUpload: File[]) {
+  async function handleUploadAsset(itemsToUpload: UploadItem[]) {
     if (!canWrite) return;
-    if (filesToUpload.length === 0) return;
+    if (itemsToUpload.length === 0) return;
 
     // Determine parent once per batch: if selected item is a folder, upload inside it.
-    const parentId = selectedFile?.is_folder ? selectedFile.id : null;
+    const rootParentId = selectedFile?.is_folder ? selectedFile.id : null;
+    const folderIds = new Map<string, string>();
     let successCount = 0;
     let failedCount = 0;
     const renamedItems: string[] = [];
 
-    for (const file of filesToUpload) {
+    const folderKey = (parentId: string | null, name: string) => `${parentId ?? "root"}/${name}`;
+
+    const findExistingFolder = (name: string, parentId: string | null) =>
+      files.find(
+        (file) =>
+          file.is_folder && file.parent_id === parentId && file.name === name,
+      );
+
+    const ensureFolder = async (name: string, parentId: string | null) => {
+      const key = folderKey(parentId, name);
+      const cachedId = folderIds.get(key);
+      if (cachedId) return cachedId;
+
+      const existingFolder = findExistingFolder(name, parentId);
+      if (existingFolder) {
+        folderIds.set(key, existingFolder.id);
+        return existingFolder.id;
+      }
+
+      const createdFolder = await filesApi.createFolder(
+        projectId,
+        name,
+        parentId,
+        true,
+      );
+
+      if (!files.find((file) => file.id === createdFolder.id)) {
+        files = [...files, createdFolder];
+      }
+
+      folderIds.set(key, createdFolder.id);
+      if (createdFolder.name !== name) {
+        renamedItems.push(`${name}/ -> ${createdFolder.name}/`);
+      }
+
+      return createdFolder.id;
+    };
+
+    for (const item of itemsToUpload) {
+      const pathParts = item.relativePath
+        .replace(/\\/g, "/")
+        .split("/")
+        .filter((part) => part && part !== "." && part !== "..");
+      const fileName = pathParts.at(-1) || item.file.name;
+      const folderParts = pathParts.slice(0, -1);
+
       try {
-        const createdItem = await assetsApi.upload(projectId, file, parentId);
+        let parentId = rootParentId;
+        for (const folderName of folderParts) {
+          parentId = await ensureFolder(folderName, parentId);
+        }
+
+        const createdItem = await assetsApi.upload(
+          projectId,
+          item.file,
+          parentId,
+          fileName,
+        );
 
         if ("mime_type" in createdItem) {
           // Cache uploaded binary assets immediately for quick preview.
-          const arrayBuffer = await file.arrayBuffer();
+          const arrayBuffer = await item.file.arrayBuffer();
           cacheAsset(
             projectId,
             createdItem.id,
@@ -801,8 +858,8 @@
           }
           selectedAsset = createdItem;
 
-          if (createdItem.filename !== file.name) {
-            renamedItems.push(`${file.name} -> ${createdItem.filename}`);
+          if (createdItem.filename !== fileName) {
+            renamedItems.push(`${item.relativePath} -> ${createdItem.filename}`);
           }
         } else {
           if (!files.find((f) => f.id === createdItem.id)) {
@@ -811,17 +868,17 @@
           selectedFile = createdItem;
           selectedAsset = null;
 
-          if (createdItem.name !== file.name) {
-            renamedItems.push(`${file.name} -> ${createdItem.name}`);
+          if (createdItem.name !== fileName) {
+            renamedItems.push(`${item.relativePath} -> ${createdItem.name}`);
           }
         }
 
         successCount += 1;
       } catch (error: any) {
         failedCount += 1;
-        console.error("Failed to upload file:", file.name, error);
+        console.error("Failed to upload file:", item.relativePath, error);
         const message =
-          error?.response?.data?.detail || `Failed to upload ${file.name}`;
+          error?.response?.data?.detail || `Failed to upload ${item.relativePath}`;
         notifications.show(message, "error", 5000);
       }
     }

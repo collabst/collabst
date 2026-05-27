@@ -7,6 +7,7 @@ class FileCreate(BaseModel):
     content: str = ""
     parent_id: str | None = None
     is_folder: bool = False
+    reuse_existing_folder: bool = False
 
     @field_validator('content')
     @classmethod

@@ -283,12 +283,14 @@ export const filesApi = {
     projectId: string,
     name: string,
     parentId: string | null = null,
+    reuseExistingFolder = false,
   ): Promise<File> => {
     const { data } = await api.post<File>(`/projects/${projectId}/files`, {
       name,
       content: '',
       parent_id: parentId,
       is_folder: true,
+      reuse_existing_folder: reuseExistingFolder,
     })
     return data
   },
@@ -329,9 +331,10 @@ export const assetsApi = {
     projectId: string,
     file: globalThis.File,
     parentId: string | null = null,
+    filename: string = file.name,
   ): Promise<File | Asset> => {
     const formData = new FormData();
-    formData.append('file', file as unknown as Blob);
+    formData.append('file', file as unknown as Blob, filename);
     if (parentId !== null) {
       formData.append('parent_id', parentId.toString())
     }

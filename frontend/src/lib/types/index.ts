@@ -73,6 +73,11 @@ export interface FileWithContent extends File {
   content: string;
 }
 
+export interface UploadItem {
+  file: globalThis.File
+  relativePath: string
+}
+
 export interface FileTreeNode extends File {
   children: FileTreeNode[]
   level: number

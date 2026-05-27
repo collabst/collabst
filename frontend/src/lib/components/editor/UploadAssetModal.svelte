@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { UploadItem } from "$lib/types";
   import Hand from "@lucide/svelte/icons/hand";
   import X from "@lucide/svelte/icons/x";
   import ListX from "@lucide/svelte/icons/list-x";
@@ -6,14 +7,20 @@
   interface UploadAssetModalProps {
     show: boolean;
     onClose: () => void;
-    onUpload: (files: File[]) => Promise<void> | void;
+    onUpload: (items: UploadItem[]) => Promise<void> | void;
   }
+
+  type DataTransferItemWithEntry = DataTransferItem & {
+    webkitGetAsEntry?: () => FileSystemEntry | null;
+  };
 
   let { show, onClose, onUpload }: UploadAssetModalProps = $props();
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let stagedFiles: File[] = $state([]);
+  let folderInput: HTMLInputElement | undefined = $state();
+  let stagedItems: UploadItem[] = $state([]);
   let isDragging = $state(false);
+  let isReadingDrop = $state(false);
   let isUploading = $state(false);
 
   function handleClose() {
@@ -35,17 +42,36 @@
     return () => window.removeEventListener("keydown", handleKeydown);
   });
 
-  function fileSignature(file: File): string {
-    return `${file.name}:${file.size}:${file.lastModified}`;
+  function itemSignature(item: UploadItem): string {
+    return `${item.relativePath}:${item.file.size}:${item.file.lastModified}`;
   }
 
-  function addFiles(files: FileList | File[]) {
-    const incoming = Array.from(files);
+  function normalizeRelativePath(path: string): string {
+    return path
+      .replace(/\\/g, "/")
+      .split("/")
+      .filter((segment) => segment && segment !== "." && segment !== "..")
+      .join("/");
+  }
+
+  function toUploadItem(file: File, relativePath: string): UploadItem {
+    return {
+      file,
+      relativePath: normalizeRelativePath(relativePath || file.name),
+    };
+  }
+
+  function fileRelativePath(file: File): string {
+    return (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+  }
+
+  function addUploadItems(items: UploadItem[]) {
+    const incoming = items.filter((item) => item.relativePath);
     if (incoming.length === 0) return;
 
-    const existing = new Set(stagedFiles.map(fileSignature));
+    const existing = new Set(stagedItems.map(itemSignature));
     const uniqueIncoming = incoming.filter((file) => {
-      const signature = fileSignature(file);
+      const signature = itemSignature(file);
       if (existing.has(signature)) {
         return false;
       }
@@ -54,8 +80,12 @@
     });
 
     if (uniqueIncoming.length > 0) {
-      stagedFiles = [...stagedFiles, ...uniqueIncoming];
+      stagedItems = [...stagedItems, ...uniqueIncoming];
     }
+  }
+
+  function addFiles(files: FileList | File[]) {
+    addUploadItems(Array.from(files).map((file) => toUploadItem(file, fileRelativePath(file))));
   }
 
   function handleFileSelect(e: Event) {
@@ -66,13 +96,80 @@
     target.value = "";
   }
 
-  function handleDrop(e: DragEvent) {
+  function handleFolderSelect(e: Event) {
+    const target = e.target as HTMLInputElement;
+    if (target.files) {
+      addFiles(target.files);
+    }
+    target.value = "";
+  }
+
+  async function handleDrop(e: DragEvent) {
     e.preventDefault();
     isDragging = false;
-    const files = e.dataTransfer?.files;
-    if (files) {
-      addFiles(files);
+
+    if (!e.dataTransfer) return;
+
+    isReadingDrop = true;
+    try {
+      const items = await getUploadItemsFromDrop(e.dataTransfer);
+      if (items.length > 0) {
+        addUploadItems(items);
+      }
+    } finally {
+      isReadingDrop = false;
     }
+  }
+
+  async function getUploadItemsFromDrop(dataTransfer: DataTransfer): Promise<UploadItem[]> {
+    const entries = Array.from(dataTransfer.items || [])
+      .map((item) => (item as DataTransferItemWithEntry).webkitGetAsEntry?.())
+      .filter((entry): entry is FileSystemEntry => !!entry);
+
+    if (entries.length > 0) {
+      const nestedItems = await Promise.all(entries.map((entry) => readEntry(entry, "")));
+      const uploadItems = nestedItems.flat();
+      if (uploadItems.length > 0) return uploadItems;
+    }
+
+    return Array.from(dataTransfer.files || []).map((file) => toUploadItem(file, file.name));
+  }
+
+  async function readEntry(entry: FileSystemEntry, parentPath: string): Promise<UploadItem[]> {
+    if (entry.isFile) {
+      const file = await readFileEntry(entry as FileSystemFileEntry);
+      return [toUploadItem(file, joinPath(parentPath, entry.name))];
+    }
+
+    if (!entry.isDirectory) return [];
+
+    const directoryPath = joinPath(parentPath, entry.name);
+    const entries = await readDirectoryEntries(entry as FileSystemDirectoryEntry);
+    const nestedItems = await Promise.all(entries.map((child) => readEntry(child, directoryPath)));
+    return nestedItems.flat();
+  }
+
+  function readFileEntry(entry: FileSystemFileEntry): Promise<File> {
+    return new Promise((resolve, reject) => entry.file(resolve, reject));
+  }
+
+  async function readDirectoryEntries(entry: FileSystemDirectoryEntry): Promise<FileSystemEntry[]> {
+    const reader = entry.createReader();
+    const entries: FileSystemEntry[] = [];
+
+    while (true) {
+      const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+        reader.readEntries(resolve, reject);
+      });
+      if (batch.length === 0) break;
+      entries.push(...batch);
+    }
+
+    return entries;
+  }
+
+  function joinPath(parentPath: string, name: string): string {
+    return parentPath ? `${parentPath}/${name}` : name;
   }
 
   function handleDragOver(e: DragEvent) {
@@ -87,25 +184,27 @@
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
-    if (stagedFiles.length === 0 || isUploading) return;
+    if (stagedItems.length === 0 || isUploading || isReadingDrop) return;
 
     isUploading = true;
     try {
-      await onUpload(stagedFiles);
-      stagedFiles = [];
+      await onUpload(stagedItems);
+      stagedItems = [];
       if (fileInput) fileInput.value = "";
+      if (folderInput) folderInput.value = "";
     } finally {
       isUploading = false;
     }
   }
 
   function removeStagedFile(index: number) {
-    stagedFiles = stagedFiles.filter((_, i) => i !== index);
+    stagedItems = stagedItems.filter((_, i) => i !== index);
   }
 
   function clearStagedFiles() {
-    stagedFiles = [];
+    stagedItems = [];
     if (fileInput) fileInput.value = "";
+    if (folderInput) folderInput.value = "";
   }
 
   function formatFileSize(bytes: number): string {
@@ -130,6 +229,11 @@
   function openFilePicker() {
     fileInput?.click();
   }
+
+  function openFolderPicker(e: MouseEvent) {
+    e.stopPropagation();
+    folderInput?.click();
+  }
 </script>
 
 {#if show}
@@ -139,13 +243,21 @@
     role="presentation"
   >
     <div class="modal-content" role="dialog" aria-modal="true" tabindex="-1">
-      <h2>Upload Files</h2>
+      <h2>Upload Files and Folders</h2>
       <form onsubmit={handleSubmit}>
         <input
           bind:this={fileInput}
           type="file"
           multiple
           onchange={handleFileSelect}
+          style="display: none;"
+        />
+        <input
+          bind:this={folderInput}
+          type="file"
+          multiple
+          webkitdirectory
+          onchange={handleFolderSelect}
           style="display: none;"
         />
 
@@ -162,13 +274,37 @@
         >
           <Hand size={64} strokeWidth={1.5} />
           <p class="drop-text">
-            Click or drag and drop files here to stage them
+            Drag files or folders here to stage them
           </p>
+          <div class="picker-actions">
+            <button
+              type="button"
+              class="picker-btn primary"
+              onclick={(e) => {
+                e.stopPropagation();
+                openFilePicker();
+              }}
+              disabled={isUploading || isReadingDrop}
+            >
+              Choose files
+            </button>
+            <button
+              type="button"
+              class="picker-btn"
+              onclick={openFolderPicker}
+              disabled={isUploading || isReadingDrop}
+            >
+              Choose folder
+            </button>
+          </div>
+          {#if isReadingDrop}
+            <p class="reading-text">Reading dropped folder...</p>
+          {/if}
         </div>
 
-        {#if stagedFiles.length > 0}
+        {#if stagedItems.length > 0}
           <div class="file-list-header">
-            <p class="file-info">{stagedFiles.length} file(s) ready to upload</p>
+            <p class="file-info">{stagedItems.length} file(s) ready to upload</p>
             <button
               type="button"
               class="clear-btn"
@@ -181,16 +317,16 @@
           </div>
 
           <ul class="file-list" aria-label="Staged upload files">
-            {#each stagedFiles as stagedFile, index}
+            {#each stagedItems as stagedItem, index}
               <li class="file-row">
                 <div class="file-meta">
-                  <span class="file-name" title={stagedFile.name}>{stagedFile.name}</span>
-                  <span class="file-size">{formatFileSize(stagedFile.size)}</span>
+                  <span class="file-name" title={stagedItem.relativePath}>{stagedItem.relativePath}</span>
+                  <span class="file-size">{formatFileSize(stagedItem.file.size)}</span>
                 </div>
                 <button
                   type="button"
                   class="remove-btn"
-                  aria-label={`Remove ${stagedFile.name}`}
+                  aria-label={`Remove ${stagedItem.relativePath}`}
                   title="Remove from upload batch"
                   onclick={() => removeStagedFile(index)}
                   disabled={isUploading}
@@ -209,7 +345,7 @@
           <button
             type="submit"
             class="submit-btn"
-            disabled={stagedFiles.length === 0 || isUploading}
+            disabled={stagedItems.length === 0 || isUploading || isReadingDrop}
           >
             {isUploading ? "Uploading..." : "Upload"}
           </button>
@@ -307,6 +443,40 @@
     margin: 0;
     max-width: 300px;
     line-height: 1.5;
+  }
+
+  .picker-actions {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .picker-btn {
+    flex: 1;
+    background: var(--dialog-cancel-btn-bg);
+    color: var(--dialog-text);
+    border: 1px solid var(--border-secondary);
+  }
+
+  .picker-btn:hover {
+    background: var(--dialog-cancel-btn-hover);
+  }
+
+  .picker-btn.primary {
+    background: var(--color-primary-600);
+    color: white;
+    border-color: transparent;
+  }
+
+  .picker-btn.primary:hover {
+    background: var(--color-primary-500-saturated);
+  }
+
+  .reading-text {
+    margin: -0.75rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
   }
 
   .file-info {

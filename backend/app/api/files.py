@@ -236,6 +236,20 @@ async def create_file(
     if file_in.parent_id:
         parent = await validate_parent_folder(db, file_in.parent_id, project.id)
 
+    if file_in.is_folder and file_in.reuse_existing_folder:
+        existing_folder_result = await db.execute(
+            select(File).where(
+                File.project_id == project.id,
+                File.parent_id == (parent.id if parent else None),
+                File.name == file_in.name,
+                File.is_folder.is_(True),
+            )
+        )
+        existing_folder = existing_folder_result.scalar_one_or_none()
+        if existing_folder:
+            id_to_hash = await _get_project_file_hash_map(db, project.id)
+            return _serialize_file(existing_folder, project.hash_id, id_to_hash)
+
     resolved_name = await resolve_available_name(
         db,
         project.id,
