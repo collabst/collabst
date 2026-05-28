@@ -32,11 +32,16 @@
   import { lineNumbers } from "@codemirror/view";
   import { ViewPlugin } from "@codemirror/view";
   import type { ViewUpdate } from "@codemirror/view";
+  import { lintGutter } from "@codemirror/lint";
+  import type { Core } from "@mudomi/onykia-engine";
+  import { isTypstPath } from "$lib/typst/engine";
 
   export let ytext: Y.Text;
   export let provider: WebsocketProvider;
   export let fileId: string;
   export let ydoc: Y.Doc;
+  export let filePath = "";
+  export let typstCore: Core | null = null;
   export let onTrackerReady: ((tracker: CommentRangeTracker) => void) | null =
     null;
   export let diagnostics: Diagnostic[] = [];
@@ -59,6 +64,14 @@
   const ligaturesCompartment = new Compartment();
   const readOnlyCompartment = new Compartment();
   const editableCompartment = new Compartment();
+  // Onykia Typst IDE stack; starts empty, reconfigured once it loads.
+  const engineCompartment = new Compartment();
+  // Monotonic token so a slow async load can't clobber a newer file.
+  let engineToken = 0;
+  let typstDiagnosticsCleanup: (() => void) | null = null;
+  // Path the current extensions were wired for; needed at teardown because
+  // filePath may have moved on.
+  let wiredEnginePath: string | null = null;
 
   // Track which lines have errors
   let errorLines = new Set<number>();
@@ -120,12 +133,18 @@
     return currentTheme === "light" ? [greyLightTheme] : [greyDarkTheme];
   }
 
+  // True when the engine owns Typst language/highlighting for this file, so
+  // we skip the static Lezer grammar to avoid doubling up.
+  function engineOwnsTypst(): boolean {
+    return !!typstCore && isTypstPath(filePath);
+  }
+
   // Get syntax highlighting extensions based on current theme and file type
   async function getSyntaxHighlighting() {
     const extension = fileName.split(".").pop()?.toLowerCase();
 
-    // For Typst files, use custom Typst highlighting
-    if (extension === "typ") {
+    // Fall back to the static grammar only when the engine isn't available.
+    if (extension === "typ" && !engineOwnsTypst()) {
       if (typeof window !== "undefined") {
         const { typstDark, typstLight } = await import(
           "$lib/codemirror/typstHighlight"
@@ -220,7 +239,7 @@
   async function getLanguageExtensions() {
     const extension = fileName.split(".").pop()?.toLowerCase();
 
-    if (extension === "typ") {
+    if (extension === "typ" && !engineOwnsTypst()) {
       if (typeof window !== "undefined") {
         const { typst } = await import("codemirror-lang-typst");
         return [typst()];
@@ -640,6 +659,59 @@
     ]);
   }
 
+  function enginePath(): string {
+    return filePath.startsWith("/") ? filePath : `/${filePath}`;
+  }
+
+  async function clearTypstExtensions() {
+    engineToken++;
+    typstDiagnosticsCleanup?.();
+    typstDiagnosticsCleanup = null;
+    if (wiredEnginePath) {
+      const { disposeModificationTracker } = await import(
+        "@mudomi/onykia-codemirror"
+      );
+      disposeModificationTracker(wiredEnginePath);
+      wiredEnginePath = null;
+    }
+    if (view) {
+      view.dispatch({ effects: engineCompartment.reconfigure([]) });
+    }
+  }
+
+  async function injectTypstExtensions() {
+    if (!view || !typstCore || !isTypstPath(filePath)) return;
+    const token = ++engineToken;
+    const path = enginePath();
+    const core = typstCore;
+
+    try {
+      // Seed the engine VFS with the current buffer; forwardEdits keeps it live.
+      const { primeFile } = await import("@mudomi/onykia-codemirror");
+      await primeFile(core, path, view, "text/x-typst");
+      if (token !== engineToken || !view) return;
+
+      const {
+        typstExtensions,
+        diagnosticsSubscription,
+        modificationTracker,
+      } = await import("@mudomi/onykia-codemirror");
+
+      const { extensions } = await typstExtensions(core, path, {
+        forwardEdits: true,
+      });
+      if (token !== engineToken || !view) return;
+
+      const engineExtensions = [...extensions, modificationTracker(path)];
+      view.dispatch({ effects: engineCompartment.reconfigure(engineExtensions) });
+      wiredEnginePath = path;
+
+      typstDiagnosticsCleanup = diagnosticsSubscription(core, view, path);
+    } catch (e) {
+      console.error("[CodeEditor] failed to wire Typst engine extensions", e);
+    }
+  }
+
   async function initializeEditor() {
     if (!editorElement || !ytext || !provider) return;
 
@@ -675,6 +747,9 @@
         yCollab(ytext, provider.awareness, { undoManager }),
         createUndoRedoKeymap(),
         commentsExtension(),
+        // Lint field so diagnosticsSubscription's setDiagnostics renders.
+        lintGutter(),
+        engineCompartment.of([]),
       ],
     });
 
@@ -695,6 +770,8 @@
     if (onTrackerReady) {
       onTrackerReady(commentTracker);
     }
+
+    void injectTypstExtensions();
   }
 
   async function switchFile() {
@@ -724,6 +801,8 @@
     }
 
     currentFileId = fileId;
+
+    clearTypstExtensions();
 
     if (undoManager) {
       undoManager.destroy();
@@ -759,6 +838,8 @@
           yCollab(ytext, provider.awareness, { undoManager }),
           createUndoRedoKeymap(),
           commentsExtension(),
+          lintGutter(),
+          engineCompartment.of([]),
         ],
       }),
     );
@@ -790,10 +871,18 @@
     if (onTrackerReady) {
       onTrackerReady(commentTracker);
     }
+
+    void injectTypstExtensions();
   }
 
   $: if (view && ytext && provider && currentFileId !== fileId) {
     switchFile();
+  }
+
+  // Re-runs when view/typstCore/filePath change; the cleanup guard skips it
+  // while extensions are already wired (e.g. on engine boot after mount).
+  $: if (view && typstCore && isTypstPath(filePath) && !typstDiagnosticsCleanup) {
+    void injectTypstExtensions();
   }
 
   // Function to update lint marker styling based on error length
@@ -827,6 +916,16 @@
 
   onDestroy(() => {
     console.log("[CodeEditor] Destroying editor");
+    engineToken++;
+    typstDiagnosticsCleanup?.();
+    typstDiagnosticsCleanup = null;
+    if (wiredEnginePath) {
+      const path = wiredEnginePath;
+      wiredEnginePath = null;
+      void import("@mudomi/onykia-codemirror").then(({ disposeModificationTracker }) =>
+        disposeModificationTracker(path),
+      );
+    }
     if (commentTracker) {
       commentTracker.destroy();
       commentTracker = null;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { mount, onMount, onDestroy, tick } from "svelte";
+  import { mount, unmount, onMount, onDestroy, tick } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
@@ -49,10 +49,7 @@
   } from "$lib/types";
   import type { YjsConnection } from "$lib/yjs";
   import PreviewPane from "$lib/components/editor/PreviewPane.svelte";
-  import {
-    convertDiagnosticsToLint,
-    parseRange,
-  } from "$lib/preview/diagnostics";
+  import { convertDiagnosticsToLint } from "$lib/preview/diagnostics";
   import { setDiagnostics } from "@codemirror/lint";
   import IssuesPanel from "$lib/components/editor/IssuesPanel.svelte";
   import SearchPanel from "$lib/components/editor/SearchPanel.svelte";
@@ -67,6 +64,7 @@
   } from "$lib/utils/assetCache";
   import SeparatePreview from "$lib/components/editor/SeparatePreview.svelte";
   import ShareDialog from "$lib/components/editor/ShareDialog.svelte";
+  import { isTypstPath } from "$lib/typst/engine";
 
   let projectId = $derived($page.params.projectId ?? "");
   let homeHref = $derived(
@@ -98,7 +96,8 @@
   let isEditingProjectName = $state(false);
   let editingProjectName = $state("");
   let projectNameInput = $state<HTMLInputElement | undefined>();
-  let renderSession: any = $state(null);
+  let sharedCore = $state<import('@mudomi/onykia-engine').Core | null>(null);
+  let previewSetActiveEditorFile = $state<(path: string | null) => void>(() => {});
   const unboundExportAction = () => {};
   let exportAsPDF = $state<() => void>(unboundExportAction);
   let exportAsPNG = $state<() => void>(unboundExportAction);
@@ -1720,6 +1719,15 @@
     }
   });
 
+  // Tell the preview engine which .typ file the editor currently owns.
+  $effect(() => {
+    const activePath =
+      !selectedAsset && selectedFile && !selectedFile.is_folder && isTypstPath(selectedFile.path)
+        ? (selectedFile.path.startsWith('/') ? selectedFile.path : `/${selectedFile.path}`)
+        : null;
+    previewSetActiveEditorFile(activePath);
+  });
+
   // Diagnostics state for linter and issues panel
   let diagnostics = $state<Diagnostic[]>([]);
 
@@ -1750,15 +1758,8 @@
 
   let previewFilePath = $derived(previewFile?.path || "/main.typ");
 
-  // Handle diagnostics from PreviewPane
-  function handleDiagnostics(diags: any[]) {
-    // Parse diagnostics range from compiler format
-    diagnostics = diags.map((d: any) => ({
-      severity: d.severity,
-      message: d.message,
-      range: parseRange(d.range),
-      path: d.path,
-    }));
+  function handleDiagnostics(diags: Diagnostic[]) {
+    diagnostics = diags;
     updateLinter();
   }
 
@@ -1829,6 +1830,9 @@
   }
 
   function updateLinter() {
+    // For .typ files the onykia-codemirror diagnosticsSubscription owns lint markers.
+    if (sharedCore && selectedFile && isTypstPath(selectedFile.path)) return;
+
     const editorView = editorPane?.getEditorView?.();
     if (editorView) {
       const lintDiagnostics = convertDiagnosticsToLint(
@@ -1843,6 +1847,30 @@
 
   // Preview in separated window
   let separateWindow = $state<Window | null>(null);
+  // $state proxy passed to mount(): mutating fields propagates into the popout.
+  let separateProps = $state<{
+    core: import('@mudomi/onykia-engine').Core | null;
+    negative: boolean;
+    onCloseSeparatePreview: () => void;
+    onOpenShare: () => void;
+    onExportPDF: () => void;
+    onExportPNG: () => void;
+    onExportSVG: () => void;
+    onExportSourcesAsZip: () => void;
+  } | null>(null);
+  let separateApp: Record<string, any> | null = null;
+  let separateThemeUnsub: (() => void) | null = null;
+
+  // Negative filter only applies in dark theme; shared with the popout.
+  let shouldApplyNegative = $derived(negativePreview && $theme === "dark");
+
+  // Sync the popout's reactive props with the editor's live state.
+  $effect(() => {
+    if (separateProps) {
+      separateProps.core = sharedCore;
+      separateProps.negative = shouldApplyNegative;
+    }
+  });
 
   function openSeparatePreview() {
     if (separateWindow && !separateWindow.closed) {
@@ -1870,39 +1898,28 @@
       separateWindow!.document.head.appendChild(clone);
     });
 
-    // Mount SeparatePreview component in new window
-    let separateProps = {
-      separateWindow,
-      projectName: project?.name ?? "",
+    separateProps = {
+      core: sharedCore,
+      negative: shouldApplyNegative,
       onCloseSeparatePreview: closeSeparatePreview,
       onOpenShare: () => (showShareDialog = true),
-      onExportPDF: exportAsPDF,
-      onExportPNG: exportAsPNG,
-      onExportSVG: exportAsSVG,
-      onExportSourcesAsZip: exportSourcesAsZip,
+      onExportPDF: () => exportAsPDF(),
+      onExportPNG: () => exportAsPNG(),
+      onExportSVG: () => exportAsSVG(),
+      onExportSourcesAsZip: () => exportSourcesAsZip(),
     };
     let container = separateWindow.document.createElement("div");
     separateWindow.document.body.appendChild(container);
-    mount(SeparatePreview, {
+    separateApp = mount(SeparatePreview, {
       target: container,
       props: separateProps,
     });
 
     separateWindow.addEventListener("beforeunload", closeSeparatePreview);
 
-    // Subscribe to theme changes to update separate window
-    theme.subscribe((value) => {
+    separateThemeUnsub = theme.subscribe((value) => {
       if (separateWindow && !separateWindow.closed) {
         separateWindow.document.documentElement.setAttribute(
-          "data-theme",
-          value,
-        );
-
-        // Also set theme for preview iframe if it exists
-        const previewIFrame = separateWindow.document.getElementById(
-          "preview-iframe",
-        ) as HTMLIFrameElement | null;
-        previewIFrame?.contentDocument?.documentElement.setAttribute(
           "data-theme",
           value,
         );
@@ -1911,45 +1928,27 @@
   }
 
   function closeSeparatePreview() {
+    // Idempotent: beforeunload + UI close can both fire.
+    if (!separateWindow && !separateApp) return;
+
+    separateThemeUnsub?.();
+    separateThemeUnsub = null;
+
+    if (separateApp) {
+      try {
+        unmount(separateApp);
+      } catch (e) {
+        console.warn("Failed to unmount separate preview component", e);
+      }
+    }
+    separateApp = null;
+    separateProps = null;
     if (separateWindow && !separateWindow.closed) {
       separateWindow.close();
     }
     separateWindow = null;
   }
 
-  function toggleNegativePreview() {
-    negativePreview = !negativePreview;
-
-    // Apply negative class to preview svg
-    const previewIframe = document.getElementById(
-      "preview-iframe",
-    ) as HTMLIFrameElement | null;
-    const typstApp =
-      previewIframe?.contentDocument?.querySelector("#typst-app");
-    if (typstApp) {
-      if (negativePreview) {
-        typstApp.classList.add("negative");
-      } else {
-        typstApp.classList.remove("negative");
-      }
-    }
-
-    // Apply negative class to separate window if open
-    if (separateWindow && !separateWindow.closed) {
-      const previewIframe = separateWindow.document.getElementById(
-        "preview-iframe",
-      ) as HTMLIFrameElement | null;
-      const typstApp =
-        previewIframe?.contentDocument?.querySelector("#typst-app");
-      if (typstApp) {
-        if (negativePreview) {
-          typstApp.classList.add("negative");
-        } else {
-          typstApp.classList.remove("negative");
-        }
-      }
-    }
-  }
 </script>
 
 <svelte:head>
@@ -2014,7 +2013,7 @@
           onWrapLines={() => (wrapLines = !wrapLines)}
           onThemeLight={() => theme.set("light")}
           onThemeDark={() => theme.set("dark")}
-          onNegativePreview={toggleNegativePreview}
+          onNegativePreview={() => (negativePreview = !negativePreview)}
           {wrapLines}
           {negativePreview}
           {showToolbar}
@@ -2241,6 +2240,7 @@
         {canWrite}
         {canComment}
         canModerateComments={canManageProject}
+        typstCore={sharedCore}
       />
 
       <button
@@ -2276,20 +2276,21 @@
         <PreviewPane
           files={filesWithContent}
           {assets}
+          {projectId}
           compileEnabled={isSynced || isLocalSynced}
           mainFilePath={previewFilePath}
           onDiagnostics={handleDiagnostics}
           projectName={project.name}
           {negativePreview}
           onOpenShare={() => (showShareDialog = true)}
-          bind:renderSession
+          bind:sharedCore
           {showToolbar}
-          {separateWindow}
           {openSeparatePreview}
           bind:exportAsPDF
           bind:exportAsPNG
           bind:exportAsSVG
           bind:exportSourcesAsZip
+          bind:setActiveEditorFile={previewSetActiveEditorFile}
         />
       </div>
     </div>

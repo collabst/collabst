@@ -2,10 +2,9 @@ from contextlib import asynccontextmanager
 from starlette.exceptions import HTTPException
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import FileResponse
 
 from app.api import auth, comments, files, invitations, profile_pic, projects, users
 from app.core.config import settings
@@ -16,17 +15,15 @@ from app.websocket.project_ws import project_websocket_endpoint
 from app.websocket.yjs_server import manager as yjs_manager
 from app.websocket.yjs_server import websocket_endpoint
 
+# Cross-origin isolation headers required by onykia-engine.
+CROSS_ORIGIN_ISOLATION = {
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Embedder-Policy": "credentialless",
+}
+
 
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
-        if path.rstrip("/") == "typst-preview":
-            preview_path = Path(self.directory) / "typst-preview"
-            if preview_path.exists():
-                return FileResponse(
-                    preview_path,
-                    media_type="text/html; charset=utf-8",
-                )
-
         try:
             return await super().get_response(path, scope)
         except HTTPException as exc:
@@ -66,6 +63,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def cross_origin_isolation(request: Request, call_next):
+    response = await call_next(request)
+    for key, value in CROSS_ORIGIN_ISOLATION.items():
+        response.headers[key] = value
+    return response
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(profile_pic.router, prefix=f"{settings.API_V1_STR}", tags=["users"])

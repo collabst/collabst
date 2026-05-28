@@ -13,27 +13,35 @@
   import { browser } from '$app/environment';
   import type { FileWithContent as ProjectFile, Asset, Diagnostic } from '$lib/types';
   import { assetsApi } from "../../services/api";
-  import { getCachedAsset, cacheAsset } from '$lib/utils/assetCache';
   import { theme as themeStore } from '$lib/stores/theme';
   import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
   import JSZip from 'jszip';
+  import TypstCanvas from './TypstCanvas.svelte';
+  import ExportOptionsModal from './ExportOptionsModal.svelte';
+  import { createPreviewController, type PreviewController } from '$lib/typst/previewController';
+  import type { Core } from '@mudomi/onykia-engine';
+
+  type ZoomMode = 'fit-width' | 'fit-height' | 'fit-page' | 'custom';
 
   interface Props {
     files?: ProjectFile[];
     assets?: Asset[];
     compileEnabled?: boolean;
     mainFilePath?: string;
+    projectId?: string;
     onDiagnostics?: (diagnostics: Diagnostic[]) => void;
     projectName?: string;
     negativePreview?: boolean;
     showToolbar?: boolean;
-    renderSession?: any;
-    separateWindow?: Window | null;
+    // Bound: exposes the booted engine so the popout window can share it.
+    sharedCore?: Core | null;
     openSeparatePreview?: () => void;
     exportAsPDF?: () => void;
     exportAsPNG?: () => void;
     exportAsSVG?: () => void;
     exportSourcesAsZip?: () => void;
+    // Bound: lets the parent tell the engine which file the editor owns.
+    setActiveEditorFile?: (path: string | null) => void;
     onOpenShare?: () => void;
   }
 
@@ -42,577 +50,232 @@
     assets = [],
     compileEnabled = true,
     mainFilePath = '/main.typ',
+    projectId = '',
     onDiagnostics,
     projectName,
     negativePreview = false,
     showToolbar = true,
-    renderSession = $bindable(null),
-    separateWindow = null,
+    sharedCore = $bindable(null),
     openSeparatePreview = () => {},
     exportAsPDF = $bindable(() => {}),
     exportAsPNG = $bindable(() => {}),
     exportAsSVG = $bindable(() => {}),
     exportSourcesAsZip = $bindable(() => {}),
+    setActiveEditorFile = $bindable((_path: string | null) => {}),
     onOpenShare = () => {},
   }: Props = $props();
 
-  // iframe reference for communication
-  let previewIframe: HTMLIFrameElement | undefined;
-  let iframeMockReady = false;
-  let isPreviewZoomInitialized = $state(false);
+  let canvas: TypstCanvas | undefined = $state();
+  let controller: PreviewController | null = null;
+  let core = $state<Core | null>(null);
+  let status = $state('Initializing...');
+  let isReady = $state(false);
+  let pageCount = $state(0);
+
+  // SVG/PNG go through the modal (per-page); PDF doesn't.
+  let exportModalOpen = $state(false);
+  let exportModalFormat = $state<'svg' | 'png'>('png');
 
   // Load zoom state from localStorage
   const savedLayout = browser ? loadLayoutState() : null;
   let currentZoomValue = $state(savedLayout?.zoomScale ?? 1);
-  let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>(savedLayout?.zoomMode ?? 'custom');
+  let currentZoomMode = $state<ZoomMode>(savedLayout?.zoomMode ?? 'custom');
   let currentTheme = $state<'light' | 'dark'>($themeStore);
-  let inhibNextZoomChange = false;
-  
+
   // Subscribe to theme changes
   $effect(() => {
     currentTheme = $themeStore;
   });
-  
+
   // Save zoom state to localStorage when it changes
   $effect(() => {
-    if (browser && currentZoomMode && currentZoomValue) {
+    if (browser) {
       saveLayoutState({
         zoomMode: currentZoomMode,
         zoomScale: currentZoomValue,
       });
     }
   });
-  
-  // Compute whether to apply negative filter (only in dark theme)
+
+  // Negative invert only applies in dark theme.
   let shouldApplyNegativeFilter = $derived(negativePreview && currentTheme === 'dark');
 
-    // --- Toolbar Handlers (send commands to iframe) ---
+  // --- Toolbar ---
 
-    function zoomIn() {
-      sendCommandToIframe('zoom-in');
-    }
+  function zoomIn() { canvas?.zoomIn(); }
+  function zoomOut() { canvas?.zoomOut(); }
+  function setZoom(zoom: number) { canvas?.setZoom(zoom); }
+  function fitToWidth() { canvas?.fitWidth(); }
+  function fitToHeight() { canvas?.fitHeight(); }
+  function fitToPage() { canvas?.fitPage(); }
 
-    function zoomOut() {
-      sendCommandToIframe('zoom-out');
-    }
+  function handleZoomChange(zoom: number, mode: ZoomMode) {
+    currentZoomValue = zoom;
+    currentZoomMode = mode;
+  }
 
-    function setZoom(zoom: number) {
-      currentZoomValue = zoom;
-      currentZoomMode = 'custom';
-      sendCommandToIframe('set-zoom', { zoom, mode: 'custom' });
-    }
+  const zoomItems = [
+    { label: "Fit to width", icon: MoveHorizontal, onclick: fitToWidth },
+    { label: "Fit to height", icon: MoveVertical, onclick: fitToHeight },
+    { label: "Fit to page", icon: File, onclick: fitToPage, separator: true },
+    { label: "25%", onclick: () => setZoom(0.25) },
+    { label: "50%", onclick: () => setZoom(0.5) },
+    { label: "75%", onclick: () => setZoom(0.75) },
+    { label: "100%", onclick: () => setZoom(1) },
+    { label: "200%", onclick: () => setZoom(2) },
+    { label: "300%", onclick: () => setZoom(3) },
+  ];
 
-    function fitToWidth() {
-      currentZoomMode = 'fit-width';
-      inhibNextZoomChange = true;
-      sendCommandToIframe('fit-width');
-    }
+  // --- Exports ---
 
-    function fitToHeight() {
-      currentZoomMode = 'fit-height';
-      inhibNextZoomChange = true;
-      sendCommandToIframe('fit-height');
-    }
+  function triggerDownload(data: Uint8Array, mime: string, filename: string) {
+    // Copy off SharedArrayBuffer; Blob rejects it.
+    const bytes = new Uint8Array(data.byteLength);
+    bytes.set(data);
+    const blob = new Blob([bytes], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
-    function fitToPage() {
-      currentZoomMode = 'fit-page';
-      inhibNextZoomChange = true;
-      sendCommandToIframe('fit-page');
-    }
-
-    function reapplyCurrentZoomMode() {
-      switch (currentZoomMode) {
-        case 'fit-width':
-          fitToWidth();
-          break;
-        case 'fit-height':
-          fitToHeight();
-          break;
-        case 'fit-page':
-          fitToPage();
-          break;
-        case 'custom':
-          setZoom(currentZoomValue);
-          break;
-      }
-    }
-
-    // Send a command to the iframe
-    function sendCommandToIframe(command: string, payload?: any) {
-      if (previewIframe?.contentWindow) {
-        previewIframe.contentWindow.postMessage({
-          type: 'typst-command',
-          command,
-          payload
-        }, '*');
-      }
-    }
-
-    const zoomItems = [
-      { label: "Fit to width", icon: MoveHorizontal, onclick: fitToWidth },
-      { label: "Fit to height", icon: MoveVertical, onclick: fitToHeight },
-      { label: "Fit to page", icon: File, onclick: fitToPage, separator: true },
-      { label: "25%", onclick: () => setZoom(0.25) },
-      { label: "50%", onclick: () => setZoom(0.5) },
-      { label: "75%", onclick: () => setZoom(0.75) },
-      { label: "100%", onclick: () => setZoom(1) },
-      { label: "200%", onclick: () => setZoom(2) },
-      { label: "300%", onclick: () => setZoom(3) },
-    ];
-
-    exportAsPDF = () => {
-      worker?.postMessage({ type: 'exportPDF', payload: { mainFilePath } });
-    }
-
-    function exportNotImplemented(format: string) {
-      alert(`Export as ${format} not implemented yet`);
-    }
-
-    exportAsPNG = () => {
-      exportNotImplemented("PNG");
-    }
-
-    exportAsSVG = () => {
-      exportNotImplemented("SVG");
-    }
-
-    exportSourcesAsZip = async () => {
-      try {
-        const zip = new JSZip();
-
-        // Add all project files
-        for (const file of files) {
-          if (!file.is_folder) {
-            const path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
-            zip.file(path, file.content);
-          }
-        }
-
-        // Add all assets
-        for (const asset of assets) {
-          try {
-            const { url } = await assetsApi.getUrl(asset.project_id, asset.id);
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            const path = asset.path.startsWith('/') ? asset.path.slice(1) : asset.path;
-            zip.file(path, arrayBuffer);
-          } catch (error) {
-            console.error('Failed to add asset to ZIP:', asset.path, error);
-          }
-        }
-
-        // Generate ZIP and download
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${projectName || 'project'}-sources.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Failed to export sources as ZIP:', error);
-        alert('Failed to export sources as ZIP');
-      }
-    }
-
-    const exportItems = [
-      { label: "Export as PDF", onclick: exportAsPDF },
-      { label: "Export as PNG", onclick: exportAsPNG },
-      { label: "Export as SVG", onclick: exportAsSVG, separator: true },
-      { label: "Export sources as ZIP", onclick: exportSourcesAsZip },
-    ];
-  let status = $state('Initializing...');
-  let worker: Worker | undefined;
-  let initialized = false;
-  let workerReady = false;
-  let latestMainFilePath: string | null = null;
-  
-
-  // Track loaded files/assets to detect changes
-  const loadedFiles = new Map<string, { path: string; content: string }>();
-  const loadedAssets = new Map<string, { path: string; storage_path: string }>();
-
-  // Handle messages from iframe
-  function handleIframeMessage(event: MessageEvent) {
-    // Security: verify origin in production
-    const { type, data, command, zoom, mode } = event.data || {};
-
-    switch (type) {
-      case 'typst-ws-mock-ready':
-        // Iframe mock WebSocket is ready to receive connections - can be usefull ¯\_(ツ)_/¯
-        break;
-
-      case 'typst-ws-connect':
-        // Iframe mock WebSocket is now connected - can be usefull too ¯\_(ツ)_/¯
-        break;
-
-      case 'typst-ws-send':
-        handleIframeSend(data);
-        break;
-
-      case 'typst-ws-close':
-        // Iframe mock WebSocket closed - can be usefull also ¯\_(ツ)_/¯
-        break;
-
-      case 'typst-zoom-changed':
-        if (inhibNextZoomChange) {
-          // Ignore this change - it was a backlash of our own command
-          inhibNextZoomChange = false;
-          return;
-        }
-        if (typeof zoom === 'number') {
-          currentZoomValue = zoom;
-          currentZoomMode = mode ?? 'custom';
-        }
-        break;
-
-      case 'typst-request-current':
-        // Iframe is requesting current state - trigger a recompile
-        syncFilesAndAssets();
-        break;
-
-      case 'typst-zoom-initialized':
-        isPreviewZoomInitialized = true;
-        break;
+  async function runExport(
+    opts:
+      | { format: 'pdf' }
+      | { format: 'svg'; index: number }
+      | { format: 'png'; index: number; ppi?: number }
+  ) {
+    if (!controller) return;
+    try {
+      status = `Exporting ${opts.format.toUpperCase()}...`;
+      const { data, mime } = await controller.exportDocument(opts);
+      // Per-page exports tag the filename so successive exports don't clobber.
+      const suffix = 'index' in opts ? `-p${opts.index + 1}` : '';
+      triggerDownload(data, mime, `${projectName || 'document'}${suffix}.${opts.format}`);
+      status = 'Ready';
+    } catch (e: any) {
+      console.error(`Export ${opts.format} failed:`, e);
+      status = `Export error: ${e?.message ?? e}`;
+      alert(`Failed to export as ${opts.format.toUpperCase()}`);
     }
   }
 
-  // Handle messages the iframe sends via the mock WebSocket
-  function handleIframeSend(data: string | ArrayBuffer) {
-    if (typeof data === 'string') {
-      if (data === 'current') {
-        if (!iframeMockReady) {
-          // First time receiving 'current' - iframe mock is ready
-          iframeMockReady = true;
-          initialized = true;
-          status = 'Ready';
-        }
-        // Iframe is requesting current state - trigger a recompile
-        syncFilesAndAssets();
-      }
-    }
-  }
-
-  // Send vector data to the iframe via postMessage
-  function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
-    if (!previewIframe?.contentWindow || !iframeMockReady) {
+  function openExportModal(format: 'svg' | 'png') {
+    if (pageCount === 0) {
+      alert('No pages to export - wait for the first compile to finish.');
       return;
     }
-
-    // Format message as the typst preview expects: "messageType,binaryData"
-    const messageType = isFirstCompile ? 'new' : 'diff-v1';
-    const encoder = new TextEncoder();
-    const typeBytes = encoder.encode(messageType + ',');
-
-    // Combine type and data
-    const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
-    combined.set(typeBytes, 0);
-    combined.set(new Uint8Array(vectorData), typeBytes.length);
-
-    // Send via postMessage to iframe
-    // Note: We copy the buffer to avoid transferring ownership which would detach the original
-    previewIframe.contentWindow.postMessage({
-      type: 'typst-ws-message',
-      data: combined.buffer.slice(0)
-    }, '*');
+    exportModalFormat = format;
+    exportModalOpen = true;
   }
 
-  // Sync files and assets with the worker
-  // Debounce syncFilesAndAssets to prevent rapid repeated calls
-  let syncTimeout: any = null;
-  async function _syncFilesAndAssets() {
-    if (!worker || !workerReady) return;
+  exportAsPDF = () => void runExport({ format: 'pdf' });
+  exportAsPNG = () => openExportModal('png');
+  exportAsSVG = () => openExportModal('svg');
 
-    // Handle files
-    const currentFilesMap = new Map(files.map(f => [f.id, f]));
-
-    // Remove deleted/moved files
-    for (const [fileId, cached] of loadedFiles) {
-      const current = currentFilesMap.get(fileId);
-      if (!current || current.path !== cached.path) {
-        const pathToRemove = cached.path.startsWith('/') ? cached.path : `/${cached.path}`;
-        worker.postMessage({ type: 'removeFile', payload: { path: pathToRemove } });
-        loadedFiles.delete(fileId);
-      }
+  function handleExportModalSubmit(opts: { index: number; ppi?: number }) {
+    exportModalOpen = false;
+    if (exportModalFormat === 'png') {
+      void runExport({ format: 'png', index: opts.index, ppi: opts.ppi });
+    } else {
+      void runExport({ format: 'svg', index: opts.index });
     }
+  }
 
-    // Add new/updated files
-    for (const file of files) {
-      if (file.is_folder) continue;
-
-      const cached = loadedFiles.get(file.id);
-      const path = file.path.startsWith('/') ? file.path : `/${file.path}`;
-
-      if (!cached || cached.content !== file.content || cached.path !== file.path) {
-        worker.postMessage({
-          type: 'addFile',
-          payload: { path, content: file.content }
-        });
-        loadedFiles.set(file.id, { path: file.path, content: file.content });
-      }
-    }
-
-    // Handle assets
-    const currentAssetsMap = new Map(assets.map(a => [a.id, a]));
-
-    // Remove deleted/moved assets
-    for (const [assetId, cached] of loadedAssets) {
-      const current = currentAssetsMap.get(assetId);
-      if (!current || current.path !== cached.path) {
-        const pathToRemove = cached.path.startsWith('/') ? cached.path : `/${cached.path}`;
-        worker.postMessage({ type: 'removeFile', payload: { path: pathToRemove } });
-        loadedAssets.delete(assetId);
-      }
-    }
-
-    // Add new/updated assets
-    for (const asset of assets) {
-      const cached = loadedAssets.get(asset.id);
-      const path = asset.path.startsWith('/') ? asset.path : `/${asset.path}`;
-
-      if (!cached || cached.storage_path !== asset.storage_path || cached.path !== asset.path) {
-        try {
-          let arrayBuffer: ArrayBuffer;
-
-          // Try IndexedDB cache first
-          const cachedBlob = await getCachedAsset(String(asset.project_id), asset.id, asset.storage_path);
-
-          if (cachedBlob) {
-            // Use cached data
-            arrayBuffer = cachedBlob.blob;
-          } else {
-            // Fetch from API and cache
-            const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
-            const response = await fetch(url);
-            arrayBuffer = await response.arrayBuffer();
-
-            // Store in IndexedDB cache (fire and forget)
-            cacheAsset(String(asset.project_id), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
-              .catch(err => console.warn('Failed to cache asset:', err));
-          }
-
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          worker.postMessage({
-            type: 'addAsset',
-            payload: { path, data: uint8Array }
-          }, [uint8Array.buffer]);
-
-          loadedAssets.set(asset.id, { path: asset.path, storage_path: asset.storage_path });
-        } catch (error) {
-          console.error('Failed to load asset:', asset.path, error);
+  exportSourcesAsZip = async () => {
+    try {
+      const zip = new JSZip();
+      for (const file of files) {
+        if (!file.is_folder) {
+          const path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
+          zip.file(path, file.content);
         }
       }
-    }
-
-    // Trigger compilation
-    compile();
-  }
-
-  function syncFilesAndAssets() {
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(() => {
-      _syncFilesAndAssets();
-    }, 30); // 30ms debounce
-  }
-
-  function compile() {
-    if (!worker || !workerReady) return;
-    const path = mainFilePath.startsWith('/') ? mainFilePath : `/${mainFilePath}`;
-    worker.postMessage({
-      type: 'compile',
-      payload: { mainFilePath: path },
-    });
-  }
-
-  // Worker Setup
-  onMount(() => {
-    if (!browser) return;
-
-    // Set up message listener for iframe communication
-    window.addEventListener('message', handleIframeMessage);
-
-    // Create worker (only runs in browser)
-    worker = new Worker(
-      new URL('/src/lib/preview/typst-worker.ts', import.meta.url),
-      { type: 'module' }
-    );
-
-    worker.onmessage = async (e) => {
-      const { type, vectorData, compileTime, isFirstCompile, diagnostics } = e.data;
-
-      switch (type) {
-        case 'status':
-          status = e.data.message;
-          break;
-
-        case 'initialized':
-          workerReady = true;
-          status = compileEnabled
-            ? 'Compiler ready - waiting for iframe...'
-            : 'Preparing files...';
-
-          // Force a sync only when file hydration is ready.
-          if (compileEnabled) {
-            syncFilesAndAssets();
-          }
-          reapplyCurrentZoomMode();
-          break;
-
-        case 'compiled':
-          if (!initialized) {
-            status = 'Waiting for iframe...';
-            return;
-          }
-
-          // Handle diagnostics
-          if (diagnostics && onDiagnostics) {
-            console.log('Received diagnostics from worker:', diagnostics);
-            onDiagnostics(diagnostics);
-          }
-
-          if (!vectorData) {
-            status = `Ready (${compileTime}ms) - no output`;
-            return;
-          }
-
-          try {
-            status = 'Rendering...';
-
-            if (separateWindow) {
-              sendVectorDataToWindow(separateWindow, vectorData, isFirstCompile);
-            } else {
-              // Send vector data to iframe
-              sendVectorDataToIframe(vectorData, isFirstCompile);
-            }
-
-            status = `Ready (${compileTime}ms)`;
-          } catch (error: any) {
-            status = `Render error: ${error.message}`;
-            console.error('Render error:', error);
-          }
-          break;
-
-        case 'error':
-          if (diagnostics && onDiagnostics) {
-            console.log('Received diagnostics from worker:', diagnostics);
-            onDiagnostics(diagnostics);
-          }
-          status = `Compile error: ${e.data.error}`;
-          console.error('Compilation error:', e.data);
-          break;
-
-        case 'pdf':
-          const pdfBlob = new Blob([e.data.pdfData], { type: 'application/pdf' });
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          const pdfLink = document.createElement('a');
-          pdfLink.href = pdfUrl;
-          // get project name
-          console.log("projectName:", projectName);
-          pdfLink.download = `${projectName || 'document'}.pdf`;
-          document.body.appendChild(pdfLink);
-          pdfLink.click();
-          document.body.removeChild(pdfLink);
-          URL.revokeObjectURL(pdfUrl);
-          break;
-
-        case 'reset':
-          console.log('Worker: Resetting document as requested');
-          // if (typstDoc) typstDoc.reset();
-          status = 'Reset complete';
-          break;
+      for (const asset of assets) {
+        try {
+          const { url } = await assetsApi.getUrl(asset.project_id, asset.id);
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const path = asset.path.startsWith('/') ? asset.path.slice(1) : asset.path;
+          zip.file(path, arrayBuffer);
+        } catch (error) {
+          console.error('Failed to add asset to ZIP:', asset.path, error);
+        }
       }
-    };
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${projectName || 'project'}-sources.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export sources as ZIP:', error);
+      alert('Failed to export sources as ZIP');
+    }
+  };
 
-    worker.onerror = (e) => {
-      const errorMsg = e.message || (e.error as any)?.message || 'Unknown error';
-      status = `Worker error: ${errorMsg}`;
-      console.error('Worker error:', e);
-    };
+  const exportItems = [
+    { label: "Export as PDF", onclick: () => exportAsPDF() },
+    { label: "Export as PNG", onclick: () => exportAsPNG() },
+    { label: "Export as SVG", onclick: () => exportAsSVG(), separator: true },
+    { label: "Export sources as ZIP", onclick: () => exportSourcesAsZip() },
+  ];
+
+  let offPages: (() => void) | null = null;
+
+  // --- Engine boot + compile ---
+
+  onMount(async () => {
+    if (!browser) return;
+    controller = createPreviewController({
+      projectId,
+      onDiagnostics: (diags) => onDiagnostics?.(diags),
+    });
+    setActiveEditorFile = (path: string | null) => controller?.setActiveEditorFile(path);
+    try {
+      status = 'Loading Typst engine...';
+      core = await controller.ready();
+      sharedCore = core;
+      offPages = core.onPages(({ pages }) => {
+        pageCount = pages.length;
+      });
+      isReady = true;
+      status = 'Ready';
+      if (compileEnabled) void controller.sync(files, assets, mainFilePath);
+    } catch (e: any) {
+      console.error('Typst engine failed to start:', e);
+      status = `Engine error: ${e?.message ?? e}`;
+    }
   });
 
-  // Watch for changes in files, assets, or mainFilePath
   $effect(() => {
-    // Track reactive dependencies by reading them
     void files;
     void assets;
     void mainFilePath;
     void compileEnabled;
 
-    if (latestMainFilePath !== mainFilePath) {
-      latestMainFilePath = mainFilePath;
-    
-      if (worker && workerReady) {
-        
-        worker.postMessage({ type: 'reset' });
-        
-      }
-    }
-
-    if (workerReady && initialized && compileEnabled) {
-      syncFilesAndAssets();
-    } else if (workerReady && initialized && !compileEnabled) {
-      status = 'Preparing files...';
+    if (isReady && compileEnabled && controller) {
+      void controller.sync(files, assets, mainFilePath);
     }
   });
 
   onDestroy(() => {
-    // Clean up message listener
-    if (browser) {
-      window.removeEventListener('message', handleIframeMessage);
-    }
-    if (worker) {
-      worker.terminate();
-    }
+    offPages?.();
+    offPages = null;
+    controller?.destroy();
+    controller = null;
   });
 
-  function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, isFirstCompile: boolean) {
-    targetWindow.postMessage(
-      {
-        type: 'typst-vector-data',
-        data: vectorData,
-        isFirstCompile: isFirstCompile,
-      },
-      '*'
-    );
-  }
-
-  function forceRecompile() {
-    if (worker && workerReady) {
-      worker.postMessage({ type: 'reset' });
-    }
-  }
-
-  // Watch for changes in separateWindow to recompile and send data
-  $effect(() => {
-    void separateWindow;
-    void compileEnabled;
-
-    if (workerReady && initialized && compileEnabled) {
-      forceRecompile();
-      syncFilesAndAssets();
-    }
-  });
-
-  let pixelPerPt = $state(3);
-  function setPixelPerPt(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const value = parseFloat(input.value);
-    if (!isNaN(value) && value > 0) {
-      pixelPerPt = value;
-      sendCommandToIframe('typst-set-pixelperpt', { pixelPerPt });
-    }
-  }
-
-  // Handle separate preview button click
-  function handleSeparatePreview() {
-    openSeparatePreview();
-  }
 </script>
 
-<div class="preview-wrapper">
+<div class="preview-wrapper preview-pane">
   {#if showToolbar}
   <div class="preview-toolbar">
     <div class="zoom-controls">
@@ -636,7 +299,7 @@
     </div>
     <div class="separate-preview-control">
       <Tooltip text="Show preview in popup" position="bottom">
-        <ToolButton icon={PictureInPicture} onclick={handleSeparatePreview} position="standalone" />
+        <ToolButton icon={PictureInPicture} onclick={() => openSeparatePreview()} position="standalone" />
       </Tooltip>
     </div>
     <div class="download-controls">
@@ -644,7 +307,7 @@
         <ToolButton icon={Share2} onclick={onOpenShare} position="first"/>
       </Tooltip>
       <Tooltip text="Export PDF" position="bottom">
-        <ToolButton icon={Download} onclick={exportAsPDF} position="middle"/>
+        <ToolButton icon={Download} onclick={() => exportAsPDF()} position="middle"/>
       </Tooltip>
       <Tooltip text="Export..." position="bottom">
         <DropdownToolButton 
@@ -657,17 +320,19 @@
     </div>
   </div>
   {/if}
-  <div class="preview-iframe-wrapper">
-    <iframe
-      bind:this={previewIframe}
-      id="preview-iframe"
-      class="preview-iframe"
-      title="Typst Preview"
-      src="/typst-preview">
-    </iframe>
-    {#if !isPreviewZoomInitialized}
+  <div class="preview-canvas-wrapper">
+    {#if core}
+      <TypstCanvas
+        bind:this={canvas}
+        {core}
+        negative={shouldApplyNegativeFilter}
+        initialZoomMode={currentZoomMode}
+        initialZoom={currentZoomValue}
+        onZoomChange={handleZoomChange}
+      />
+    {:else}
       <div class="preview-loading-overlay">
-        <p>Loading preview...</p>
+        <p>{status}</p>
       </div>
     {/if}
     <svg class="corner left" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
@@ -678,6 +343,14 @@
     </svg>
   </div>
 </div>
+
+<ExportOptionsModal
+  bind:open={exportModalOpen}
+  format={exportModalFormat}
+  {pageCount}
+  onClose={() => (exportModalOpen = false)}
+  onSubmit={handleExportModalSubmit}
+/>
 
 <style>
   .preview-wrapper {
@@ -708,17 +381,13 @@
     display: flex;
   }
 
-  .preview-iframe-wrapper {
+  .preview-canvas-wrapper {
     position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
-  }
-
-  .preview-iframe {
-    height: 100%;
-    width: 100%;
-    border: none;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
   }
 
   .corner {
@@ -728,6 +397,7 @@
     height: var(--radius-lg);
     fill: var(--bg-primary);
     pointer-events: none;
+    z-index: 2;
   }
 
   .left {
@@ -753,39 +423,4 @@
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
   }
-
-  /* Typst text selection and positioning */
-  :global(.tsel span),
-  :global(.tsel) {
-    left: 0;
-    position: fixed;
-    text-align: justify;
-    white-space: nowrap;
-    width: 100%;
-    height: 100%;
-    text-align-last: justify;
-    color: transparent;
-  }
-
-  :global(.tsel span::-moz-selection),
-  :global(.tsel::-moz-selection) {
-    color: transparent;
-    background: #7db9dea0;
-  }
-
-  :global(.tsel span::selection),
-  :global(.tsel::selection) {
-    color: transparent;
-    background: #7db9dea0;
-  }
-
-  :global(.negative-filter .typst-doc) {
-    filter: invert(1);
-  }
-
-  :global(.pseudo-link) {
-  fill: transparent;
-  cursor: pointer;
-  pointer-events: all;
-}
 </style>

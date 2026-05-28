@@ -74,6 +74,8 @@
     canWrite?: boolean;
     canComment?: boolean;
     canModerateComments?: boolean;
+    // Shared engine; enables Typst IDE features for .typ files.
+    typstCore?: import("@mudomi/onykia-engine").Core | null;
   }
 
   let {
@@ -110,6 +112,7 @@
     canWrite = true,
     canComment = true,
     canModerateComments = false,
+    typstCore = null,
   }: EditorPaneProps = $props();
 
   // Simple blob URL cache - keyed by asset ID
@@ -1478,6 +1481,8 @@
               {provider}
               {ydoc}
               fileId={selectedFile.id}
+              filePath={selectedFile.path}
+              {typstCore}
               onTrackerReady={handleTrackerReady}
               {diagnostics}
               {fileName}
