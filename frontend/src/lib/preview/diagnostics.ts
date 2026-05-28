@@ -1,24 +1,6 @@
-import type { Diagnostic, DiagnosticRange } from "../types";
+import type { Diagnostic } from "../types";
 import type { Diagnostic as LintDiagnostic } from "@codemirror/lint";
 import type { EditorView } from "codemirror";
-
-export function parseRange(rangeStr: string | undefined): DiagnosticRange | undefined {
-  if (!rangeStr || rangeStr === "") return undefined;
-
-  // Format: "startLine:startChar-endLine:endChar" or "line:char"
-  const match = rangeStr.match(/^(\d+):(\d+)(?:-(\d+):(\d+))?$/);
-  if (!match) return undefined;
-
-  const startLine = parseInt(match[1], 10);
-  const startChar = parseInt(match[2], 10);
-  const endLine = match[3] ? parseInt(match[3], 10) : startLine;
-  const endChar = match[4] ? parseInt(match[4], 10) : startChar;
-
-  return {
-    start: { line: startLine, character: startChar },
-    end: { line: endLine, character: endChar },
-  };
-}
 
 export function convertDiagnosticsToLint(
   diagnostics: Diagnostic[],

@@ -12,13 +12,18 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.18.0",
     "@codemirror/commands": "^6.10.0",
     "@codemirror/lang-javascript": "^6.2.4",
     "@codemirror/language": "^6.11.3",
+    "@codemirror/lint": "^6.8.0",
     "@codemirror/state": "^6.5.2",
     "@codemirror/theme-one-dark": "^6.1.3",
     "@codemirror/view": "^6.39.2",
+    "@lezer/highlight": "^1.2.3",
     "@lucide/svelte": "^0.561.0",
+    "@mudomi/onykia-codemirror": "0.4.0",
+    "@mudomi/onykia-engine": "0.4.0",
     "axios": "^1.13.2",
     "codemirror": "^6.0.2",
     "codemirror-lang-bib": "^0.1.1",
@@ -44,6 +49,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
+    "vite-plugin-static-copy": "^4.1.0",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0"
   }

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
   import { ToolButton, DropdownToolButton, Tooltip } from "$lib/components/ui";
   import Plus from "@lucide/svelte/icons/plus";
   import Minus from "@lucide/svelte/icons/minus";
@@ -12,10 +11,15 @@
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { saveLayoutState, loadLayoutState } from '$lib/utils/layoutStorage';
   import { browser } from '$app/environment';
+  import TypstCanvas from './TypstCanvas.svelte';
+  import type { Core } from '@mudomi/onykia-engine';
+
+  type ZoomMode = 'fit-width' | 'fit-height' | 'fit-page' | 'custom';
 
   interface Props {
-    separateWindow: Window;
-    projectName?: string;
+    // Shared engine
+    core: Core | null;
+    negative?: boolean;
     onCloseSeparatePreview?: () => void;
     onExportPDF?: () => void;
     onExportPNG?: () => void;
@@ -25,34 +29,26 @@
   }
 
   let {
-    separateWindow,
-    projectName = 'document',
+    core,
+    negative = false,
     onCloseSeparatePreview = () => {},
     onExportPDF = () => {},
-    onExportPNG = () => { alert("Export as PNG not implemented yet"); },
-    onExportSVG = () => { alert("Export as SVG not implemented yet"); },
+    onExportPNG = () => {},
+    onExportSVG = () => {},
     onExportSourcesAsZip = () => {},
     onOpenShare = () => {},
   }: Props = $props();
 
-  // iframe reference for communication
-  let previewIframe: HTMLIFrameElement | undefined;
-  let iframeMockReady = false;
-  let initialized = false;
-
-  // Queue for messages that arrive before iframe is ready
-  let messageQueue: Array<{ data: any; isFirstCompile: boolean }> = [];
+  let canvas: TypstCanvas | undefined = $state();
 
   // Load zoom state from localStorage
   const savedLayout = browser ? loadLayoutState() : null;
   let currentZoomValue = $state(savedLayout?.zoomScale ?? 1);
-  let currentZoomMode = $state<'fit-width' | 'fit-height' | 'fit-page' | 'custom'>(savedLayout?.zoomMode ?? 'custom');
-  let inhibNextZoomChange = false;
-  let isPreviewZoomInitialized = $state(false);
+  let currentZoomMode = $state<ZoomMode>(savedLayout?.zoomMode ?? 'custom');
 
   // Save zoom state to localStorage when it changes
   $effect(() => {
-    if (browser && currentZoomMode && currentZoomValue) {
+    if (browser) {
       saveLayoutState({
         zoomMode: currentZoomMode,
         zoomScale: currentZoomValue,
@@ -60,65 +56,16 @@
     }
   });
 
-  // --- Zoom Logic (via iframe commands) ---
-  function zoomIn() {
-    sendCommandToIframe('zoom-in');
-  }
+  function zoomIn() { canvas?.zoomIn(); }
+  function zoomOut() { canvas?.zoomOut(); }
+  function setZoom(zoom: number) { canvas?.setZoom(zoom); }
+  function fitToWidth() { canvas?.fitWidth(); }
+  function fitToHeight() { canvas?.fitHeight(); }
+  function fitToPage() { canvas?.fitPage(); }
 
-  function zoomOut() {
-    sendCommandToIframe('zoom-out');
-  }
-
-  function setZoom(zoom: number) {
+  function handleZoomChange(zoom: number, mode: ZoomMode) {
     currentZoomValue = zoom;
-    currentZoomMode = 'custom';
-    sendCommandToIframe('set-zoom', { zoom, mode: 'custom' });
-  }
-
-  function fitToWidth() {
-    currentZoomMode = 'fit-width';
-    inhibNextZoomChange = true;
-    sendCommandToIframe('fit-width');
-  }
-
-  function fitToHeight() {
-    currentZoomMode = 'fit-height';
-    inhibNextZoomChange = true;
-    sendCommandToIframe('fit-height');
-  }
-
-  function fitToPage() {
-    currentZoomMode = 'fit-page';
-    inhibNextZoomChange = true;
-    sendCommandToIframe('fit-page');
-  }
-
-  function reapplyCurrentZoomMode() {
-    switch (currentZoomMode) {
-      case 'fit-width':
-        fitToWidth();
-        break;
-      case 'fit-height':
-        fitToHeight();
-        break;
-      case 'fit-page':
-        fitToPage();
-        break;
-      case 'custom':
-        setZoom(currentZoomValue);
-        break;
-    }
-  }
-
-  // Send a command to the iframe
-  function sendCommandToIframe(command: string, payload?: any) {
-    if (previewIframe?.contentWindow) {
-      previewIframe.contentWindow.postMessage({
-        type: 'typst-command',
-        command,
-        payload
-      }, '*');
-    }
+    currentZoomMode = mode;
   }
 
   const zoomItems = [
@@ -139,119 +86,6 @@
     { label: "Export as SVG", onclick: () => onExportSVG(), separator: true },
     { label: "Export sources as ZIP", onclick: () => onExportSourcesAsZip() },
   ];
-
-  // Handle messages from iframe
-  function handleIframeMessage(event: MessageEvent) {
-    const { type, data, command, zoom, mode } = event.data || {};
-
-    switch (type) {
-      case 'typst-ws-send':
-        handleIframeSend(data);
-        break;
-
-      case 'typst-zoom-changed':
-        if (inhibNextZoomChange) {
-          // Ignore this change - it was a backlash of our own command
-          inhibNextZoomChange = false;
-          return;
-        }
-        if (typeof zoom === 'number') {
-          currentZoomValue = zoom;
-          currentZoomMode = mode ?? 'custom';
-        }
-        break;
-
-      case 'typst-zoom-initialized':
-        isPreviewZoomInitialized = true;
-        break;
-    }
-  }
-
-  // Handle messages the iframe sends via the mock WebSocket
-  function handleIframeSend(data: string | ArrayBuffer) {
-    if (typeof data === 'string') {
-      if (data === 'current') {
-        if (!iframeMockReady) {
-          // First time receiving 'current' - iframe mock is ready
-          iframeMockReady = true;
-          initialized = true;
-          processQueuedMessages();
-        }
-      }
-    }
-  }
-
-  // Handle messages from the main window (vector data from compiler)
-  function handleMainWindowMessage(event: MessageEvent) {
-    if (event.data.type === "typst-vector-data") {
-      const { data, isFirstCompile } = event.data;
-
-
-      if (initialized && iframeMockReady) {
-        // Forward to iframe immediately
-        sendVectorDataToIframe(data, isFirstCompile);
-      } else {
-        // Queue message for later processing
-        messageQueue.push({ data, isFirstCompile });
-      }
-    }
-  }
-
-  // Process queued messages after iframe is ready
-  function processQueuedMessages() {
-    for (const msg of messageQueue) {
-      sendVectorDataToIframe(msg.data, msg.isFirstCompile);
-    }
-    messageQueue = [];
-
-    reapplyCurrentZoomMode();
-
-    // Request current state from main window after iframe is ready
-    // This triggers a recompile in the main window
-    if (window.opener) {
-      window.opener.postMessage({ type: 'typst-request-current' }, '*');
-    }
-  }
-
-  // Send vector data to the iframe via postMessage
-  function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
-    if (!previewIframe?.contentWindow || !iframeMockReady) {
-      return;
-    }
-
-    // Format message as the typst preview expects: "messageType,binaryData"
-    const messageType = isFirstCompile ? 'new' : 'diff-v1';
-    const encoder = new TextEncoder();
-    const typeBytes = encoder.encode(messageType + ',');
-
-    // Combine type and data
-    const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
-    combined.set(typeBytes, 0);
-    combined.set(new Uint8Array(vectorData), typeBytes.length);
-
-    // Send via postMessage to iframe
-    previewIframe.contentWindow.postMessage({
-      type: 'typst-ws-message',
-      data: combined.buffer.slice(0)
-    }, '*');
-  }
-
-  onMount(() => {
-    if (!browser) return;
-
-    // Listen for messages from the iframe (zoom changes, mock ready)
-    separateWindow.addEventListener('message', handleIframeMessage);
-
-    // Listen for messages from the main window (vector data)
-    separateWindow.addEventListener('message', handleMainWindowMessage);
-  });
-
-  onDestroy(() => {
-    if (browser) {
-      separateWindow.removeEventListener('message', handleIframeMessage);
-      separateWindow.removeEventListener('message', handleMainWindowMessage);
-    }
-  });
 </script>
 
 <div class="preview-wrapper">
@@ -285,7 +119,7 @@
         <ToolButton icon={Share2} onclick={onOpenShare} position="first"/>
       </Tooltip>
       <Tooltip text="Export PDF" position="bottom">
-        <ToolButton icon={Download} onclick={onExportPDF} position="middle"/>
+        <ToolButton icon={Download} onclick={() => onExportPDF()} position="middle"/>
       </Tooltip>
       <Tooltip text="Export..." position="bottom">
         <DropdownToolButton 
@@ -297,25 +131,25 @@
       </Tooltip>
     </div>
   </div>
-  <div class="preview-iframe-wrapper">
-    <iframe
-      bind:this={previewIframe}
-      id="preview-iframe"
-      class="preview-iframe"
-      title="Typst Preview"
-      src="/typst-preview">
-    </iframe>
+  <div class="preview-canvas-wrapper">
+    {#if core}
+      <TypstCanvas
+        bind:this={canvas}
+        {core}
+        {negative}
+        initialZoomMode={currentZoomMode}
+        initialZoom={currentZoomValue}
+        onZoomChange={handleZoomChange}
+      />
+    {:else}
+      <div class="preview-loading-overlay"><p>Loading preview...</p></div>
+    {/if}
     <svg class="corner left" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
       <path d="M 0 0 V 1 A 1 1 0 0 1 1 0 Z"/>
     </svg>
     <svg class="corner right" viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
       <path d="M 1 0 V 1 A 1 1 0 0 0 0 0 Z"/>
     </svg>
-    {#if !isPreviewZoomInitialized}
-      <div class="preview-loading-overlay">
-        <p>Loading preview...</p>
-      </div>
-    {/if}
   </div>
 </div>
 
@@ -354,17 +188,11 @@
     display: flex;
   }
 
-  .preview-iframe-wrapper {
+  .preview-canvas-wrapper {
     position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
-  }
-
-  .preview-iframe {
-    height: 100%;
-    width: 100%;
-    border: none;
   }
 
   .corner {
@@ -374,6 +202,7 @@
     height: var(--radius-lg);
     fill: var(--bg-primary);
     pointer-events: none;
+    z-index: 2;
   }
 
   .left {
