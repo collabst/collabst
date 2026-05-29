@@ -3,7 +3,7 @@
   import { browser } from '$app/environment'
   import { page } from '$app/stores'
   import { auth, hasWorkspaceSession } from '$lib/stores/auth'
-  import NotificationContainer from '$lib/components/ui/NotificationContainer.svelte';
+  import { NotificationContainer } from '$lib/components/ui'
   import type { Snippet } from 'svelte'
 
   interface Props {
@@ -34,3 +34,4 @@
 
 <NotificationContainer />
 {@render children()}
+
