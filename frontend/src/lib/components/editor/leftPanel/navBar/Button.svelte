@@ -29,10 +29,10 @@
     align-items: center;
     justify-content: center;
     color: var(--text-primary);
-    border-radius: 1rem;
+    border-radius: 0.8rem;
     box-sizing: border-box;
-    width: 4rem;
-    height: 4rem;
+    width: 3rem;
+    height: 3rem;
   }
 
   .button:hover {
@@ -47,6 +47,6 @@
 
   .button.selected {
     border: 1px solid #00ac97;
-    box-shadow: inset 0px -5px 0px 0px #03493133;
+    box-shadow: inset 0px -4px 0px 0px #03493133;
   }
 </style>

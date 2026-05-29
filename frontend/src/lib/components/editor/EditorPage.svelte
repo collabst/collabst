@@ -1,5 +1,5 @@
 <script lang="ts">
-  import TopBar from "$lib/components/ui/TopBar.svelte";
+  import TopBar from "$lib/components/ui/topBar/TopBar.svelte";
   import LeftPanel from "$lib/components/editor/leftPanel/LeftPanel.svelte";
   import EditorPanel from "$lib/components/editor/editorPanel/EditorPanel.svelte";
   import PreviewPanel from "$lib/components/editor/PreviewPanel.svelte";
