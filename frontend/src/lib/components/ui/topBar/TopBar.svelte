@@ -15,7 +15,7 @@
   <div class="project-name">Project Name</div>
 
   <div class="right-section">
-    <ThemeToggle icon={Moon} onclick={() => {}} />
+    <ThemeToggle />
     <TopButton icon={Settings} onclick={() => {}} />
     <TopButton icon={User} onclick={() => {}} />
   </div>

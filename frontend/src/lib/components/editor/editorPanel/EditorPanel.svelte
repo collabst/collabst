@@ -2,11 +2,22 @@
   import Panel from "$lib/components/editor/Panel.svelte";
   import ToolBar from "$lib/components/editor/editorPanel/toolbar/ToolBar.svelte";
   import Editor from "$lib/components/editor/editorPanel/Editor.svelte";
+  import { editorContext } from "$lib/components/editor/context";
 </script>
 
 <Panel>
   <div class="container">
-    <Editor />
+    <Editor
+      fileId={$editorContext.fileId}
+      fileName={$editorContext.fileName}
+      ytext={$editorContext.ytext}
+      ydoc={$editorContext.ydoc}
+      provider={$editorContext.provider}
+      diagnostics={$editorContext.diagnostics}
+      wrapLines={$editorContext.wrapLines}
+      editable={$editorContext.editable}
+      theme={$editorContext.theme}
+    />
     <ToolBar />
   </div>
 </Panel>

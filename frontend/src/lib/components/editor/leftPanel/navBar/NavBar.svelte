@@ -68,8 +68,8 @@
 
   .nav-bar {
     display: flex;
-    gap: 0rem;
-    background-color: #f6fbfb;
+    gap: 2px;
+    background-color: var(--bg-editor);
     border: 1px solid #00ac97;
     border-radius: 1rem;
     padding: 0.5rem 0.8rem;

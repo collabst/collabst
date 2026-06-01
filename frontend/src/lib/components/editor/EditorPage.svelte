@@ -25,6 +25,7 @@
     min-height: 0; /* allow children to shrink inside this flex item */
     display: flex;
     flex-direction: row;
+    flex: 1;
     --space: 0.5rem;
     gap: var(--space);
     padding: 0 var(--space) var(--space) var(--space);

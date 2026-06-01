@@ -3,5 +3,5 @@
 </script>
 
 {#each $editorContext.files as file}
-  <div>{file.name}</div>
+  <div>{file.path}</div>
 {/each}
