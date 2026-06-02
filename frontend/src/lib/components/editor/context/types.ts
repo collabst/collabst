@@ -1,7 +1,4 @@
 import type { EditorView } from "codemirror";
-import type { Diagnostic } from "$lib/types";
-import type { CommentRangeTracker } from "$lib/codemirror/comments";
-import type { WebsocketProvider } from "y-websocket";
 import type * as Y from "yjs";
 
 export interface File {
@@ -24,24 +21,13 @@ export type LeftPanelTab =
 
 export type EditorTheme = "light" | "dark";
 
-export type EditorRuntimeState = {
-  fileId: string | null;
-  fileName: string;
-  ytext: Y.Text | null;
-  ydoc: Y.Doc | null;
-  provider: WebsocketProvider | null;
-  diagnostics: Diagnostic[];
-  wrapLines: boolean;
-  editable: boolean;
-  theme: EditorTheme;
-  editorElement: HTMLDivElement | null;
-  editorView: EditorView | null;
-  undoManager: Y.UndoManager | null;
-  commentTracker: CommentRangeTracker | null;
-};
-
 export type EditorState = {
   projectId: string;
   leftPanelTab: LeftPanelTab;
   files: File[];
-} & EditorRuntimeState;
+  selectedFile?: File;
+  editorElement: HTMLDivElement | undefined;
+  ydoc: Y.Doc | null;
+  ytext: Y.Text | null;
+  view: EditorView | null;
+};

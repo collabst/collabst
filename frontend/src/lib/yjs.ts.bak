@@ -28,16 +28,21 @@ function generateUserColor(): string {
 
 export function createProjectYjs(
   projectId: string,
+  onStatusChange: (status: { isConnected: boolean; isSynced: boolean; isLocalSynced: boolean }) => void,
   user?: User | null,
   token?: string | null
 ): YjsConnection {
+  console.log('[YJS] Creating project-wide connection for project:', projectId)
+
   const ydoc = new Y.Doc()
 
   const indexeddb = new IndexeddbPersistence(`project-${projectId}`, ydoc)
   let isLocalSynced = false
 
   indexeddb.on('synced', () => {
+    console.log('[YJS] IndexedDB synced - local data loaded')
     isLocalSynced = true
+    onStatusChange({ isConnected, isSynced, isLocalSynced })
   })
 
   const provider = new WebsocketProvider(
@@ -51,6 +56,7 @@ export function createProjectYjs(
   )
 
   // Set user awareness state for presence
+  console.log('[YJS] Setting local user awareness state:', user)
   if (user) {
     provider.awareness.setLocalStateField('user', {
       id: user.id,
@@ -65,19 +71,24 @@ export function createProjectYjs(
 
   const handleStatus = (event: { status: string }) => {
     isConnected = event.status === 'connected'
+    console.log('[YJS] WebSocket status:', event.status)
 
     if (isConnected) {
       setTimeout(() => {
         isSynced = true
+        onStatusChange({ isConnected, isSynced, isLocalSynced })
       }, 500)
     } else {
       isSynced = false
     }
 
+    onStatusChange({ isConnected, isSynced, isLocalSynced })
   }
 
   const handleSync = (synced: boolean) => {
+    console.log('[YJS] Server sync status:', synced)
     isSynced = synced
+    onStatusChange({ isConnected, isSynced, isLocalSynced })
   }
 
   // Listen for awareness changes from other clients
@@ -85,6 +96,7 @@ export function createProjectYjs(
   const handleAwarenessChange = ({ added, updated, removed }: { added: number[], updated: number[], removed: number[] }) => {
     if (added.length > 0 && user) {
       // New client(s) joined, re-broadcast our presence so they see us
+      console.log('[YJS] New client(s) detected, re-broadcasting awareness')
       provider.awareness.setLocalStateField('user', {
         id: user.id,
         name: user.display_name,

@@ -7,17 +7,7 @@
 
 <Panel>
   <div class="container">
-    <Editor
-      fileId={$editorContext.fileId}
-      fileName={$editorContext.fileName}
-      ytext={$editorContext.ytext}
-      ydoc={$editorContext.ydoc}
-      provider={$editorContext.provider}
-      diagnostics={$editorContext.diagnostics}
-      wrapLines={$editorContext.wrapLines}
-      editable={$editorContext.editable}
-      theme={$editorContext.theme}
-    />
+    <Editor />
     <ToolBar />
   </div>
 </Panel>

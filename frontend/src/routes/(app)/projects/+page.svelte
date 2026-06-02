@@ -7,7 +7,6 @@
 
   onMount(async () => {
     projects = await projectsApi.list();
-    console.log(projects);
   });
 
   function submit(event: Event) {
