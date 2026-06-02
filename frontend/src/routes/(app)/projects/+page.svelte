@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { projectsApi } from "$lib/services/api";
+  import { projectsApi, filesApi } from "$lib/services/api";
   import type { Project } from "$lib/types";
 
   let projects: Project[] = $state([]);
@@ -9,16 +9,16 @@
     projects = await projectsApi.list();
   });
 
-  function submit(event: Event) {
+  async function submit(event: Event) {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const input = form.querySelector("input") as HTMLInputElement;
     const name = input.value.trim();
     if (name) {
-      projectsApi.create(name).then((newProject) => {
-        projects = [...projects, newProject];
-        input.value = "";
-      });
+      const project = await projectsApi.create(name);
+      projects = [...projects, project];
+      input.value = "";
+      const file = await filesApi.create(project.id, "main.typ", "Hello world!");
     }
   }
 </script>

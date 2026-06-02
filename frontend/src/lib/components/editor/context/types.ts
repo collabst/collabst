@@ -25,7 +25,7 @@ export type EditorState = {
   projectId: string;
   leftPanelTab: LeftPanelTab;
   files: File[];
-  selectedFile?: File;
+  selectedFile: File;
   editorElement: HTMLDivElement | undefined;
   ydoc: Y.Doc | null;
   ytext: Y.Text | null;

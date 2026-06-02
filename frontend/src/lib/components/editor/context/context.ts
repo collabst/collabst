@@ -34,6 +34,7 @@ import {
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
 import { lintKeymap } from "@codemirror/lint";
+import * as Y from "yjs";
 
 
 const extensions = [
@@ -118,37 +119,44 @@ function cycleLeftPanelTab(
   }));
 }
 
+
+function loadCodeMirrorContent(store: ReturnType<typeof writable<EditorState>>) {
+  const ytext = get(store).ytext;
+  const view = get(store).view;
+  if (ytext && view) {
+    const newState = CMState.create({
+      doc: ytext.toString(),
+      extensions,
+    });
+    view.setState(newState);
+  }
+}
+
+
 function selectFile(store: ReturnType<typeof writable<EditorState>>, fileId: string) {
   const file = get(store).files.find((f) => f.id === fileId);
   if (file) {
-    const ytext = get(store).ydoc?.getText(`file-${file.id}`) || null;
-    const newState = CMState.create({
-      doc: ytext?.toString() || "",
-      extensions,
-    });
-    const view = get(store).view;
-    view?.setState(newState);
     store.update((state) => ({
       ...state,
       selectedFile: file,
-      ytext,
+      ytext: state.ydoc?.getText(`file-${file.id}`) || null,
     }));
+    loadCodeMirrorContent(store);
   }
 }
 
 function initView(store: ReturnType<typeof writable<EditorState>>) {
   const editorElement = get(store).editorElement;
-  const ytext = get(store).ytext;
   const view = new EditorView({
-    doc: ytext?.toString() || "",
+    doc: "",
     parent: editorElement,
     extensions,
   });
-
   store.update((state) => ({
     ...state,
     view,
   }));
+  loadCodeMirrorContent(store);
 }
 
 export let editorContext: EditorContext;
@@ -160,9 +168,13 @@ export async function initializeEditorContext(projectId: string) {
   const user = get(auth).user;
 
   const files = await filesApi.list(projectId);
+  const selectedFile = files[0];
 
   const projectYjs = createProjectYjs(projectId, user, token);
-  const ytext = projectYjs.ydoc.getText(`file-${files[0]?.id}`);
+  let ytext: Y.Text | null = null;
+  if (selectedFile) {
+    ytext = projectYjs.ydoc.getText(`file-${selectedFile.id}`);
+  }
 
   const WS_URL = getWsUrl();
 
@@ -191,12 +203,15 @@ export async function initializeEditorContext(projectId: string) {
   };
 
   let editorElement: HTMLDivElement | undefined = undefined;
-
+  console.log(selectedFile);
+  console.log(projectYjs.ydoc);
+  console.log(ytext);
+  console.log(ytext?.toString());
   store = writable<EditorState>({
     projectId,
     leftPanelTab: "files",
     files,
-    selectedFile: files[0],
+    selectedFile,
     editorElement,
     ydoc: projectYjs.ydoc,
     ytext,
