@@ -1,9 +1,9 @@
-import { get, writable, type Writable } from "svelte/store";
-import type { EditorState, LeftPanelTab } from "./types";
-import { filesApi } from "$lib/services/api";
-import { auth } from "$lib/stores/auth";
-import { getWsUrl } from "$lib/utils/urls";
-import { createProjectYjs } from "$lib/yjs";
+// import { get, writable, type Writable } from "svelte/store";
+// import type { EditorState, LeftPanelTab } from "./types";
+// import { filesApi } from "$lib/services/api";
+// import { auth } from "$lib/stores/auth";
+// import { getWsUrl } from "$lib/utils/urls";
+// import { createProjectYjs } from "$lib/yjs";
 import { EditorState as CMState } from "@codemirror/state";
 import {
   EditorView,
@@ -34,8 +34,15 @@ import {
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
 import { lintKeymap } from "@codemirror/lint";
-import * as Y from "yjs";
 
+import { derived, get, writable } from "svelte/store";
+import type { LeftPanelTab } from "./types";
+import { type File } from "./types";
+import * as Y from "yjs";
+import { filesApi } from "$lib/services/api";
+import { createProjectYjs, type YjsConnection } from "$lib/yjs";
+import user from "@lucide/svelte/icons/user";
+import { auth } from "$lib/stores/auth";
 
 const extensions = [
   // A line number gutter
@@ -90,19 +97,187 @@ const extensions = [
   ]),
 ];
 
-export type EditorContext = {
-  subscribe: ReturnType<typeof writable<EditorState>>["subscribe"];
-  set: ReturnType<typeof writable<EditorState>>["set"];
-  update: ReturnType<typeof writable<EditorState>>["update"];
-  cycleLeftPanelTab: (direction: 1 | -1) => void;
-  selectFile: (fileId: string) => void;
-  initView: () => void;
+// export type EditorContext = {
+//   subscribe: ReturnType<typeof writable<EditorState>>["subscribe"];
+//   set: ReturnType<typeof writable<EditorState>>["set"];
+//   update: ReturnType<typeof writable<EditorState>>["update"];
+//   cycleLeftPanelTab: (direction: 1 | -1) => void;
+//   selectFile: (fileId: string) => void;
+//   initView: () => void;
+// };
+
+// function cycleLeftPanelTab(
+//   store: ReturnType<typeof writable<EditorState>>,
+//   direction: 1 | -1,
+// ) {
+//   const tabs: LeftPanelTab[] = [
+//     "files",
+//     "search",
+//     "outline",
+//     "issues",
+//     "comments",
+//   ];
+//   const currentTab = get(store).leftPanelTab;
+//   const currentIndex = tabs.indexOf(currentTab);
+//   const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+//   store.update((state) => ({
+//     ...state,
+//     leftPanelTab: tabs[nextIndex],
+//   }));
+// }
+
+// function loadCodeMirrorContent(store: ReturnType<typeof writable<EditorState>>) {
+//   const ytext = get(store).ytext;
+//   const view = get(store).view;
+//   if (ytext && view) {
+//     const newState = CMState.create({
+//       doc: ytext.toString(),
+//       extensions,
+//     });
+//     view.setState(newState);
+//   }
+// }
+
+// function selectFile(store: ReturnType<typeof writable<EditorState>>, fileId: string) {
+//   const file = get(store).files.find((f) => f.id === fileId);
+//   if (file) {
+//     store.update((state) => ({
+//       ...state,
+//       selectedFile: file,
+//       ytext: state.ydoc?.getText(`file-${file.id}`) || null,
+//     }));
+//     loadCodeMirrorContent(store);
+//   }
+// }
+
+// function initView(store: ReturnType<typeof writable<EditorState>>) {
+//   const editorElement = get(store).editorElement;
+//   const view = new EditorView({
+//     doc: "",
+//     parent: editorElement,
+//     extensions,
+//   });
+//   store.update((state) => ({
+//     ...state,
+//     view,
+//   }));
+//   loadCodeMirrorContent(store);
+// }
+
+// export let editorContext: EditorContext;
+
+// export async function initializeEditorContext(projectId: string) {
+//   let store: Writable<EditorState>;
+
+//   const token = get(auth).token;
+//   const user = get(auth).user;
+
+//   const files = await filesApi.list(projectId);
+//   const selectedFile = files[0];
+
+//   const projectYjs = createProjectYjs(projectId, user, token);
+//   let ytext: Y.Text | null = null;
+//   if (selectedFile) {
+//     ytext = projectYjs.ydoc.getText(`file-${selectedFile.id}`);
+//   }
+
+//   const WS_URL = getWsUrl();
+
+//   const wsUrl = new URL(`${WS_URL}/ws/project/${projectId}`);
+//   if (token) {
+//     wsUrl.searchParams.set('token', token);
+//   }
+//   let ws = new WebSocket(wsUrl.toString());
+
+//   let pingInterval: number | null = null;
+//   ws.onopen = () => {
+//     pingInterval = window.setInterval(() => {
+//       if (ws?.readyState === WebSocket.OPEN) {
+//         console.log("Sending ping to keep WebSocket alive");
+//         ws.send(JSON.stringify({ type: 'ping' }));
+//       }
+//     }, 30000)
+//   }
+//   ws.onmessage = (event) => {
+//     try {
+//       const message = JSON.parse(event.data);
+//       console.log("Received WebSocket message:", message);
+//     } catch (error) {
+//       console.error("Failed to parse WebSocket message:", event.data);
+//     }
+//   };
+
+//   let editorElement: HTMLDivElement | undefined = undefined;
+//   store = writable<EditorState>({
+//     projectId,
+//     leftPanelTab: "files",
+//     files,
+//     selectedFile,
+//     editorElement,
+//     ydoc: projectYjs.ydoc,
+//     ytext,
+//     view: null,
+//   });
+
+//   editorContext = {
+//     subscribe: store.subscribe,
+//     set: store.set,
+//     update: store.update,
+//     cycleLeftPanelTab: (direction) => cycleLeftPanelTab(store, direction),
+//     selectFile: (fileId) => selectFile(store, fileId),
+//     initView: () => initView(store),
+//   };
+// }
+
+export const projectId = writable<string>("");
+export const leftPanelTab = writable<LeftPanelTab>("files");
+export const files = writable<File[]>([]);
+export const selectedFile = writable<File | null>(null);
+export const editorElement = writable<HTMLDivElement | undefined>(undefined);
+export const projectYjs = writable<YjsConnection | null>(null);
+export const ydoc = derived(
+  projectYjs,
+  ($projectYjs) => $projectYjs?.ydoc || null,
+);
+export const view = writable<EditorView | null>(null);
+export const ytext = derived([ydoc, selectedFile], ([$ydoc, $selectedFile]) => {
+  return $ydoc?.getText(`file-${$selectedFile?.id}`);
+});
+export const context = {
+  projectId,
+  leftPanelTab,
+  files,
+  selectedFile,
+  editorElement,
+  ydoc,
+  ytext,
+  view,
 };
 
-function cycleLeftPanelTab(
-  store: ReturnType<typeof writable<EditorState>>,
-  direction: 1 | -1,
-) {
+export async function initContext(projectIdValue: string) {
+  projectId.set(projectIdValue);
+  files.set(await filesApi.list(projectIdValue));
+  projectYjs.set(
+    createProjectYjs(projectIdValue, get(auth).user, get(auth).token),
+  );
+}
+
+editorElement.subscribe((el) => {
+  if (el) {
+    view.update((v) => {
+      if (v) {
+        v.destroy();
+      }
+      return new EditorView({
+        doc: "",
+        parent: el,
+        extensions,
+      });
+    });
+  }
+});
+
+export function cycleLeftPanelTab(direction: 1 | -1) {
   const tabs: LeftPanelTab[] = [
     "files",
     "search",
@@ -110,120 +285,27 @@ function cycleLeftPanelTab(
     "issues",
     "comments",
   ];
-  const currentTab = get(store).leftPanelTab;
+  const currentTab = get(leftPanelTab);
   const currentIndex = tabs.indexOf(currentTab);
   const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
-  store.update((state) => ({
-    ...state,
-    leftPanelTab: tabs[nextIndex],
-  }));
+  leftPanelTab.set(tabs[nextIndex]);
 }
 
-
-function loadCodeMirrorContent(store: ReturnType<typeof writable<EditorState>>) {
-  const ytext = get(store).ytext;
-  const view = get(store).view;
-  if (ytext && view) {
-    const newState = CMState.create({
-      doc: ytext.toString(),
-      extensions,
-    });
-    view.setState(newState);
-  }
-}
-
-
-function selectFile(store: ReturnType<typeof writable<EditorState>>, fileId: string) {
-  const file = get(store).files.find((f) => f.id === fileId);
+export function selectFile(fileId: string) {
+  const file = get(files).find((f) => f.id === fileId);
   if (file) {
-    store.update((state) => ({
-      ...state,
-      selectedFile: file,
-      ytext: state.ydoc?.getText(`file-${file.id}`) || null,
-    }));
-    loadCodeMirrorContent(store);
+    selectedFile.set(file);
   }
 }
 
-function initView(store: ReturnType<typeof writable<EditorState>>) {
-  const editorElement = get(store).editorElement;
-  const view = new EditorView({
-    doc: "",
-    parent: editorElement,
-    extensions,
+ytext.subscribe((newYText) => {
+  view.update((v) => {
+    v?.setState(
+      CMState.create({
+        doc: newYText?.toString() || "",
+        extensions,
+      }),
+    );
+    return v;
   });
-  store.update((state) => ({
-    ...state,
-    view,
-  }));
-  loadCodeMirrorContent(store);
-}
-
-export let editorContext: EditorContext;
-
-export async function initializeEditorContext(projectId: string) {
-  let store: Writable<EditorState>;
-
-  const token = get(auth).token;
-  const user = get(auth).user;
-
-  const files = await filesApi.list(projectId);
-  const selectedFile = files[0];
-
-  const projectYjs = createProjectYjs(projectId, user, token);
-  let ytext: Y.Text | null = null;
-  if (selectedFile) {
-    ytext = projectYjs.ydoc.getText(`file-${selectedFile.id}`);
-  }
-
-  const WS_URL = getWsUrl();
-
-  const wsUrl = new URL(`${WS_URL}/ws/project/${projectId}`);
-  if (token) {
-    wsUrl.searchParams.set('token', token);
-  }
-  let ws = new WebSocket(wsUrl.toString());
-
-  let pingInterval: number | null = null;
-  ws.onopen = () => {
-    pingInterval = window.setInterval(() => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        console.log("Sending ping to keep WebSocket alive");
-        ws.send(JSON.stringify({ type: 'ping' }));
-      }
-    }, 30000)
-  }
-  ws.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      console.log("Received WebSocket message:", message);
-    } catch (error) {
-      console.error("Failed to parse WebSocket message:", event.data);
-    }
-  };
-
-  let editorElement: HTMLDivElement | undefined = undefined;
-  console.log(selectedFile);
-  console.log(projectYjs.ydoc);
-  console.log(ytext);
-  console.log(ytext?.toString());
-  store = writable<EditorState>({
-    projectId,
-    leftPanelTab: "files",
-    files,
-    selectedFile,
-    editorElement,
-    ydoc: projectYjs.ydoc,
-    ytext,
-    view: null,
-  });
-
-  editorContext = {
-    subscribe: store.subscribe,
-    set: store.set,
-    update: store.update,
-    cycleLeftPanelTab: (direction) => cycleLeftPanelTab(store, direction),
-    selectFile: (fileId) => selectFile(store, fileId),
-    initView: () => initView(store),
-  };
-}
+});

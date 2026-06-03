@@ -2,7 +2,7 @@
   import Panel from "$lib/components/editor/Panel.svelte";
   import ToolBar from "$lib/components/editor/editorPanel/toolbar/ToolBar.svelte";
   import Editor from "$lib/components/editor/editorPanel/Editor.svelte";
-  import { editorContext } from "$lib/components/editor/context";
+  import { context } from "$lib/components/editor/context";
 </script>
 
 <Panel>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { editorContext, type LeftPanelTab } from "$lib/components/editor/context/index";
+  import { leftPanelTab, type LeftPanelTab } from "$lib/components/editor/context/index";
 
   const tabTitles: Record<LeftPanelTab, string> = {
     files: "Files",
@@ -9,7 +9,7 @@
     comments: "Comments",
   };
 
-  let title = $derived(tabTitles[$editorContext.leftPanelTab]);
+  let title = $derived(tabTitles[$leftPanelTab]);
 </script>
 
 <div class="top-bar">

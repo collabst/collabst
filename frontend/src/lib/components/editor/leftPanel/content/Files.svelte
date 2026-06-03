@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { editorContext } from "$lib/components/editor/context/index";
+  import { files, selectFile } from "$lib/components/editor/context/index";
 
   function handleFileClick(fileId: string) {
-    editorContext.selectFile(fileId);
+    selectFile(fileId);
   };
 </script>
 
 <div class="files">
-{#each $editorContext.files as file}
+{#each $files as file}
   <button onclick={() => {handleFileClick(file.id)}}>{file.path}</button>
 {/each}
 </div>

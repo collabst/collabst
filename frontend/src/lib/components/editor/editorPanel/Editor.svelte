@@ -1,13 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { editorContext } from "../context";
-
-  onMount(() => {
-    editorContext.initView();
-  });
+  import { editorElement } from "../context";
 </script>
 
-<div bind:this={$editorContext.editorElement} class="editor"></div>
+<div bind:this={$editorElement} class="editor"></div>
 
 <style>
   .editor {

@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { editorContext } from "$lib/components/editor/context/index";
+  import { leftPanelTab } from "$lib/components/editor/context/index";
   import Files from "./Files.svelte";
 
-  let tab = $derived($editorContext.leftPanelTab);
+  let tab = $derived($leftPanelTab);
 </script>
 
-{#if $editorContext.leftPanelTab === "files"}
+{#if $leftPanelTab === "files"}
   <Files />
-{:else if $editorContext.leftPanelTab === "search"}
+{:else if $leftPanelTab === "search"}
   <div>Search</div>
-{:else if $editorContext.leftPanelTab === "outline"}
+{:else if $leftPanelTab === "outline"}
   <div>Outline</div>
-{:else if $editorContext.leftPanelTab === "issues"}
+{:else if $leftPanelTab === "issues"}
   <div>Issues</div>
-{:else if $editorContext.leftPanelTab === "comments"}
+{:else if $leftPanelTab === "comments"}
   <div>Comments</div>
 {/if}

@@ -8,20 +8,19 @@
   } from "@lucide/svelte";
   import Button from "./Button.svelte";
   import {
-    editorContext,
+    leftPanelTab,
     type LeftPanelTab,
+    cycleLeftPanelTab,
   } from "$lib/components/editor/context/index";
 
   function handleTabClick(tab: LeftPanelTab) {
-    $editorContext.leftPanelTab = tab;
+    $leftPanelTab = tab;
   }
 
   function handleNavWheel(event: WheelEvent) {
     const direction = event.deltaY > 0 ? 1 : -1;
-    editorContext.cycleLeftPanelTab(direction);
+    cycleLeftPanelTab(direction);
   }
-
-  let leftPanelTab = $derived($editorContext.leftPanelTab);
 </script>
 
 <div class="container">
@@ -29,27 +28,27 @@
     <Button
       icon={File}
       onclick={() => handleTabClick("files")}
-      selected={leftPanelTab === "files"}
+      selected={$leftPanelTab === "files"}
     />
     <Button
       icon={Search}
       onclick={() => handleTabClick("search")}
-      selected={leftPanelTab === "search"}
+      selected={$leftPanelTab === "search"}
     />
     <Button
       icon={Map}
       onclick={() => handleTabClick("outline")}
-      selected={leftPanelTab === "outline"}
+      selected={$leftPanelTab === "outline"}
     />
     <Button
       icon={TriangleAlert}
       onclick={() => handleTabClick("issues")}
-      selected={leftPanelTab === "issues"}
+      selected={$leftPanelTab === "issues"}
     />
     <Button
       icon={MessageSquareText}
       onclick={() => handleTabClick("comments")}
-      selected={leftPanelTab === "comments"}
+      selected={$leftPanelTab === "comments"}
     />
   </div>
 </div>
