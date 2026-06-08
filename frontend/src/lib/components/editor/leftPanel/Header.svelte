@@ -19,8 +19,9 @@
 <style>
   .top-bar {
     width: 100%;
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: bold;
-    padding: 2rem;
+    padding: 1.5rem 1.5rem;
+    letter-spacing: -0.03em;
   }
 </style>

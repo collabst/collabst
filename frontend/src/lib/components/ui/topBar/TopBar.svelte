@@ -26,13 +26,14 @@
     display: flex;
     align-items: center;
     background-color: var(--bg-primary);
-    padding: 0.75rem 1.5rem;
-    gap: 0.25rem;
+    padding: 0.4rem 1.5rem;
+    gap: 0rem;
   }
 
   .project-name {
     margin-left: 0.5rem;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
+    letter-spacing: -0.03em;
     font-weight: bold;
     color: var(--text-primary);
   }

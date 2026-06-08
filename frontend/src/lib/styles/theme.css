@@ -206,6 +206,11 @@
   --bg-typst-doc: #ffffff;
   /* Typst document background */
 
+  /* Navbar Colors */
+  --navbar-bg: #232325;
+  --navbar-border: #086764ca;
+  --navbar-shadow: #001111e2;
+
   /* Surface Colors - Neutral grey tones */
   --surface-primary: #252526;
   --surface-secondary: #222326;
@@ -334,6 +339,11 @@
   /* Preview pane background */
   --bg-typst-doc: #ffffff;
   /* Typst document background - white for clarity */
+
+  /* Navbar Colors */
+  --navbar-bg: #f1f8f8;
+  --navbar-border: #00ac98d3;
+  --navbar-shadow: #00866933;
 
   /* Surface Colors - Adjusted to match new scheme */
   --surface-primary: var(--bg-primary);

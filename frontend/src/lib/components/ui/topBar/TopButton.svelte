@@ -9,7 +9,7 @@
   let { icon: Icon, onclick }: Props = $props();
 
   const strokeWidth = 2;
-  const size = 26;
+  const size = 20;
 </script>
 
 <button
@@ -39,13 +39,17 @@
 
   @keyframes jumpAnimation {
     0% {
-      transform: translateY(-2px) scaleX(0.8) scaleY(1.1);
+      transform: translateY(-3px) scaleX(0.8) scaleY(1.2);
     }
     80% {
-      transform: translateY(1px) scaleX(1.1) scaleY(0.95);
+      transform: translateY(1px) scaleX(1.2) scaleY(0.95);
     }
     100% {
       transform: none;
     }
+  }
+
+  .button:active :global(svg) {
+    transform: translateY(1px) scaleX(1.15) scaleY(0.95);
   }
 </style>

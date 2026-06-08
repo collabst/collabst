@@ -7,7 +7,7 @@
   }
 
   const strokeWidth = 2;
-  const size = 26;
+  const size = 20;
 </script>
 
 <button class="button" {onclick} style="--stroke-width: {strokeWidth};">
@@ -57,5 +57,9 @@
     100% {
       transform: none;
     }
+  }
+
+  .button:active :global(svg) {
+    transform: translateY(1px) scaleX(1.15) scaleY(0.95);
   }
 </style>

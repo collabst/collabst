@@ -55,12 +55,12 @@
   }
 
   .button:hover {
-    border: 1px solid #00ac97;
+    border: 1px solid var(--navbar-border);
   }
 
   @keyframes iconJumpAnimation {
     0% {
-      transform: translateY(-8px) scaleX(0.8) scaleY(1.1);
+      transform: translateY(-5px) scaleX(0.8) scaleY(1.1);
     }
     80% {
       transform: translateY(1px) scaleX(1.2) scaleY(0.95);
@@ -90,19 +90,19 @@
     10% {
       height: calc(var(--width) + 8px);
       margin-top: -8px;
-      box-shadow: inset 0px -8px 0px 0px #03493133;
+      box-shadow: inset 0px -8px 0px 0px var(--navbar-shadow);
       transform: scaleY(1.1) scaleX(0.9);
     }
     100% {
       height: calc(var(--width) + 2px);
       margin-top: -2px;
-      box-shadow: inset 0px -4px 0px 0px #03493133;
+      box-shadow: inset 0px -4px 0px 0px var(--navbar-shadow);
     }
   }
 
   .button.selected {
-    border: 1px solid #00ac97;
-    box-shadow: inset 0px -4px 0px 0px #03493133;
+    border: 1px solid var(--navbar-border);
+    box-shadow: inset 0px -4px 0px 0px var(--navbar-shadow);
     animation: btnJumpAnimation 0.2s ease-out;
     /* transition: box-shadow 0.05s; */
     height: calc(var(--width) + 2px);
@@ -115,7 +115,7 @@
   }
 
   .button:active {
-    box-shadow: inset 0px 4px 0px 0px #03493133;
+    box-shadow: inset 0px 4px 0px 0px var(--navbar-shadow);
     height: var(--width);
     margin-top: 0px;
   }

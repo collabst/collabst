@@ -29,15 +29,35 @@
     align-items: center;
     justify-content: center;
     color: var(--text-primary);
+    border-radius: 5px;
   }
 
-  .button:hover {
-    background-color: var(--bg-secondary);
-  }
-
-  :global(.button svg) {
+  .button :global(svg) {
     stroke-width: var(--stroke-width);
     width: var(--icon-size);
     height: var(--icon-size);
+  }
+
+  .button:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+  }
+
+  .button:hover :global(svg) {
+    width: var(--icon-size);
+    height: var(--icon-size);
+  }
+
+  .button:active {
+    color: var(--text-active);
+    /* transform: scaleX(1.15); */
+  }
+
+  .button:active :global(svg) {
+    stroke-width: 3;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    transform: scaleY(0.85) scaleX(1.1) translateY(1px);
   }
 </style>
