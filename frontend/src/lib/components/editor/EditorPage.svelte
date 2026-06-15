@@ -3,9 +3,11 @@
   import LeftPanel from "$lib/components/editor/leftPanel/LeftPanel.svelte";
   import EditorPanel from "$lib/components/editor/editorPanel/EditorPanel.svelte";
   import PreviewPanel from "$lib/components/editor/previewPanel/PreviewPanel.svelte";
+  import { testCompile } from "$lib/components/editor/context";
 </script>
 
 <div class="main">
+<button onclick={testCompile}>Test Context</button>
   <TopBar />
   <div class="content">
     <LeftPanel />

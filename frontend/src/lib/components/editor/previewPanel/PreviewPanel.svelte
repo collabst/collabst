@@ -1,12 +1,11 @@
 <script lang="ts">
   import Panel from "$lib/components/editor/Panel.svelte";
-
-  let previewIframe: HTMLIFrameElement | undefined;
+  import { previewIframe } from "$lib/components/editor/context";
 </script>
 
 <Panel>
   <iframe
-    bind:this={previewIframe}
+    bind:this={$previewIframe}
     id="preview-iframe"
     class="preview-iframe"
     title="Typst Preview"
