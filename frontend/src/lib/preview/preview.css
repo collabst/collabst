@@ -15,12 +15,13 @@
 
 .typst-doc {
   transition: width 0.1s ease, height 0.1s ease;
+  filter: 
+    drop-shadow(1px 0 #8bbdab)
+    drop-shadow(-1px 0 #8bbdab)
+    drop-shadow(0 -1px #8bbdab)
+    drop-shadow(0 1px #8bbdab);
 }
 
-[data-theme="light"] .typst-page-inner {
-  filter: drop-shadow(0 0 1000px rgba(0, 0, 0, 0.15));
-}
-
-[data-theme="dark"] #typst-app.negative > svg{
+[data-theme="dark"] #typst-app.negative>svg {
   filter: invert(1) hue-rotate(180deg);
 }

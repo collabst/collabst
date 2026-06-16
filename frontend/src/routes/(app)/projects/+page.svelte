@@ -18,7 +18,7 @@
       const project = await projectsApi.create(name);
       projects = [...projects, project];
       input.value = "";
-      const file = await filesApi.create(project.id, "main.typ", "Hello world!");
+      const file = await filesApi.create(project.id, "main.typ", "Hello world!\n#pagebreak()\nReHelloworld!");
     }
   }
 </script>
