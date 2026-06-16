@@ -1,18 +1,16 @@
 <script lang="ts">
   import Button from "./Button.svelte";
   import Separator from "./Separator.svelte";
-  import {
-    Italic,
-    Bold,
-    Underline,
-    Undo2,
-    Redo2,
-    List,
-    ListOrdered,
-    Sigma,
-    Code,
-    MessageSquarePlus,
-  } from "@lucide/svelte";
+  import Italic from "@lucide/svelte/icons/italic";
+  import Bold from "@lucide/svelte/icons/bold";
+  import Underline from "@lucide/svelte/icons/underline";
+  import Undo2 from "@lucide/svelte/icons/undo-2";
+  import Redo2 from "@lucide/svelte/icons/redo-2";
+  import List from "@lucide/svelte/icons/list";
+  import ListOrdered from "@lucide/svelte/icons/list-ordered";
+  import Sigma from "@lucide/svelte/icons/sigma";
+  import Code from "@lucide/svelte/icons/code";
+  import MessageSquarePlus from "@lucide/svelte/icons/message-square-plus";
 </script>
 
 <div class="container">

@@ -7,7 +7,6 @@
 </script>
 
 <div class="main">
-<button onclick={testCompile}>Test Context</button>
   <TopBar />
   <div class="content">
     <LeftPanel />

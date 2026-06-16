@@ -1,11 +1,9 @@
 <script lang="ts">
-  import {
-    File,
-    Map,
-    MessageSquareText,
-    Search,
-    TriangleAlert,
-  } from "@lucide/svelte";
+  import File from "@lucide/svelte/icons/file";
+  import Map from "@lucide/svelte/icons/map";
+  import MessageSquareText from "@lucide/svelte/icons/message-square-text";
+  import Search from "@lucide/svelte/icons/search";
+  import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
   import Button from "./Button.svelte";
   import {
     leftPanelTab,

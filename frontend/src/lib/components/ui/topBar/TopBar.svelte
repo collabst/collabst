@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { House, Settings, User, Moon } from "@lucide/svelte";
+  import House from "@lucide/svelte/icons/house";
+  import Settings from "@lucide/svelte/icons/settings";
+  import User from "@lucide/svelte/icons/user";
   import TopButton from "./TopButton.svelte";
   import ThemeToggle from "./ThemeToggle.svelte";
 </script>
