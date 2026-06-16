@@ -335,7 +335,7 @@
   /* Top bar - same as file panel */
   --bg-comments-panel: #d4d4d4;
   /* Comments panel - darkest */
-  --bg-preview: var(--bg-file-panel);
+  --bg-preview: var(--bg-primary);
   /* Preview pane background */
   --bg-typst-doc: #ffffff;
   /* Typst document background - white for clarity */
