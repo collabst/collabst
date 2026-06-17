@@ -24,6 +24,8 @@
     if (dropdownOpen) {
       e.stopPropagation();
       window.addEventListener("click", handleClick);
+    } else {
+      window.removeEventListener("click", handleClick);
     }
   }
 </script>
