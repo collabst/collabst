@@ -5,23 +5,11 @@
   import { files, newFile, newFolder } from "$lib/components/editor/context";
 
   function handleNewFile() {
-    let newFileName = "newFile.typ";
-    let attempt = 0;
-    while ($files.some((f) => f.name === newFileName)) {
-      attempt++;
-      newFileName = `newFile (${attempt}).typ`;
-    }
-    newFile(newFileName);
+    newFile("newFile.typ");
   }
 
   function handleNewFolder() {
-    let newFolderName = "newFolder";
-    let attempt = 0;
-    while ($files.some((f) => f.name === newFolderName)) {
-      attempt++;
-      newFolderName = `newFolder (${attempt})`;
-    }
-    newFolder(newFolderName);
+    newFolder("newFolder");
   }
 </script>
 

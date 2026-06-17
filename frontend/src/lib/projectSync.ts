@@ -3,7 +3,18 @@ import { getWsUrl } from '$lib/utils/urls'
 
 const WS_URL = getWsUrl()
 
-export function createProjectSync(projectId: string, token?: string | null) {
+export interface ProjectSyncCallbacks {
+  onFileCreated: (file: ProjectFile) => void
+  onFileUpdated: (file: ProjectFile) => void
+  onFileDeleted: (fileId: string) => void
+  onAssetCreated: (asset: Asset) => void
+  onAssetUpdated: (asset: Asset) => void
+  onAssetDeleted: (assetId: string) => void
+  onProjectUpdated: (project: Project) => void
+  onUnauthorized?: (event: { channel: string; code: string; reason: string }) => void
+}
+
+export function createProjectSync(projectId: string, callbacks: ProjectSyncCallbacks, token?: string | null) {
   let ws: WebSocket | null = null
   let pingInterval: number | null = null
   let reconnectTimeout: number | null = null
@@ -22,6 +33,8 @@ export function createProjectSync(projectId: string, token?: string | null) {
     ws = new WebSocket(wsUrl.toString())
 
     ws.onopen = () => {
+      console.log(`[ProjectSync] Connected to project ${projectId}`)
+
       pingInterval = window.setInterval(() => {
         if (ws?.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'ping' }))
