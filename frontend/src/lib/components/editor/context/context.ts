@@ -358,17 +358,6 @@ export async function loadTypst() {
   // });
 }
 
-export async function testCompile() {
-  if (!initialized || !compiler) {
-    throw new Error("Typst compiler is not initialized");
-  }
-  await reset();
-  addFile('/main.typ', 'Hello, world!');
-  const result = await compileTypst('/main.typ');
-  sendVectorData(result.result, true);
-}
-
-
 export async function sendVectorData(vectorData: ArrayBuffer, isFirstCompile: boolean) {
   // Format message as the typst preview expects: "messageType,binaryData"
   const messageType = isFirstCompile ? 'new' : 'diff-v1';
@@ -439,3 +428,115 @@ selectedFile.subscribe((file) => {
 
   syncFiles();
 });
+
+let inhibNextZoomChange = false;
+
+export function sendCommandToIframe(command: string, payload?: any) {
+  const $previewIframe = get(previewIframe);
+  if ($previewIframe?.contentWindow) {
+    $previewIframe.contentWindow.postMessage({
+      type: 'typst-command',
+      command,
+      payload
+    }, '*');
+  }
+}
+
+export function zoomIn() {
+  sendCommandToIframe('zoom-in');
+}
+
+export function zoomOut() {
+  sendCommandToIframe('zoom-out');
+}
+
+
+export function setZoom(zoom: number) {
+  currentZoomValue.update(() => zoom);
+  currentZoomMode.update(() => 'custom');
+  sendCommandToIframe('set-zoom', { zoom, mode: 'custom' });
+}
+
+export function fitToWidth() {
+  currentZoomMode.update(() => 'fit-width');
+  inhibNextZoomChange = true;
+  sendCommandToIframe('fit-width');
+}
+
+export function fitToHeight() {
+  currentZoomMode.update(() => 'fit-height');
+  inhibNextZoomChange = true;
+  sendCommandToIframe('fit-height');
+}
+
+export function fitToPage() {
+  currentZoomMode.update(() => 'fit-page');
+  inhibNextZoomChange = true;
+  sendCommandToIframe('fit-page');
+}
+
+export function reapplyCurrentZoomMode() {
+  const $currentZoomMode = get(currentZoomMode);
+  switch ($currentZoomMode) {
+    case 'fit-width':
+      fitToWidth();
+      break;
+    case 'fit-height':
+      fitToHeight();
+      break;
+    case 'fit-page':
+      fitToPage();
+      break;
+    case 'custom':
+      const $currentZoomValue = get(currentZoomValue);
+      setZoom($currentZoomValue);
+      break;
+  }
+}
+
+export const currentZoomValue = writable(1);
+export const currentZoomMode = writable('custom');
+
+export function handleIframeMessage(event: MessageEvent) {
+  // Security: verify origin in production
+  const { type, data, command, zoom, mode } = event.data || {};
+
+  switch (type) {
+    case 'typst-ws-mock-ready':
+      // Iframe mock WebSocket is ready to receive connections - can be usefull ¯\_(ツ)_/¯
+      break;
+
+    case 'typst-ws-connect':
+      // Iframe mock WebSocket is now connected - can be usefull too ¯\_(ツ)_/¯
+      break;
+
+    case 'typst-ws-send':
+      // handleIframeSend(data);
+      break;
+
+    case 'typst-ws-close':
+      // Iframe mock WebSocket closed - can be usefull also ¯\_(ツ)_/¯
+      break;
+
+    case 'typst-zoom-changed':
+      if (inhibNextZoomChange) {
+        // Ignore this change - it was a backlash of our own command
+        inhibNextZoomChange = false;
+        return;
+      }
+      if (typeof zoom === 'number') {
+        currentZoomValue.update(() => zoom);
+        currentZoomMode.update(() => mode ?? 'custom');
+      }
+      break;
+
+    case 'typst-request-current':
+      // Iframe is requesting current state - trigger a recompile
+      // syncFilesAndAssets();
+      break;
+
+    case 'typst-zoom-initialized':
+      // isPreviewZoomInitialized = true;
+      break;
+  }
+}
