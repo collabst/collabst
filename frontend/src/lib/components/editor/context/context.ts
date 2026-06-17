@@ -41,7 +41,6 @@ import { type File } from "./types";
 import * as Y from "yjs";
 import { filesApi } from "$lib/services/api";
 import { createProjectYjs, type YjsConnection } from "$lib/yjs";
-import user from "@lucide/svelte/icons/user";
 import { auth } from "$lib/stores/auth";
 
 const extensions = [
@@ -539,4 +538,26 @@ export function handleIframeMessage(event: MessageEvent) {
       // isPreviewZoomInitialized = true;
       break;
   }
+}
+
+
+export async function newFile(path: string) {
+  const $projectId = get(projectId);
+  const name = path.split('/').pop();
+  if (!name) {
+    throw new Error("Invalid file path");
+  }
+  const parentId = null;
+  const content = "";
+  await filesApi.create($projectId, name, content, parentId)
+}
+
+export async function newFolder(path: string) {
+  const $projectId = get(projectId);
+  const name = path.split('/').pop();
+  if (!name) {
+    throw new Error("Invalid folder path");
+  }
+  const parentId = null;
+  await filesApi.createFolder($projectId, name, parentId)
 }

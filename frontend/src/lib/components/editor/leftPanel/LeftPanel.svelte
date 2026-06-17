@@ -1,7 +1,7 @@
 <script lang="ts">
   import Panel from "$lib/components/editor/Panel.svelte";
   import NavBar from "./navBar/NavBar.svelte";
-  import Header from "./Header.svelte";
+  import Header from "./header/Header.svelte";
   import Content from "./content/Content.svelte";
 </script>
 
