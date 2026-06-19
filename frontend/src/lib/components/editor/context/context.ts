@@ -36,17 +36,17 @@ import {
   closeBrackets,
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
-import { lintKeymap } from "@codemirror/lint";
+import { lintKeymap, setDiagnostics } from "@codemirror/lint";
 
 import { derived, get, writable } from "svelte/store";
 import type { LeftPanelTab } from "./types";
 import { type File } from "./types";
-import { commentsApi, filesApi, projectsApi } from "$lib/services/api";
+import { assetsApi, commentsApi, filesApi, projectsApi } from "$lib/services/api";
 import { createProjectYjs, type YjsConnection } from "$lib/yjs";
 import { auth } from "$lib/stores/auth";
 import { createProjectSync } from "$lib/projectSync";
-import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO } from "$lib/types";
-import { removeCachedAsset } from "$lib/utils/assetCache";
+import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagnostic } from "$lib/types";
+import { cacheAsset, getCachedAsset, removeCachedAsset } from "$lib/utils/assetCache";
 import { notifications } from "$lib/stores/notifications";
 import { goto } from "$app/navigation";
 import { createCommentSync } from "$lib/commentSync";
@@ -59,6 +59,7 @@ import { editorSettings } from "$lib/stores/editorSettings";
 import { yCollab } from "y-codemirror.next";
 import { UndoManager } from "yjs";
 import { commentsExtension } from "$lib/codemirror/comments";
+import { convertDiagnosticsToLint, parseRange } from "$lib/preview/diagnostics";
 
 const themeCompartment = new Compartment();
 const syntaxCompartment = new Compartment();
@@ -229,6 +230,7 @@ export const files = writable<File[]>([]);
 export const assets = writable<Asset[]>([]);
 export const comments = writable<Comment[]>([]);
 export const selectedFile = writable<File | null>(null);
+export const mainFile = writable<File | null>(null);
 export const selectedAsset = writable<Asset | null>(null);
 export const editorElement = writable<HTMLDivElement | undefined>();
 export const projectYjs = writable<YjsConnection | null>(null);
@@ -272,136 +274,136 @@ export const context = {
 
 export function toggleWrap(prefix: string, suffix: string) {
   const viewValue = get(view);
-    if (!viewValue) return;
+  if (!viewValue) return;
 
-    const { from, to } = viewValue.state.selection.main;
-    const selectedText = viewValue.state.doc.sliceString(from, to);
+  const { from, to } = viewValue.state.selection.main;
+  const selectedText = viewValue.state.doc.sliceString(from, to);
 
-    // Check if we have text before and after selection
-    const beforeStart = Math.max(0, from - prefix.length);
-    const afterEnd = Math.min(viewValue.state.doc.length, to + suffix.length);
-    const textBefore = viewValue.state.doc.sliceString(beforeStart, from);
-    const textAfter = viewValue.state.doc.sliceString(to, afterEnd);
+  // Check if we have text before and after selection
+  const beforeStart = Math.max(0, from - prefix.length);
+  const afterEnd = Math.min(viewValue.state.doc.length, to + suffix.length);
+  const textBefore = viewValue.state.doc.sliceString(beforeStart, from);
+  const textAfter = viewValue.state.doc.sliceString(to, afterEnd);
 
-    // Check if already wrapped
-    const isWrapped =
-      textBefore.endsWith(prefix) && textAfter.startsWith(suffix);
+  // Check if already wrapped
+  const isWrapped =
+    textBefore.endsWith(prefix) && textAfter.startsWith(suffix);
 
-    if (isWrapped) {
-      // Remove wrapping
-      if (selectedText) {
-        // Selection exists - remove prefix before and suffix after
-        // Changes array positions are relative to original document, CodeMirror handles adjustments
-        viewValue.dispatch({
-          changes: [
-            { from: from - prefix.length, to: from, insert: "" },
-            { from: to, to: to + suffix.length, insert: "" },
-          ],
-          selection: { anchor: from - prefix.length, head: to - prefix.length },
-        });
-      } else {
-        // No selection, just cursor - remove prefix before and suffix after
-        viewValue.dispatch({
-          changes: [
-            { from: from - prefix.length, to: from, insert: "" },
-            { from: from, to: from + suffix.length, insert: "" },
-          ],
-          selection: { anchor: from - prefix.length },
-        });
-      }
+  if (isWrapped) {
+    // Remove wrapping
+    if (selectedText) {
+      // Selection exists - remove prefix before and suffix after
+      // Changes array positions are relative to original document, CodeMirror handles adjustments
+      viewValue.dispatch({
+        changes: [
+          { from: from - prefix.length, to: from, insert: "" },
+          { from: to, to: to + suffix.length, insert: "" },
+        ],
+        selection: { anchor: from - prefix.length, head: to - prefix.length },
+      });
     } else {
-      // Add wrapping
-      if (selectedText) {
-        // Wrap selection
-        viewValue.dispatch({
-          changes: { from, to, insert: `${prefix}${selectedText}${suffix}` },
-          selection: {
-            anchor: from + prefix.length,
-            head: from + prefix.length + selectedText.length,
-          },
-        });
-      } else {
-        // Insert prefix and suffix at cursor
-        viewValue.dispatch({
-          changes: { from, insert: `${prefix}${suffix}` },
-          selection: { anchor: from + prefix.length },
-        });
-      }
+      // No selection, just cursor - remove prefix before and suffix after
+      viewValue.dispatch({
+        changes: [
+          { from: from - prefix.length, to: from, insert: "" },
+          { from: from, to: from + suffix.length, insert: "" },
+        ],
+        selection: { anchor: from - prefix.length },
+      });
     }
-    viewValue.focus();
+  } else {
+    // Add wrapping
+    if (selectedText) {
+      // Wrap selection
+      viewValue.dispatch({
+        changes: { from, to, insert: `${prefix}${selectedText}${suffix}` },
+        selection: {
+          anchor: from + prefix.length,
+          head: from + prefix.length + selectedText.length,
+        },
+      });
+    } else {
+      // Insert prefix and suffix at cursor
+      viewValue.dispatch({
+        changes: { from, insert: `${prefix}${suffix}` },
+        selection: { anchor: from + prefix.length },
+      });
+    }
   }
+  viewValue.focus();
+}
 
 function createUndoRedoKeymap() {
-    if (!undoManager) {
-      return keymap.of([]);
-    }
-
-    return keymap.of([
-      {
-        key: "Mod-z",
-        run: (view) => {
-          if (undoManager && undoManager.canUndo()) {
-            undoManager.undo();
-            return true;
-          }
-          return false;
-        },
-      },
-      {
-        key: "Mod-Shift-z",
-        run: (view) => {
-          if (undoManager && undoManager.canRedo()) {
-            undoManager.redo();
-            return true;
-          }
-          return false;
-        },
-      },
-      {
-        key: "Mod-y",
-        run: (view) => {
-          if (undoManager && undoManager.canRedo()) {
-            undoManager.redo();
-            return true;
-          }
-          return false;
-        },
-      },
-      {
-        key: "Mod-b",
-        run: () => {
-          toggleWrap("*", "*");
-          return true;
-        },
-      },
-      {
-        key: "Mod-i",
-        run: () => {
-          toggleWrap("_", "_");
-          return true;
-        },
-      },
-      {
-        key: "Mod-u",
-        run: () => {
-          toggleWrap("#underline[", "]");
-          return true;
-        },
-      },
-      {
-        key: "Tab",
-        run: (view) => {
-          return indentMore(view);
-        },
-      },
-      {
-        key: "Shift-Tab",
-        run: (view) => {
-          return indentLess(view);
-        },
-      },
-    ]);
+  if (!undoManager) {
+    return keymap.of([]);
   }
+
+  return keymap.of([
+    {
+      key: "Mod-z",
+      run: (view) => {
+        if (undoManager && undoManager.canUndo()) {
+          undoManager.undo();
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      key: "Mod-Shift-z",
+      run: (view) => {
+        if (undoManager && undoManager.canRedo()) {
+          undoManager.redo();
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      key: "Mod-y",
+      run: (view) => {
+        if (undoManager && undoManager.canRedo()) {
+          undoManager.redo();
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      key: "Mod-b",
+      run: () => {
+        toggleWrap("*", "*");
+        return true;
+      },
+    },
+    {
+      key: "Mod-i",
+      run: () => {
+        toggleWrap("_", "_");
+        return true;
+      },
+    },
+    {
+      key: "Mod-u",
+      run: () => {
+        toggleWrap("#underline[", "]");
+        return true;
+      },
+    },
+    {
+      key: "Tab",
+      run: (view) => {
+        return indentMore(view);
+      },
+    },
+    {
+      key: "Shift-Tab",
+      run: (view) => {
+        return indentLess(view);
+      },
+    },
+  ]);
+}
 
 
 async function createExtensions() {
@@ -909,8 +911,8 @@ export async function initContext(projectIdValue: string) {
     },
     get(auth).token,
   ));
-  await loadTypst();
   await initSelectedFile();
+  initWorker();
 }
 
 export async function initSelectedFile() {
@@ -961,6 +963,7 @@ export function selectFile(fileId: string) {
   if (file) {
     selectedFile.set(file);
   }
+  syncFilesAndAssets();
 }
 
 ytext.subscribe(async (newYText) => {
@@ -977,106 +980,172 @@ ytext.subscribe(async (newYText) => {
 });
 
 
-let typst: any = null;
-let compiler: any = null;
-let incrServer: any = null;
-let initialized = false;
+let compileEnabled = true;
+let separateWindow: Window | null = null;
 
-export async function loadTypst() {
-  const module = await import(
-    'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst.ts/dist/esm/contrib/all-in-one-lite.bundle.js'
-    // 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-all-in-one.ts@0.6.0/dist/esm/index.js'
-  );
-
-  typst = module.$typst;
-
-  typst.setCompilerInitOptions({
-    getModule: () =>
-      'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm',
-  });
-
-  compiler = await typst.getCompiler();
-  initialized = true;
-  // compiler.withIncrementalServer((srv: any) => {
-  //   incrServer = srv;
-  //   initialized = true;
-  //   self.postMessage({ type: 'initialized' });
-  //   return () => {
-  //     incrServer = null;
-  //   };
-  // });
-}
-
-export async function sendVectorData(vectorData: ArrayBuffer, isFirstCompile: boolean) {
-  // Format message as the typst preview expects: "messageType,binaryData"
-  const messageType = isFirstCompile ? 'new' : 'diff-v1';
-  const encoder = new TextEncoder();
-  const typeBytes = encoder.encode(messageType + ',');
-
-  // Combine type and data
-  const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
-  combined.set(typeBytes, 0);
-  combined.set(new Uint8Array(vectorData), typeBytes.length);
-
-  // Send via postMessage to iframe
-  // Note: We copy the buffer to avoid transferring ownership which would detach the original
-  let $previewIframe = get(previewIframe);
-  if (!$previewIframe) {
-    console.error("Preview iframe is not available");
-    return;
+function updateLinter() {
+    const editorView = get(view);
+    if (editorView) {
+      const lintDiagnostics = convertDiagnosticsToLint(
+        diagnostics,
+        editorView,
+        get(selectedFile)?.path || "",
+      );
+      const transaction = setDiagnostics(editorView.state, lintDiagnostics);
+      editorView.dispatch(transaction);
+    }
   }
 
-  $previewIframe.contentWindow?.postMessage({
-    type: 'typst-ws-message',
-    data: combined.buffer.slice(0)
-  }, '*');
-}
-
-export async function compileTypst(targetMainFilePath: string) {
-  if (!initialized || !compiler) {
-    throw new Error("Typst compiler is not initialized");
+function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, isFirstCompile: boolean) {
+    targetWindow.postMessage(
+      {
+        type: 'typst-vector-data',
+        data: vectorData,
+        isFirstCompile: isFirstCompile,
+      },
+      '*'
+    );
   }
-  return compiler.compile({
-    root: '/',
-    mainFilePath: targetMainFilePath,
-    // incrementalServer: incrServer,
-    diagnostics: 'full',
-  });
-}
 
-export async function addFile(path: string, content: string) {
-  if (!compiler) return;
-  console.log(`Adding file to compiler: ${path}`);
-  await compiler.addSource(path, content);
-}
+  let diagnostics: Diagnostic[] = [];
 
-export async function reset() {
-  // if (incrServer) {
-  //   await incrServer.reset();
-  // }
-  if (compiler) {
-    await compiler.reset();
+  function onDiagnostics(diags: any[]) {
+    // Parse diagnostics range from compiler format
+    diagnostics = diags.map((d: any) => ({
+      severity: d.severity,
+      message: d.message,
+      range: parseRange(d.range),
+      path: d.path,
+    }));
+    updateLinter();
+  }
+
+let worker: Worker;
+
+function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
+   const previewIframeValue = get(previewIframe);
+    if (!previewIframeValue?.contentWindow || !iframeMockReady) {
+      return;
+    }
+
+    // Format message as the typst preview expects: "messageType,binaryData"
+    const messageType = isFirstCompile ? 'new' : 'diff-v1';
+    const encoder = new TextEncoder();
+    const typeBytes = encoder.encode(messageType + ',');
+
+    // Combine type and data
+    const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
+    combined.set(typeBytes, 0);
+    combined.set(new Uint8Array(vectorData), typeBytes.length);
+
+    // Send via postMessage to iframe
+    // Note: We copy the buffer to avoid transferring ownership which would detach the original
+    previewIframeValue.contentWindow.postMessage({
+      type: 'typst-ws-message',
+      data: combined.buffer.slice(0)
+    }, '*');
+  }
+
+export function initWorker() {
+  if (!worker) {
+    worker = new Worker(
+      new URL('/src/lib/preview/typst-worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+
+    worker.onmessage = async (e) => {
+      const { type, vectorData, compileTime, isFirstCompile, diagnostics } = e.data;
+
+      switch (type) {
+        case 'status':
+          status = e.data.message;
+          break;
+
+        case 'initialized':
+          workerReady = true;
+          status = compileEnabled
+            ? 'Compiler ready - waiting for iframe...'
+            : 'Preparing files...';
+
+          // Force a sync only when file hydration is ready.
+          if (compileEnabled) {
+            syncFilesAndAssets();
+          }
+          reapplyCurrentZoomMode();
+          break;
+
+        case 'compiled':
+          if (!initialized) {
+            status = 'Waiting for iframe...';
+            return;
+          }
+
+          // Handle diagnostics
+          if (diagnostics && onDiagnostics) {
+            console.log('Received diagnostics from worker:', diagnostics);
+            onDiagnostics(diagnostics);
+          }
+
+          if (!vectorData) {
+            status = `Ready (${compileTime}ms) - no output`;
+            return;
+          }
+
+          try {
+            status = 'Rendering...';
+
+            if (separateWindow) {
+              sendVectorDataToWindow(separateWindow, vectorData, isFirstCompile);
+            } else {
+              // Send vector data to iframe
+              sendVectorDataToIframe(vectorData, isFirstCompile);
+            }
+
+            status = `Ready (${compileTime}ms)`;
+          } catch (error: any) {
+            status = `Render error: ${error.message}`;
+            console.error('Render error:', error);
+          }
+          break;
+
+        case 'error':
+          if (diagnostics && onDiagnostics) {
+            console.log('Received diagnostics from worker:', diagnostics);
+            onDiagnostics(diagnostics);
+          }
+          status = `Compile error: ${e.data.error}`;
+          console.error('Compilation error:', e.data);
+          break;
+
+        case 'pdf':
+          const pdfBlob = new Blob([e.data.pdfData], { type: 'application/pdf' });
+          const pdfUrl = URL.createObjectURL(pdfBlob);
+          const pdfLink = document.createElement('a');
+          pdfLink.href = pdfUrl;
+          // get project name
+          const projectName = get(project)?.name || 'document';
+          pdfLink.download = `${projectName || 'document'}.pdf`;
+          document.body.appendChild(pdfLink);
+          pdfLink.click();
+          document.body.removeChild(pdfLink);
+          URL.revokeObjectURL(pdfUrl);
+          break;
+
+        case 'reset':
+          console.log('Worker: Resetting document as requested');
+          // if (typstDoc) typstDoc.reset();
+          status = 'Reset complete';
+          break;
+      }
+    };
+
+    worker.onerror = (e) => {
+      const errorMsg = e.message || (e.error as any)?.message || 'Unknown error';
+      status = `Worker error: ${errorMsg}`;
+      console.error('Worker error:', e);
+    };
   }
 }
-
-export async function syncFiles() {
-  if (!compiler) return;
-  reset();
-  const allFiles = get(files);
-  for (const file of allFiles) {
-    const content = get(projectYjs)?.ydoc.getText(`file-${file.id}`).toString() || '';
-    await addFile(file.path, content);
-  }
-  const result = await compileTypst(get(selectedFile)?.path || '');
-  sendVectorData(result.result, true);
-}
-
-
-selectedFile.subscribe((file) => {
-  if (file === null) return;
-
-  syncFiles();
-});
 
 let inhibNextZoomChange = false;
 
@@ -1143,6 +1212,143 @@ export function reapplyCurrentZoomMode() {
   }
 }
 
+
+let syncTimeout: ReturnType<typeof setTimeout>;
+const loadedFiles = new Map<string, { path: string; content: string }>();
+const loadedAssets = new Map<string, { path: string; storage_path: string }>();
+let workerReady = false;
+
+function compile() {
+  if (!worker || !workerReady) return;
+  const mainFilePath = get(mainFile)?.path || '/main.typ';
+  const path = mainFilePath.startsWith('/') ? mainFilePath : `/${mainFilePath}`;
+  worker.postMessage({
+    type: 'compile',
+    payload: { mainFilePath: path },
+  });
+}
+
+async function _syncFilesAndAssets() {
+  // Handle files
+  const currentFilesMap = new Map(get(files).map(f => [f.id, f]));
+
+  // Remove deleted/moved files
+  for (const [fileId, cached] of loadedFiles) {
+    const current = currentFilesMap.get(fileId);
+    if (!current || current.path !== cached.path) {
+      const pathToRemove = cached.path.startsWith('/') ? cached.path : `/${cached.path}`;
+      worker.postMessage({
+        type: 'removeFile',
+        payload: { path: pathToRemove }
+      });
+      loadedFiles.delete(fileId);
+    }
+  }
+
+  // Add new/updated files
+  for (const file of get(files)) {
+    if (file.is_folder) continue;
+
+    const cached = loadedFiles.get(file.id);
+    const path = file.path.startsWith('/') ? file.path : `/${file.path}`;
+
+    const content = get(projectYjs)?.ydoc.getText(`file-${file.id}`).toString() || '';
+    if (!cached || cached.content !== content || cached.path !== file.path) {
+      worker.postMessage({
+        type: 'addFile',
+        payload: { path, content }
+      });
+      loadedFiles.set(file.id, { path: file.path, content });
+    }
+  }
+
+  // Handle assets
+  const currentAssetsMap = new Map(get(assets).map(a => [a.id, a]));
+
+  // Remove deleted/moved assets
+  for (const [assetId, cached] of loadedAssets) {
+    const current = currentAssetsMap.get(assetId);
+    if (!current || current.path !== cached.path) {
+      const pathToRemove = cached.path.startsWith('/') ? cached.path : `/${cached.path}`;
+      worker.postMessage({
+        type: 'removeFile',
+        payload: { path: pathToRemove }
+      });
+      loadedAssets.delete(assetId);
+    }
+  }
+
+  // Add new/updated assets
+  for (const asset of get(assets)) {
+    const cached = loadedAssets.get(asset.id);
+    const path = asset.path.startsWith('/') ? asset.path : `/${asset.path}`;
+
+    if (!cached || cached.storage_path !== asset.storage_path || cached.path !== asset.path) {
+      try {
+        let arrayBuffer: ArrayBuffer;
+
+        // Try IndexedDB cache first
+        const cachedBlob = await getCachedAsset(String(asset.project_id), asset.id, asset.storage_path);
+
+        if (cachedBlob) {
+          // Use cached data
+          arrayBuffer = cachedBlob.blob;
+        } else {
+          // Fetch from API and cache
+          const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
+          const response = await fetch(url);
+          arrayBuffer = await response.arrayBuffer();
+
+          // Store in IndexedDB cache (fire and forget)
+          cacheAsset(String(asset.project_id), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
+            .catch(err => console.warn('Failed to cache asset:', err));
+        }
+
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        worker.postMessage({
+          type: 'addAsset',
+          payload: { path, data: uint8Array }
+        }, [uint8Array.buffer]); // Transfer ownership of the buffer
+
+        loadedAssets.set(asset.id, { path: asset.path, storage_path: asset.storage_path });
+      } catch (error) {
+        console.error('Failed to load asset:', asset.path, error);
+      }
+    }
+  }
+
+  // Trigger compilation
+  compile();
+}
+
+function syncFilesAndAssets() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    _syncFilesAndAssets();
+  }, 30); // 30ms debounce
+}
+
+let iframeMockReady = false;
+let previewStatus: 'Ready' | 'Compiling' | 'Error' = 'Ready';
+let isPreviewZoomInitialized = false;
+let initialized = false;
+
+function handleIframeSend(data: string | ArrayBuffer) {
+  if (typeof data === 'string') {
+    if (data === 'current') {
+      if (!iframeMockReady) {
+        // First time receiving 'current' - iframe mock is ready
+        iframeMockReady = true;
+        initialized = true;
+        previewStatus = 'Ready';
+      }
+      // Iframe is requesting current state - trigger a recompile
+      syncFilesAndAssets();
+    }
+  }
+}
+
 export const currentZoomValue = writable(1);
 export const currentZoomMode = writable('custom');
 
@@ -1160,7 +1366,7 @@ export function handleIframeMessage(event: MessageEvent) {
       break;
 
     case 'typst-ws-send':
-      // handleIframeSend(data);
+      handleIframeSend(data);
       break;
 
     case 'typst-ws-close':
@@ -1181,11 +1387,11 @@ export function handleIframeMessage(event: MessageEvent) {
 
     case 'typst-request-current':
       // Iframe is requesting current state - trigger a recompile
-      // syncFilesAndAssets();
+      syncFilesAndAssets();
       break;
 
     case 'typst-zoom-initialized':
-      // isPreviewZoomInitialized = true;
+      isPreviewZoomInitialized = true;
       break;
   }
 }

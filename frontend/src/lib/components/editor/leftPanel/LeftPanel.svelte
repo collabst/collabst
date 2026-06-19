@@ -17,5 +17,7 @@
   .container {
     position: relative;
     height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 </style>

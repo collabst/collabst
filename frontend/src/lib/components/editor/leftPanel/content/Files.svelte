@@ -1,14 +1,11 @@
 <script lang="ts">
-  import { files, selectFile } from "$lib/components/editor/context/index";
-
-  function handleFileClick(fileId: string) {
-    selectFile(fileId);
-  };
+  import { files } from "$lib/components/editor/context/index";
+  import File from "./File.svelte";
 </script>
 
 <div class="files">
 {#each $files as file}
-  <button onclick={() => {handleFileClick(file.id)}}>{file.path}</button>
+  <File file={file} />
 {/each}
 </div>
 
@@ -16,5 +13,9 @@
   .files {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 5rem;
+    gap: 0.2rem;
   }
 </style>
