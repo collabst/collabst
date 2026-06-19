@@ -2,7 +2,7 @@
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
   import Button from "./Button.svelte";
-  import { files, newFile, newFolder } from "$lib/components/editor/context";
+  import { newFile, newFolder } from "$lib/components/editor/context";
 
   function handleNewFile() {
     newFile("newFile.typ");

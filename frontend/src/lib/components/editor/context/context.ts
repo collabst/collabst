@@ -4,7 +4,7 @@
 // import { auth } from "$lib/stores/auth";
 // import { getWsUrl } from "$lib/utils/urls";
 // import { createProjectYjs } from "$lib/yjs";
-import { EditorState as CMState } from "@codemirror/state";
+import { EditorState as CMState, Compartment, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -16,6 +16,8 @@ import {
   crosshairCursor,
   lineNumbers,
   highlightActiveLineGutter,
+  ViewPlugin,
+  ViewUpdate,
 } from "@codemirror/view";
 import {
   defaultHighlightStyle,
@@ -24,9 +26,10 @@ import {
   bracketMatching,
   foldGutter,
   foldKeymap,
+  indentUnit,
 } from "@codemirror/language";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { defaultKeymap, history, historyKeymap, indentLess, indentMore } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches, search } from "@codemirror/search";
 import {
   autocompletion,
   completionKeymap,
@@ -48,191 +51,176 @@ import { notifications } from "$lib/stores/notifications";
 import { goto } from "$app/navigation";
 import { createCommentSync } from "$lib/commentSync";
 import { tick } from "svelte";
+import { basicSetup } from "codemirror";
+// import { createFindPanel } from "$lib/codemirror/findPanel";
+import { greyDarkSyntax, greyDarkTheme, greyLightSyntax, greyLightTheme } from "$lib/codemirror/greyTheme";
+import { theme } from "$lib/stores/theme";
+import { editorSettings } from "$lib/stores/editorSettings";
+import { yCollab } from "y-codemirror.next";
+import { UndoManager } from "yjs";
+import { commentsExtension } from "$lib/codemirror/comments";
 
-const extensions = [
-  // A line number gutter
-  lineNumbers(),
-  // A gutter with code folding markers
-  foldGutter(),
-  // Replace non-printable characters with placeholders
-  highlightSpecialChars(),
-  // The undo history
-  history(),
-  // Replace native cursor/selection with our own
-  drawSelection(),
-  // Show a drop cursor when dragging over the editor
-  dropCursor(),
-  // Allow multiple cursors/selections
-  CMState.allowMultipleSelections.of(true),
-  // Re-indent lines when typing specific input
-  indentOnInput(),
-  // Highlight syntax with a default style
-  syntaxHighlighting(defaultHighlightStyle),
-  // Highlight matching brackets near cursor
-  bracketMatching(),
-  // Automatically close brackets
-  closeBrackets(),
-  // Load the autocompletion system
-  autocompletion(),
-  // Allow alt-drag to select rectangular regions
-  rectangularSelection(),
-  // Change the cursor to a crosshair when holding alt
-  crosshairCursor(),
-  // Style the current line specially
-  highlightActiveLine(),
-  // Style the gutter for current line specially
-  highlightActiveLineGutter(),
-  // Highlight text that matches the selected text
-  highlightSelectionMatches(),
-  keymap.of([
-    // Closed-brackets aware backspace
-    ...closeBracketsKeymap,
-    // A large set of basic bindings
-    ...defaultKeymap,
-    // Search-related keys
-    ...searchKeymap,
-    // Redo/undo keys
-    ...historyKeymap,
-    // Code folding bindings
-    ...foldKeymap,
-    // Autocompletion keys
-    ...completionKeymap,
-    // Keys related to the linter system
-    ...lintKeymap,
-  ]),
-];
+const themeCompartment = new Compartment();
+const syntaxCompartment = new Compartment();
+const lineWrappingCompartment = new Compartment();
+const languageCompartment = new Compartment();
+const editorStyleCompartment = new Compartment();
+const lineNumbersCompartment = new Compartment();
+const ligaturesCompartment = new Compartment();
+const readOnlyCompartment = new Compartment();
+const editableCompartment = new Compartment();
 
-// export type EditorContext = {
-//   subscribe: ReturnType<typeof writable<EditorState>>["subscribe"];
-//   set: ReturnType<typeof writable<EditorState>>["set"];
-//   update: ReturnType<typeof writable<EditorState>>["update"];
-//   cycleLeftPanelTab: (direction: 1 | -1) => void;
-//   selectFile: (fileId: string) => void;
-//   initView: () => void;
-// };
 
-// function cycleLeftPanelTab(
-//   store: ReturnType<typeof writable<EditorState>>,
-//   direction: 1 | -1,
-// ) {
-//   const tabs: LeftPanelTab[] = [
-//     "files",
-//     "search",
-//     "outline",
-//     "issues",
-//     "comments",
-//   ];
-//   const currentTab = get(store).leftPanelTab;
-//   const currentIndex = tabs.indexOf(currentTab);
-//   const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
-//   store.update((state) => ({
-//     ...state,
-//     leftPanelTab: tabs[nextIndex],
-//   }));
-// }
+let wrapLines = true;
+let errorLines = new Set<number>();
+let editable = true;
 
-// function loadCodeMirrorContent(store: ReturnType<typeof writable<EditorState>>) {
-//   const ytext = get(store).ytext;
-//   const view = get(store).view;
-//   if (ytext && view) {
-//     const newState = CMState.create({
-//       doc: ytext.toString(),
-//       extensions,
-//     });
-//     view.setState(newState);
-//   }
-// }
+function getLineWrappingExtensions() {
+  return wrapLines ? [EditorView.lineWrapping] : [];
+}
 
-// function selectFile(store: ReturnType<typeof writable<EditorState>>, fileId: string) {
-//   const file = get(store).files.find((f) => f.id === fileId);
-//   if (file) {
-//     store.update((state) => ({
-//       ...state,
-//       selectedFile: file,
-//       ytext: state.ydoc?.getText(`file-${file.id}`) || null,
-//     }));
-//     loadCodeMirrorContent(store);
-//   }
-// }
+function getLineNumbersExtension() {
+  return lineNumbers({
+    formatNumber: (lineNo) => {
+      // Show × symbol instead of line number for lines with errors
+      if (errorLines.has(lineNo)) {
+        return "×";
+      }
+      return String(lineNo);
+    },
+    domEventHandlers: {
+      // Add data-error attribute to gutter elements with errors
+    },
+  });
+}
 
-// function initView(store: ReturnType<typeof writable<EditorState>>) {
-//   const editorElement = get(store).editorElement;
-//   const view = new EditorView({
-//     doc: "",
-//     parent: editorElement,
-//     extensions,
-//   });
-//   store.update((state) => ({
-//     ...state,
-//     view,
-//   }));
-//   loadCodeMirrorContent(store);
-// }
+function getThemeExtensions() {
+  return get(theme) === "light" ? [greyLightTheme] : [greyDarkTheme];
+}
 
-// export let editorContext: EditorContext;
+async function getSyntaxHighlighting() {
+  const currentTheme = get(theme);
+  const fileName = get(selectedFile)?.name || "";
+  const extension = fileName.split(".").pop()?.toLowerCase();
 
-// export async function initializeEditorContext(projectId: string) {
-//   let store: Writable<EditorState>;
+  // For Typst files, use custom Typst highlighting
+  if (extension === "typ") {
+    if (typeof window !== "undefined") {
+      const { typstDark, typstLight } = await import(
+        "$lib/codemirror/typstHighlight"
+      );
+      return currentTheme === "light" ? typstLight : typstDark;
+    }
+  }
 
-//   const token = get(auth).token;
-//   const user = get(auth).user;
+  // For BibTeX files, use custom BibTeX highlighting
+  if (extension === "bib") {
+    if (typeof window !== "undefined") {
+      const { bibtexDark, bibtexLight } = await import(
+        "$lib/codemirror/bibtexHighlight"
+      );
+      return currentTheme === "light" ? bibtexLight : bibtexDark;
+    }
+  }
 
-//   const files = await filesApi.list(projectId);
-//   const selectedFile = files[0];
+  // For other files, use default theme syntax highlighting
+  return currentTheme === "light" ? greyLightSyntax : greyDarkSyntax;
+}
 
-//   const projectYjs = createProjectYjs(projectId, user, token);
-//   let ytext: Y.Text | null = null;
-//   if (selectedFile) {
-//     ytext = projectYjs.ydoc.getText(`file-${selectedFile.id}`);
-//   }
+async function getLanguageExtensions() {
+  const fileName = get(selectedFile)?.name || "";
+  const extension = fileName.split(".").pop()?.toLowerCase();
 
-//   const WS_URL = getWsUrl();
+  if (extension === "typ") {
+    if (typeof window !== "undefined") {
+      const { typst } = await import("codemirror-lang-typst");
+      return [typst()];
+    }
+  }
 
-//   const wsUrl = new URL(`${WS_URL}/ws/project/${projectId}`);
-//   if (token) {
-//     wsUrl.searchParams.set('token', token);
-//   }
-//   let ws = new WebSocket(wsUrl.toString());
+  if (extension === "bib") {
+    if (typeof window !== "undefined") {
+      const { bibtex } = await import("codemirror-lang-bib");
+      return [
+        bibtex({
+          enableLinting: false,
+          enableTooltips: true,
+          enableAutocomplete: true,
+          autoCloseBrackets: false,
+        }),
+      ];
+    }
+  }
 
-//   let pingInterval: number | null = null;
-//   ws.onopen = () => {
-//     pingInterval = window.setInterval(() => {
-//       if (ws?.readyState === WebSocket.OPEN) {
-//         console.log("Sending ping to keep WebSocket alive");
-//         ws.send(JSON.stringify({ type: 'ping' }));
-//       }
-//     }, 30000)
-//   }
-//   ws.onmessage = (event) => {
-//     try {
-//       const message = JSON.parse(event.data);
-//       console.log("Received WebSocket message:", message);
-//     } catch (error) {
-//       console.error("Failed to parse WebSocket message:", event.data);
-//     }
-//   };
+  return [];
+}
 
-//   let editorElement: HTMLDivElement | undefined = undefined;
-//   store = writable<EditorState>({
-//     projectId,
-//     leftPanelTab: "files",
-//     files,
-//     selectedFile,
-//     editorElement,
-//     ydoc: projectYjs.ydoc,
-//     ytext,
-//     view: null,
-//   });
+function getEditorStyleExtensions() {
+  const fontSize = get(editorSettings).fontSize;
+  const fontFamily = get(editorSettings).fontFamily;
+  return EditorView.theme({
+    "&": {
+      fontSize: `${fontSize}px`,
+      fontFamily: fontFamily,
+    },
+    ".cm-content": {
+      fontSize: `${fontSize}px`,
+      fontFamily: fontFamily,
+    },
+    ".cm-gutters": {
+      fontSize: `${fontSize}px`,
+    },
+  });
+}
 
-//   editorContext = {
-//     subscribe: store.subscribe,
-//     set: store.set,
-//     update: store.update,
-//     cycleLeftPanelTab: (direction) => cycleLeftPanelTab(store, direction),
-//     selectFile: (fileId) => selectFile(store, fileId),
-//     initView: () => initView(store),
-//   };
-// }
+function getLigaturesExtension() {
+  const ligatures = get(editorSettings).ligatures;
+  return EditorView.theme({
+    "&": {
+      fontVariantLigatures: ligatures ? "normal" : "none",
+    },
+    ".cm-content": {
+      fontVariantLigatures: ligatures ? "normal" : "none",
+    },
+  });
+}
+
+function createErrorIconPlugin() {
+  return ViewPlugin.fromClass(
+    class {
+      constructor(view: EditorView) {
+        this.applyClasses(view);
+      }
+
+      update(update: ViewUpdate) {
+        if (
+          update.docChanged ||
+          update.viewportChanged ||
+          update.selectionSet
+        ) {
+          this.applyClasses(update.view);
+        }
+      }
+
+      applyClasses(view: EditorView) {
+        setTimeout(() => {
+          const gutterElements = view.dom.querySelectorAll(
+            ".cm-lineNumbers .cm-gutterElement",
+          );
+          gutterElements.forEach((el) => {
+            const text = el.textContent?.trim();
+            if (text === "×") {
+              (el as HTMLElement).classList.add("cm-error-icon");
+            } else {
+              (el as HTMLElement).classList.remove("cm-error-icon");
+            }
+          });
+        }, 0);
+      }
+    },
+  );
+}
+
 
 export const projectId = writable<string>("");
 export const project = writable<Project | null>(null);
@@ -257,8 +245,13 @@ export const projectSync = writable<ReturnType<typeof createProjectSync> | null>
 export const commentSync = writable<ReturnType<typeof createCommentSync> | null>(null);
 export const activeCommentId = writable<string | null>(null);
 export const view = writable<EditorView | null>(null);
+let undoManager: UndoManager;
 export const ytext = derived([ydoc, selectedFile], ([$ydoc, $selectedFile]) => {
-  return $ydoc?.getText(`file-${$selectedFile?.id}`);
+  const ytextValue = $ydoc?.getText(`file-${$selectedFile?.id}`);
+  if (ytextValue) {
+    undoManager = new UndoManager(ytextValue);
+  }
+  return ytextValue;
 });
 export const previewIframe = writable<HTMLIFrameElement | undefined>();
 export const currentUserRole = writable<"owner" | "admin" | "writer" | "commentor" | "reader">("reader");
@@ -275,6 +268,170 @@ export const context = {
   previewIframe,
   projectSync,
 };
+
+
+export function toggleWrap(prefix: string, suffix: string) {
+  const viewValue = get(view);
+    if (!viewValue) return;
+
+    const { from, to } = viewValue.state.selection.main;
+    const selectedText = viewValue.state.doc.sliceString(from, to);
+
+    // Check if we have text before and after selection
+    const beforeStart = Math.max(0, from - prefix.length);
+    const afterEnd = Math.min(viewValue.state.doc.length, to + suffix.length);
+    const textBefore = viewValue.state.doc.sliceString(beforeStart, from);
+    const textAfter = viewValue.state.doc.sliceString(to, afterEnd);
+
+    // Check if already wrapped
+    const isWrapped =
+      textBefore.endsWith(prefix) && textAfter.startsWith(suffix);
+
+    if (isWrapped) {
+      // Remove wrapping
+      if (selectedText) {
+        // Selection exists - remove prefix before and suffix after
+        // Changes array positions are relative to original document, CodeMirror handles adjustments
+        viewValue.dispatch({
+          changes: [
+            { from: from - prefix.length, to: from, insert: "" },
+            { from: to, to: to + suffix.length, insert: "" },
+          ],
+          selection: { anchor: from - prefix.length, head: to - prefix.length },
+        });
+      } else {
+        // No selection, just cursor - remove prefix before and suffix after
+        viewValue.dispatch({
+          changes: [
+            { from: from - prefix.length, to: from, insert: "" },
+            { from: from, to: from + suffix.length, insert: "" },
+          ],
+          selection: { anchor: from - prefix.length },
+        });
+      }
+    } else {
+      // Add wrapping
+      if (selectedText) {
+        // Wrap selection
+        viewValue.dispatch({
+          changes: { from, to, insert: `${prefix}${selectedText}${suffix}` },
+          selection: {
+            anchor: from + prefix.length,
+            head: from + prefix.length + selectedText.length,
+          },
+        });
+      } else {
+        // Insert prefix and suffix at cursor
+        viewValue.dispatch({
+          changes: { from, insert: `${prefix}${suffix}` },
+          selection: { anchor: from + prefix.length },
+        });
+      }
+    }
+    viewValue.focus();
+  }
+
+function createUndoRedoKeymap() {
+    if (!undoManager) {
+      return keymap.of([]);
+    }
+
+    return keymap.of([
+      {
+        key: "Mod-z",
+        run: (view) => {
+          if (undoManager && undoManager.canUndo()) {
+            undoManager.undo();
+            return true;
+          }
+          return false;
+        },
+      },
+      {
+        key: "Mod-Shift-z",
+        run: (view) => {
+          if (undoManager && undoManager.canRedo()) {
+            undoManager.redo();
+            return true;
+          }
+          return false;
+        },
+      },
+      {
+        key: "Mod-y",
+        run: (view) => {
+          if (undoManager && undoManager.canRedo()) {
+            undoManager.redo();
+            return true;
+          }
+          return false;
+        },
+      },
+      {
+        key: "Mod-b",
+        run: () => {
+          toggleWrap("*", "*");
+          return true;
+        },
+      },
+      {
+        key: "Mod-i",
+        run: () => {
+          toggleWrap("_", "_");
+          return true;
+        },
+      },
+      {
+        key: "Mod-u",
+        run: () => {
+          toggleWrap("#underline[", "]");
+          return true;
+        },
+      },
+      {
+        key: "Tab",
+        run: (view) => {
+          return indentMore(view);
+        },
+      },
+      {
+        key: "Shift-Tab",
+        run: (view) => {
+          return indentLess(view);
+        },
+      },
+    ]);
+  }
+
+
+async function createExtensions() {
+  const ytextValue = get(ytext);
+  const provider = get(projectYjs)?.provider;
+  const collabReady = ytextValue && provider && undoManager;
+  const extensions = [
+    foldGutter(),
+    lineWrappingCompartment.of(getLineWrappingExtensions()),
+    lineNumbersCompartment.of(getLineNumbersExtension()),
+    basicSetup,
+    // search({ createPanel: createFindPanel }),
+    themeCompartment.of(getThemeExtensions()),
+    syntaxCompartment.of(await getSyntaxHighlighting()),
+    languageCompartment.of(await getLanguageExtensions()),
+    editorStyleCompartment.of(getEditorStyleExtensions()),
+    ligaturesCompartment.of(getLigaturesExtension()),
+    createErrorIconPlugin(),
+    bracketMatching(),
+    closeBrackets(),
+    indentOnInput(),
+    indentUnit.of("  "), // Set indentation to 2 spaces
+    readOnlyCompartment.of(EditorState.readOnly.of(!editable)),
+    editableCompartment.of(EditorView.editable.of(editable)),
+    ...(collabReady ? [yCollab(ytextValue, provider.awareness, { undoManager })] : []),
+    createUndoRedoKeymap(),
+    commentsExtension(),
+  ];
+  return extensions;
+}
 
 
 function onFileCreated(file: File) {
@@ -769,7 +926,8 @@ export async function initSelectedFile() {
   }
 }
 
-editorElement.subscribe((el) => {
+editorElement.subscribe(async (el) => {
+  const extensions = await createExtensions();
   if (el) {
     view.update((v) => {
       if (v) {
@@ -805,7 +963,8 @@ export function selectFile(fileId: string) {
   }
 }
 
-ytext.subscribe((newYText) => {
+ytext.subscribe(async (newYText) => {
+  const extensions = await createExtensions();
   view.update((v) => {
     v?.setState(
       CMState.create({
