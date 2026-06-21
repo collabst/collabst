@@ -47,4 +47,8 @@
     font-weight: 500;
     flex-direction: column;
   }
+
+  /* .zoom:active {
+    transform: scaleY(0.95) scaleX(1.05);
+  } */
 </style>

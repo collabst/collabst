@@ -32,12 +32,12 @@
   }
 
   .file:hover {
-    font-weight: 600;
     background-color: var(--surface-hover);
   }
 
   .file:active {
-    transform: translateY(3px);
+    transform: translateY(2px);
+
   }
 
   @keyframes jumpAnimation {
@@ -54,9 +54,13 @@
 
   .file.selected {
     font-weight: 600;
-    border: 1px solid var(--border-secondary);
-    border-bottom: 3px solid var(--border-secondary);
-    background-color: var(--surface-hover);
+    border: 1px solid var(--navbar-border);
+    border-bottom: 3px solid var(--navbar-border);
+    background-color: var(--navbar-bg);
     animation: jumpAnimation 0.2s ease-out;
+  }
+
+  :global([data-theme="dark"]) .file.selected {
+    color: var(--text-primary);
   }
 </style>

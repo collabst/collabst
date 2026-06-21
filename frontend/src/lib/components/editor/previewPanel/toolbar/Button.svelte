@@ -58,6 +58,6 @@
     stroke-width: 3;
     width: var(--icon-size);
     height: var(--icon-size);
-    transform: scaleY(0.85) scaleX(1.1) translateY(1px);
+    transform: scaleY(0.8) scaleX(1.15);
   }
 </style>
