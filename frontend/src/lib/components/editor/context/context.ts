@@ -43,7 +43,7 @@ import { derived, get, writable } from "svelte/store";
 import type { LeftPanelTab } from "./types";
 import { type File } from "./types";
 import { assetsApi, commentsApi, filesApi, projectsApi } from "$lib/services/api";
-import { createProjectYjs, type YjsConnection } from "$lib/yjs";
+import { createProjectYjs, getFileText, type YjsConnection } from "$lib/yjs";
 import { auth } from "$lib/stores/auth";
 import { createProjectSync } from "$lib/projectSync";
 import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagnostic } from "$lib/types";
@@ -585,10 +585,6 @@ function destroyRealtimeConnections() {
   });
 }
 
-let isConnected = false;
-let isSynced = false;
-let isLocalSynced = false;
-
 function initRealtimeConnections() {
   projectYjs.set(createProjectYjs(
     get(projectId),
@@ -854,7 +850,6 @@ function applyThreadUpdate(thread: CommentThreadDTO) {
 export async function initContext(projectIdValue: string) {
   projectId.set(projectIdValue);
   await loadProject();
-  files.set(await filesApi.list(projectIdValue));
   projectYjs.set(
     createProjectYjs(projectIdValue, get(auth).user, get(auth).token),
   );
@@ -872,6 +867,8 @@ export async function initContext(projectIdValue: string) {
       );
     },
   }, get(auth).token));
+  const newFiles = await filesApi.list(projectIdValue);
+  files.update(() => newFiles);
   commentSync.set(createCommentSync(
     projectIdValue,
     {
@@ -964,20 +961,29 @@ export function selectFile(fileId: string) {
   if (file) {
     selectedFile.set(file);
   }
-  syncFilesAndAssets();
+}
+
+async function updateEditorContent() {
+  const viewValue = get(view);
+  const ytextValue = get(ytext);
+  if (!viewValue || !ytextValue) return;
+
+  const extensions = await createExtensions();
+  viewValue.setState(
+    CMState.create({
+      doc: ytextValue.toString(),
+      extensions,
+    }),
+  );
 }
 
 ytext.subscribe(async (newYText) => {
-  const extensions = await createExtensions();
-  view.update((v) => {
-    v?.setState(
-      CMState.create({
-        doc: newYText?.toString() || "",
-        extensions,
-      }),
-    );
-    return v;
-  });
+  updateEditorContent();
+});
+
+
+view.subscribe(async (newView) => {
+  updateEditorContent();
 });
 
 
@@ -985,67 +991,67 @@ let compileEnabled = true;
 let separateWindow: Window | null = null;
 
 function updateLinter() {
-    const editorView = get(view);
-    if (editorView) {
-      const lintDiagnostics = convertDiagnosticsToLint(
-        diagnostics,
-        editorView,
-        get(selectedFile)?.path || "",
-      );
-      const transaction = setDiagnostics(editorView.state, lintDiagnostics);
-      editorView.dispatch(transaction);
-    }
+  const editorView = get(view);
+  if (editorView) {
+    const lintDiagnostics = convertDiagnosticsToLint(
+      diagnostics,
+      editorView,
+      get(selectedFile)?.path || "",
+    );
+    const transaction = setDiagnostics(editorView.state, lintDiagnostics);
+    editorView.dispatch(transaction);
   }
+}
 
 function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, isFirstCompile: boolean) {
-    targetWindow.postMessage(
-      {
-        type: 'typst-vector-data',
-        data: vectorData,
-        isFirstCompile: isFirstCompile,
-      },
-      '*'
-    );
-  }
+  targetWindow.postMessage(
+    {
+      type: 'typst-vector-data',
+      data: vectorData,
+      isFirstCompile: isFirstCompile,
+    },
+    '*'
+  );
+}
 
-  let diagnostics: Diagnostic[] = [];
+let diagnostics: Diagnostic[] = [];
 
-  function onDiagnostics(diags: any[]) {
-    // Parse diagnostics range from compiler format
-    diagnostics = diags.map((d: any) => ({
-      severity: d.severity,
-      message: d.message,
-      range: parseRange(d.range),
-      path: d.path,
-    }));
-    updateLinter();
-  }
+function onDiagnostics(diags: any[]) {
+  // Parse diagnostics range from compiler format
+  diagnostics = diags.map((d: any) => ({
+    severity: d.severity,
+    message: d.message,
+    range: parseRange(d.range),
+    path: d.path,
+  }));
+  updateLinter();
+}
 
 let worker: Worker;
 
 function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
-   const previewIframeValue = get(previewIframe);
-    if (!previewIframeValue?.contentWindow || !iframeMockReady) {
-      return;
-    }
-
-    // Format message as the typst preview expects: "messageType,binaryData"
-    const messageType = isFirstCompile ? 'new' : 'diff-v1';
-    const encoder = new TextEncoder();
-    const typeBytes = encoder.encode(messageType + ',');
-
-    // Combine type and data
-    const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
-    combined.set(typeBytes, 0);
-    combined.set(new Uint8Array(vectorData), typeBytes.length);
-
-    // Send via postMessage to iframe
-    // Note: We copy the buffer to avoid transferring ownership which would detach the original
-    previewIframeValue.contentWindow.postMessage({
-      type: 'typst-ws-message',
-      data: combined.buffer.slice(0)
-    }, '*');
+  const previewIframeValue = get(previewIframe);
+  if (!previewIframeValue?.contentWindow || !iframeMockReady) {
+    return;
   }
+
+  // Format message as the typst preview expects: "messageType,binaryData"
+  const messageType = isFirstCompile ? 'new' : 'diff-v1';
+  const encoder = new TextEncoder();
+  const typeBytes = encoder.encode(messageType + ',');
+
+  // Combine type and data
+  const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
+  combined.set(typeBytes, 0);
+  combined.set(new Uint8Array(vectorData), typeBytes.length);
+
+  // Send via postMessage to iframe
+  // Note: We copy the buffer to avoid transferring ownership which would detach the original
+  previewIframeValue.contentWindow.postMessage({
+    type: 'typst-ws-message',
+    data: combined.buffer.slice(0)
+  }, '*');
+}
 
 export function initWorker() {
   if (!worker) {
@@ -1082,10 +1088,7 @@ export function initWorker() {
           }
 
           // Handle diagnostics
-          if (diagnostics && onDiagnostics) {
-            console.log('Received diagnostics from worker:', diagnostics);
-            onDiagnostics(diagnostics);
-          }
+          onDiagnostics(diagnostics);
 
           if (!vectorData) {
             status = `Ready (${compileTime}ms) - no output`;
@@ -1110,10 +1113,7 @@ export function initWorker() {
           break;
 
         case 'error':
-          if (diagnostics && onDiagnostics) {
-            console.log('Received diagnostics from worker:', diagnostics);
-            onDiagnostics(diagnostics);
-          }
+          onDiagnostics(diagnostics);
           status = `Compile error: ${e.data.error}`;
           console.error('Compilation error:', e.data);
           break;
@@ -1418,3 +1418,35 @@ export async function newFolder(path: string) {
   const parentId = null;
   await filesApi.createFolder($projectId, name, parentId)
 }
+
+
+let fileObservers = new Map<string, () => void>();
+
+files.subscribe((filesValue) => {
+  const yjsConnection = get(projectYjs);
+  if (!yjsConnection?.ydoc) return;
+
+  const ydoc = yjsConnection.ydoc;
+
+  // Clean up observers for deleted files
+  for (const [fileId, unobserve] of fileObservers) {
+    if (!filesValue.find((file) => file.id === fileId)) {
+      unobserve();
+      fileObservers.delete(fileId);
+    }
+  }
+
+  // Set up observers for new files
+  for (const file of filesValue) {
+    if (!fileObservers.has(file.id)) {
+      const ytext = getFileText(ydoc, file.id);
+      if (ytext) {
+        const handler = () => {
+          syncFilesAndAssets();
+        };
+        ytext.observe(handler);
+        fileObservers.set(file.id, () => ytext.unobserve(handler));
+      }
+    }
+  }
+});
