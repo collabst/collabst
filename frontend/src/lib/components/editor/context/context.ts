@@ -28,6 +28,7 @@ import {
   foldKeymap,
   indentUnit,
 } from "@codemirror/language";
+import { type Awareness } from "y-protocols/awareness";
 import { defaultKeymap, history, historyKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { searchKeymap, highlightSelectionMatches, search } from "@codemirror/search";
 import {

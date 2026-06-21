@@ -5,6 +5,7 @@
   import User from "@lucide/svelte/icons/user";
   import TopButton from "./TopButton.svelte";
   import ThemeToggle from "./ThemeToggle.svelte";
+  import AwarenessIndicator from "./AwarenessIndicator.svelte";
 </script>
 
 <div class="top-bar">
@@ -17,6 +18,7 @@
   <div class="project-name">Project Name</div>
 
   <div class="right-section">
+    <AwarenessIndicator />
     <ThemeToggle />
     <TopButton icon={Settings} onclick={() => {}} />
     <TopButton icon={User} onclick={() => {}} />
