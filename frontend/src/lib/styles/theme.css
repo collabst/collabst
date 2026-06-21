@@ -182,12 +182,11 @@
 /* === Dark Theme === */
 [data-theme="dark"] {
   /* Background Colors - Monochromatic greys matching projects page */
-  --bg-primary: #1d1d1f;
+  --bg-primary: #18181b;
   --bg-secondary: #252526;
   --bg-tertiary: #2d2d30;
-  --bg-elevated: #323233;
   --bg-overlay: rgba(0, 0, 0, 0.8);
-  --bg-canvas: #232325;
+  --bg-canvas: #212124;
   /* Canvas - slightly lighter than primary */
   --bg-input: var(--bg-primary);
   /* Input background */
@@ -207,9 +206,11 @@
   /* Typst document background */
 
   /* Navbar Colors */
-  --navbar-bg: #232325;
-  --navbar-border: #086764ca;
-  --navbar-shadow: #001111e2;
+  --navbar-bg: var(--bg-editor);
+  --navbar-border: #1fa29eb5;
+  --navbar-shadow: #001111e6;
+
+  --editor-panels-border: #2b2b30;
 
   /* Surface Colors - Neutral grey tones */
   --surface-primary: #252526;
@@ -319,7 +320,6 @@
   --bg-primary: #e7f0f0;
   --bg-secondary: #d4d4d4;
   --bg-tertiary: #c8c8c8;
-  --bg-elevated: var(--bg-primary);
   --bg-overlay: rgba(0, 0, 0, 0.5);
   --bg-canvas: #f7fcfc;
   /* Canvas - lighter than primary */
@@ -341,9 +341,12 @@
   /* Typst document background - white for clarity */
 
   /* Navbar Colors */
-  --navbar-bg: #f1f8f8;
-  --navbar-border: #00ac98d3;
-  --navbar-shadow: #00866933;
+  --navbar-bg: #f4fdfd;
+  --navbar-border: #52a399d3;
+  --navbar-shadow: #00866937;
+
+  --editor-panels-border: #bad5d2;
+
 
   /* Surface Colors - Adjusted to match new scheme */
   --surface-primary: var(--bg-primary);

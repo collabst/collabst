@@ -15,7 +15,7 @@
 
 <style>
   .panel {
-    border: 1px solid var(--border-primary);
+    border: 1px solid var(--editor-panels-border);
     border-radius: 1rem;
     overflow: hidden;
     height: 100%;

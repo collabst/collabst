@@ -26,9 +26,10 @@
   .tool-bar {
     display: flex;
     background-color: var(--bg-primary);
-    padding: 0.2rem 0.75rem;
+    padding: 0.2rem 0.35rem;
     border: 1px solid var(--border-primary);
     border-radius: 0.5rem;
     margin: 0.5rem;
+    gap: 0.2rem;
   }
 </style>
