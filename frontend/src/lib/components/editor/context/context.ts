@@ -1017,69 +1017,71 @@ function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, i
 export let diagnostics: Writable<Diagnostic[]> = writable([]);
 
 function navigateTo(
-    line: number,
-    character: number,
-    endLine?: number,
-    endCharacter?: number,
-  ) {
-    try {
-      const viewValue = get(view);
-      if (!viewValue) return;
+  from: number | [number, number],
+  to?: number | [number, number],
+) {
+  const viewValue = get(view);
+  if (!viewValue) return;
 
-      const doc = viewValue.state.doc;
-      // Convert 1-based to 0-based line numbering
-      const startLineNum = Math.max(1, line);
-      const endLineNum = endLine ? Math.max(1, endLine) : startLineNum;
+  const doc = viewValue.state.doc;
 
-      if (startLineNum <= doc.lines && endLineNum <= doc.lines) {
-        const startLineObj = doc.line(startLineNum);
-        const endLineObj = doc.line(endLineNum);
+  if (from instanceof Array) {
+    const [startLine, startChar] = from;
 
-        const from = startLineObj.from + Math.max(0, character);
-        const to = endLineObj.from + Math.max(0, endCharacter ?? character);
+    const startLineNum = Math.max(1, startLine);
+    if (startLineNum > doc.lines) return;
 
-        // Dispatch transaction to set selection and scroll into view
-        viewValue.dispatch({
-          selection: { anchor: from, head: to },
-          scrollIntoView: true,
-        });
-        viewValue.focus();
-      }
-    } catch (e) {
-      console.error("Failed to navigate to diagnostic:", e);
-    }
+    const startLineObj = doc.line(startLineNum);
+    from = startLineObj.from + Math.max(0, startChar);
   }
+
+  if (to instanceof Array) {
+    const [endLine, endChar] = to;
+
+    const endLineNum = Math.max(1, endLine);
+    if (endLineNum > doc.lines) return;
+
+    const endLineObj = doc.line(endLineNum);
+    to = endLineObj.from + Math.max(0, endChar);
+  }
+
+  viewValue.dispatch({
+    selection: { anchor: from, head: to ?? from },
+    scrollIntoView: true,
+  });
+  viewValue.focus();
+}
 
 export function gotoDiagnostic(diagnostic: Diagnostic) {
-    if (!diagnostic.range) return;
+  if (!diagnostic.range) return;
 
-    // Find the file by path
-    const diagnosticFile = get(files).find((f) => {
-      const filePath = f.path.startsWith("/") ? f.path.slice(1) : f.path;
-      const diagnosticPath = diagnostic.path
-        ? diagnostic.path.startsWith("/")
-          ? diagnostic.path.slice(1)
-          : diagnostic.path
-        : "";
-      return filePath === diagnosticPath || f.name === diagnostic.path;
-    });
+  // Find the file by path
+  const diagnosticFile = get(files).find((f) => {
+    const filePath = f.path.startsWith("/") ? f.path.slice(1) : f.path;
+    const diagnosticPath = diagnostic.path
+      ? diagnostic.path.startsWith("/")
+        ? diagnostic.path.slice(1)
+        : diagnostic.path
+      : "";
+    return filePath === diagnosticPath || f.name === diagnostic.path;
+  });
 
-    if (diagnosticFile) {
-      // Select the file
-      selectedFile.set(diagnosticFile);
-      selectedAsset.set(null);
+  if (diagnosticFile) {
+    // Select the file
+    selectedFile.set(diagnosticFile);
+    selectedAsset.set(null);
 
-      // Navigate to the diagnostic in the editor
-      setTimeout(() => {
-        navigateTo(
-          diagnostic.range!.start.line + 1,
-          diagnostic.range!.start.character,
-          diagnostic.range!.end.line + 1,
-          diagnostic.range!.end.character,
-        );
-      }, 100);
-    }
+    // Navigate to the diagnostic in the editor
+    setTimeout(() => {
+      navigateTo(
+        [diagnostic.range!.start.line + 1,
+        diagnostic.range!.start.character],
+        [diagnostic.range!.end.line + 1,
+        diagnostic.range!.end.character]
+      );
+    }, 100);
   }
+}
 
 function onDiagnostics(diags: any[] = []) {
   // Parse diagnostics range from compiler format
@@ -1507,6 +1509,7 @@ files.subscribe((filesValue) => {
       if (ytext) {
         const handler = () => {
           syncFilesAndAssets();
+          updateSearchMatches();
         };
         ytext.observe(handler);
         fileObservers.set(file.id, () => ytext.unobserve(handler));
@@ -1514,3 +1517,185 @@ files.subscribe((filesValue) => {
     }
   }
 });
+
+export interface SearchMatch {
+  filePath: string;
+  startLine: number;
+  startChar: number;
+  startIndex: number;
+  endLine: number;
+  endChar: number;
+  endIndex: number;
+  preMatchText: string;
+  matchText: string;
+  postMatchText: string;
+}
+
+export interface FileSearchMatches {
+  filePath: string;
+  matches: SearchMatch[];
+}
+
+const extraChar = 10;
+
+export let searchText = writable("");
+export let replaceText = writable("");
+export let searchMatches = writable<FileSearchMatches[]>([]);
+
+export let caseSensitiveSearch = writable(false);
+export let wholeWordSearch = writable(false);
+export let regexSearch = writable(false);
+
+searchText.subscribe(() => {
+  updateSearchMatches();
+});
+
+caseSensitiveSearch.subscribe(() => {
+  updateSearchMatches();
+});
+
+wholeWordSearch.subscribe(() => {
+  updateSearchMatches();
+});
+
+regexSearch.subscribe(() => {
+  updateSearchMatches();
+});
+
+function updateSearchMatches() {
+  const searchTextValue = get(searchText);
+  if (!searchTextValue) {
+    searchMatches.set([]);
+    return;
+  }
+
+  const matchesMap = [];
+  const filesValue = get(files);
+  const yjsConnection = get(projectYjs);
+  if (!yjsConnection?.ydoc) return;
+
+  for (const file of filesValue) {
+    const ytext = getFileText(yjsConnection.ydoc, file.id);
+    if (!ytext) continue;
+
+    const query = get(searchText);
+    const caseSensitive = get(caseSensitiveSearch);
+    const wholeWord = get(wholeWordSearch);
+    const regex = get(regexSearch);
+
+    const content = ytext.toString();
+    const matches = content.matchAll(
+      new RegExp(
+        regex
+          ? query
+          : wholeWord
+            ? `\\b${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`
+            : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        caseSensitive ? "g" : "gi",
+      ),
+    );
+    const searchMatches: SearchMatch[] = [];
+
+    matches.forEach((match) => {
+      const startIndex = match.index || 0;
+      const endIndex = startIndex + match[0].length;
+
+      const startLine = content.substring(0, startIndex).split("\n").length - 1;
+      const endLine = content.substring(0, endIndex).split("\n").length - 1;
+
+      const startChar =
+        content.substring(0, startIndex).split("\n").pop()?.length || 0;
+      const endChar =
+        content.substring(0, endIndex).split("\n").pop()?.length || 0;
+
+      const extraStartIndex = Math.max(0, startIndex - extraChar);
+      const extraEndIndex = Math.min(content.length, endIndex + extraChar);
+
+      let preMatchText = content.substring(extraStartIndex, startIndex);
+      const matchText = content.substring(startIndex, endIndex);
+      let postMatchText = content.substring(endIndex, extraEndIndex);
+
+      if (extraStartIndex > 0) {
+        preMatchText = "…" + preMatchText;
+      }
+      if (extraEndIndex < content.length) {
+        postMatchText = postMatchText + "…";
+      }
+
+      searchMatches.push({
+        filePath: file.path,
+        startLine,
+        startChar,
+        startIndex,
+        endLine,
+        endChar,
+        endIndex,
+        preMatchText,
+        matchText,
+        postMatchText,
+      });
+    });
+
+    if (searchMatches.length > 0) {
+      matchesMap.push({ filePath: file.path, matches: searchMatches });
+    }
+  }
+
+  searchMatches.set(matchesMap);
+}
+
+export function gotoSearchMatch(match: SearchMatch) {
+  const file = get(files).find((f) => f.path === match.filePath);
+  if (!file) {
+    console.warn("File not found for search match:", match.filePath);
+    return;
+  }
+  selectedFile.set(file);
+  setTimeout(() => { // TODO: this is a hack, needs to wait for editor to load the file content
+    navigateTo(match.startIndex, match.endIndex);
+  }, 100);
+}
+
+export function replaceSearchMatch(match: SearchMatch) {
+  const file = get(files).find((f) => f.path === match.filePath);
+  const ydoc = get(projectYjs)?.ydoc;
+  if (!file || !ydoc) return;
+
+  const ytext = ydoc.getText(`file-${file.id}`);
+  ytext.delete(match.startIndex, match.endIndex - match.startIndex);
+  ytext.insert(match.startIndex, get(replaceText));
+}
+
+export function replaceAllInFile(filePath: string) {
+  const file = get(files).find((f) => f.path === filePath);
+  const ydoc = get(projectYjs)?.ydoc;
+  if (!file || !ydoc) return;
+
+  const query = get(searchText);
+  const replace = get(replaceText);
+  const regex = get(regexSearch)
+  const caseSensitive = get(caseSensitiveSearch);
+  const wholeWord = get(wholeWordSearch);
+
+  const text = getFileText(ydoc, file.id)?.toString() || "";
+  const newText = text.replace(
+    new RegExp(
+      regex
+        ? query
+        : wholeWord
+          ? `\\b${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`
+          : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      caseSensitive ? "g" : "gi",
+    ),
+    replace,
+  );
+  const ytext = ydoc.getText(`file-${file.id}`);
+  ytext.delete(0, ytext.length);
+  ytext.insert(0, newText);
+}
+
+export function replaceAllMatches() {
+  for (const file of get(files)) {
+    replaceAllInFile(file.path);
+  }
+}

@@ -4,12 +4,13 @@
   interface Props {
     children: Snippet;
     onclick?: (e: MouseEvent) => void;
+    selected?: boolean;
   }
 
-  let { children, onclick }: Props = $props();
+  let { children, onclick, selected = false }: Props = $props();
 </script>
 
-<button class="button" {onclick}>
+<button class="button" class:selected {onclick}>
   {@render children()}
 </button>
 
@@ -43,12 +44,13 @@
     height: 16px;
   }
 
-  .button:active {
+  .button:active,
+  .button.selected {
     color: var(--text-active);
-    /* transform: scaleX(1.15); */
   }
 
-  .button:active :global(svg) {
+  .button:active :global(svg),
+  .button.selected :global(svg) {
     stroke-width: 3;
     width: 16px;
     height: 16px;
