@@ -15,6 +15,7 @@
     flex-direction: column;
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 5rem;
+    padding: 3px 0 5rem;
+    /* transform: translateY(-3px); */
   }
 </style>
