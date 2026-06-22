@@ -5,9 +5,9 @@
     fitToPage,
   } from "$lib/components/editor/context";
   import Button from "./Button.svelte";
-  import GaleryVertical from "@lucide/svelte/icons/gallery-vertical";
-  import GaleryHorizontal from "@lucide/svelte/icons/gallery-horizontal";
-  import Brackets from "@lucide/svelte/icons/brackets";
+  import MoveHorizontal from "@lucide/svelte/icons/move-horizontal";
+  import MoveVertical from "@lucide/svelte/icons/move-vertical";
+  import FileIcon from "@lucide/svelte/icons/file";
 
   interface Props {
     open: boolean;
@@ -22,19 +22,19 @@
     <div class="dropdown-divider"></div>
     <div class="dropdown-item">
       <Button onclick={fitToWidth}>
-        <GaleryHorizontal />
+        <MoveHorizontal />
         <span class="dropdown-item-text">Fit width</span>
       </Button>
     </div>
     <div class="dropdown-item">
       <Button onclick={fitToHeight}>
-        <GaleryVertical />
+        <MoveVertical />
         <span class="dropdown-item-text">Fit height</span>
       </Button>
     </div>
     <div class="dropdown-item">
       <Button onclick={fitToPage}>
-        <Brackets />
+        <FileIcon />
         <span class="dropdown-item-text">Fit page</span>
       </Button>
     </div>
