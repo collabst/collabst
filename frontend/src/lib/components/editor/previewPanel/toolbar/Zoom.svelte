@@ -4,9 +4,9 @@
     currentZoomMode,
   } from "$lib/components/editor/context";
   import Button from "./Button.svelte";
-  import GaleryVertical from "@lucide/svelte/icons/gallery-vertical";
-  import GaleryHorizontal from "@lucide/svelte/icons/gallery-horizontal";
-  import Brackets from "@lucide/svelte/icons/brackets";
+  import MoveHorizontal from "@lucide/svelte/icons/move-horizontal";
+  import MoveVertical from "@lucide/svelte/icons/move-vertical";
+  import FileIcon from "@lucide/svelte/icons/file";
   import ZoomDropdown from "./ZoomDropdown.svelte";
 
   let dropdownOpen = $state(false);
@@ -27,11 +27,11 @@
     {#if $currentZoomMode === "custom"}
       {($currentZoomValue * 100).toFixed(0)}%
     {:else if $currentZoomMode === "fit-width"}
-      <GaleryHorizontal />
+      <MoveHorizontal />
     {:else if $currentZoomMode === "fit-height"}
-      <GaleryVertical />
+      <MoveVertical />
     {:else if $currentZoomMode === "fit-page"}
-      <Brackets />
+      <FileIcon />
     {/if}
   </Button>
   <ZoomDropdown open={dropdownOpen} />
