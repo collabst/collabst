@@ -3,14 +3,14 @@
   import File from "./File.svelte";
 </script>
 
-<div class="files">
-{#each $files as file}
-  <File file={file} />
-{/each}
+<div class="content">
+  {#each $files as file}
+    <File {file} />
+  {/each}
 </div>
 
 <style>
-  .files {
+  .content {
     display: flex;
     flex-direction: column;
     flex: 1;

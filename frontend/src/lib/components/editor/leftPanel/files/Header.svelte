@@ -1,7 +1,7 @@
 <script lang="ts">
   import FilePlus from "@lucide/svelte/icons/file-plus";
   import FolderPlus from "@lucide/svelte/icons/folder-plus";
-  import Button from "./Button.svelte";
+  import Button from "../Button.svelte";
   import { newFile, newFolder } from "$lib/components/editor/context";
 
   function handleNewFile() {
@@ -13,7 +13,7 @@
   }
 </script>
 
-<div class="files">
+<div class="header">
   <div class="name">Files</div>
   <div class="actions">
     <Button onclick={handleNewFile}>
@@ -26,7 +26,9 @@
 </div>
 
 <style>
-  .files {
+  .header {
+    width: 100%;
+    padding: 1.5rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;

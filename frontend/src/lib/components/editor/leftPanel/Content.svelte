@@ -1,18 +1,20 @@
 <script lang="ts">
   import { leftPanelTab } from "$lib/components/editor/context/index";
-  import Files from "./Files.svelte";
-
-  let tab = $derived($leftPanelTab);
+  import Comments from "./comments/Comments.svelte";
+  import Files from "./files/Files.svelte";
+  import Issues from "./issues/Issues.svelte";
+  import Outline from "./outline/Outline.svelte";
+  import Search from "./search/Search.svelte";
 </script>
 
 {#if $leftPanelTab === "files"}
   <Files />
 {:else if $leftPanelTab === "search"}
-  <div>Search</div>
+  <Search />
 {:else if $leftPanelTab === "outline"}
-  <div>Outline</div>
+  <Outline />
 {:else if $leftPanelTab === "issues"}
-  <div>Issues</div>
+  <Issues />
 {:else if $leftPanelTab === "comments"}
-  <div>Comments</div>
+  <Comments />
 {/if}
