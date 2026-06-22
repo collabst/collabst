@@ -39,7 +39,7 @@ import {
 } from "@codemirror/autocomplete";
 import { lintKeymap, setDiagnostics } from "@codemirror/lint";
 
-import { derived, get, writable } from "svelte/store";
+import { derived, get, writable, type Writable } from "svelte/store";
 import type { LeftPanelTab } from "./types";
 import { type File } from "./types";
 import { assetsApi, commentsApi, filesApi, projectsApi } from "$lib/services/api";
@@ -994,7 +994,7 @@ function updateLinter() {
   const editorView = get(view);
   if (editorView) {
     const lintDiagnostics = convertDiagnosticsToLint(
-      diagnostics,
+      get(diagnostics),
       editorView,
       get(selectedFile)?.path || "",
     );
@@ -1014,16 +1014,83 @@ function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, i
   );
 }
 
-let diagnostics: Diagnostic[] = [];
+export let diagnostics: Writable<Diagnostic[]> = writable([]);
 
-function onDiagnostics(diags: any[]) {
+function navigateTo(
+    line: number,
+    character: number,
+    endLine?: number,
+    endCharacter?: number,
+  ) {
+    try {
+      const viewValue = get(view);
+      if (!viewValue) return;
+
+      const doc = viewValue.state.doc;
+      // Convert 1-based to 0-based line numbering
+      const startLineNum = Math.max(1, line);
+      const endLineNum = endLine ? Math.max(1, endLine) : startLineNum;
+
+      if (startLineNum <= doc.lines && endLineNum <= doc.lines) {
+        const startLineObj = doc.line(startLineNum);
+        const endLineObj = doc.line(endLineNum);
+
+        const from = startLineObj.from + Math.max(0, character);
+        const to = endLineObj.from + Math.max(0, endCharacter ?? character);
+
+        // Dispatch transaction to set selection and scroll into view
+        viewValue.dispatch({
+          selection: { anchor: from, head: to },
+          scrollIntoView: true,
+        });
+        viewValue.focus();
+      }
+    } catch (e) {
+      console.error("Failed to navigate to diagnostic:", e);
+    }
+  }
+
+export function gotoDiagnostic(diagnostic: Diagnostic) {
+    if (!diagnostic.range) return;
+
+    // Find the file by path
+    const diagnosticFile = get(files).find((f) => {
+      const filePath = f.path.startsWith("/") ? f.path.slice(1) : f.path;
+      const diagnosticPath = diagnostic.path
+        ? diagnostic.path.startsWith("/")
+          ? diagnostic.path.slice(1)
+          : diagnostic.path
+        : "";
+      return filePath === diagnosticPath || f.name === diagnostic.path;
+    });
+
+    if (diagnosticFile) {
+      // Select the file
+      selectedFile.set(diagnosticFile);
+      selectedAsset.set(null);
+
+      // Navigate to the diagnostic in the editor
+      setTimeout(() => {
+        navigateTo(
+          diagnostic.range!.start.line + 1,
+          diagnostic.range!.start.character,
+          diagnostic.range!.end.line + 1,
+          diagnostic.range!.end.character,
+        );
+      }, 100);
+    }
+  }
+
+function onDiagnostics(diags: any[] = []) {
   // Parse diagnostics range from compiler format
-  diagnostics = diags.map((d: any) => ({
-    severity: d.severity,
-    message: d.message,
-    range: parseRange(d.range),
-    path: d.path,
-  }));
+  diagnostics.set(
+    diags.map((d: any) => ({
+      severity: d.severity,
+      message: d.message,
+      range: parseRange(d.range),
+      path: d.path,
+    }))
+  );
   updateLinter();
 }
 
@@ -1062,6 +1129,7 @@ export function initWorker() {
 
     worker.onmessage = async (e) => {
       const { type, vectorData, compileTime, isFirstCompile, diagnostics } = e.data;
+      onDiagnostics(diagnostics);
 
       switch (type) {
         case 'status':
@@ -1087,9 +1155,6 @@ export function initWorker() {
             return;
           }
 
-          // Handle diagnostics
-          onDiagnostics(diagnostics);
-
           if (!vectorData) {
             status = `Ready (${compileTime}ms) - no output`;
             return;
@@ -1113,7 +1178,6 @@ export function initWorker() {
           break;
 
         case 'error':
-          onDiagnostics(diagnostics);
           status = `Compile error: ${e.data.error}`;
           console.error('Compilation error:', e.data);
           break;
