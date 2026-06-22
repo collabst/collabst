@@ -6,15 +6,16 @@
     onclick?: () => void;
     strokeWidth?: number;
     size?: number;
+    class?: string;
   }
 
-  let { icon: Icon, onclick, strokeWidth = 2, size = 16 }: Props = $props();
+  let { icon: Icon, onclick, size = 16, class: className }: Props = $props();
 </script>
 
 <button
-  class="button"
+  class="button {className}"
   {onclick}
-  style="--stroke-width: {strokeWidth}; --icon-size: {size}px;"
+  style="--icon-size: {size}px;"
 >
   <Icon />
 </button>
@@ -33,7 +34,7 @@
   }
 
   .button :global(svg) {
-    stroke-width: var(--stroke-width);
+    stroke-width: 2;
     width: var(--icon-size);
     height: var(--icon-size);
   }
@@ -55,9 +56,13 @@
   }
 
   .button:active :global(svg) {
-    stroke-width: 3;
+    stroke-width: 2.3;
     width: var(--icon-size);
     height: var(--icon-size);
     transform: scaleY(0.8) scaleX(1.2);
+  }
+
+  .button.bold-btn :global(svg) {
+    stroke-width: 3;
   }
 </style>

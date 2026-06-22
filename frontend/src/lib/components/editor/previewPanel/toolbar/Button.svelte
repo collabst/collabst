@@ -55,7 +55,7 @@
   }
 
   .button:active :global(svg) {
-    stroke-width: 3;
+    stroke-width: 2.3;
     width: var(--icon-size);
     height: var(--icon-size);
     transform: scaleY(0.8) scaleX(1.15);

@@ -18,7 +18,7 @@
     <Button icon={Undo2} />
     <Button icon={Redo2} />
     <Separator />
-    <Button icon={Bold} strokeWidth={3} />
+    <Button icon={Bold} class="bold-btn"/>
     <Button icon={Italic} />
     <Button icon={Underline} />
     <Separator />
