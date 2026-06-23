@@ -4,7 +4,7 @@
     type FileSearchMatches,
     toggleFileCollapsed,
   } from "$lib/components/editor/context";
-  import Button from "../Button.svelte";
+  import Button from "./Button.svelte";
   import ReplaceAll from "@lucide/svelte/icons/replace-all";
   import Match from "./Match.svelte";
 

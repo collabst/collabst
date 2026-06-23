@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Button from "../Button.svelte";
+  import Button from "./Button.svelte";
   import Replace from "@lucide/svelte/icons/replace";
   import {
     type SearchMatch,

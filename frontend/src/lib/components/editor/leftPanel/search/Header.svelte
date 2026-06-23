@@ -7,7 +7,7 @@
     wholeWordSearch,
     regexSearch,
   } from "$lib/components/editor/context";
-  import Button from "../Button.svelte";
+  import Button from "./Button.svelte";
   import CaseSensitive from "@lucide/svelte/icons/case-sensitive";
   import Regex from "@lucide/svelte/icons/regex";
   import WholeWord from "@lucide/svelte/icons/whole-word";

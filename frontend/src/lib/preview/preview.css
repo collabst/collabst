@@ -22,6 +22,15 @@
     drop-shadow(0 1px #8bbdab);
 }
 
+[data-theme="dark"] .typst-doc {
+  transition: width 0.1s ease, height 0.1s ease;
+  filter: 
+    drop-shadow(1px 0 #009860)
+    drop-shadow(-1px 0 #009860)
+    drop-shadow(0 -1px #009860)
+    drop-shadow(0 1px #009860);
+}
+
 [data-theme="dark"] #typst-app.negative>svg {
   filter: invert(1) hue-rotate(180deg);
 }
