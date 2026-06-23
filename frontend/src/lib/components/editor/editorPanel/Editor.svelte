@@ -38,4 +38,8 @@
     border-left-color: var(--color-primary-500);
     border-left-width: 2px;
   }
+
+  :global(.search-match) {
+    background: yellow;
+  }
 </style>

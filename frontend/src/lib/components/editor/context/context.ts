@@ -1,43 +1,22 @@
-// import { get, writable, type Writable } from "svelte/store";
-// import type { EditorState, LeftPanelTab } from "./types";
-// import { filesApi } from "$lib/services/api";
-// import { auth } from "$lib/stores/auth";
-// import { getWsUrl } from "$lib/utils/urls";
-// import { createProjectYjs } from "$lib/yjs";
 import { EditorState as CMState, Compartment, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
-  highlightSpecialChars,
-  drawSelection,
-  highlightActiveLine,
-  dropCursor,
-  rectangularSelection,
-  crosshairCursor,
   lineNumbers,
-  highlightActiveLineGutter,
   ViewPlugin,
   ViewUpdate,
 } from "@codemirror/view";
 import {
-  defaultHighlightStyle,
-  syntaxHighlighting,
   indentOnInput,
   bracketMatching,
   foldGutter,
-  foldKeymap,
   indentUnit,
 } from "@codemirror/language";
-import { type Awareness } from "y-protocols/awareness";
-import { defaultKeymap, history, historyKeymap, indentLess, indentMore } from "@codemirror/commands";
-import { searchKeymap, highlightSelectionMatches, search } from "@codemirror/search";
+import { indentLess, indentMore } from "@codemirror/commands";
 import {
-  autocompletion,
-  completionKeymap,
   closeBrackets,
-  closeBracketsKeymap,
 } from "@codemirror/autocomplete";
-import { lintKeymap, setDiagnostics } from "@codemirror/lint";
+import { setDiagnostics } from "@codemirror/lint";
 
 import { derived, get, writable, type Writable } from "svelte/store";
 import type { LeftPanelTab } from "./types";
@@ -53,7 +32,6 @@ import { goto } from "$app/navigation";
 import { createCommentSync } from "$lib/commentSync";
 import { tick } from "svelte";
 import { basicSetup } from "codemirror";
-// import { createFindPanel } from "$lib/codemirror/findPanel";
 import { greyDarkSyntax, greyDarkTheme, greyLightSyntax, greyLightTheme } from "$lib/codemirror/greyTheme";
 import { theme } from "$lib/stores/theme";
 import { editorSettings } from "$lib/stores/editorSettings";
@@ -71,6 +49,7 @@ const lineNumbersCompartment = new Compartment();
 const ligaturesCompartment = new Compartment();
 const readOnlyCompartment = new Compartment();
 const editableCompartment = new Compartment();
+const highlightCompartement = new Compartment();
 
 
 let wrapLines = true;
@@ -432,6 +411,7 @@ async function createExtensions() {
     ...(collabReady ? [yCollab(ytextValue, provider.awareness, { undoManager })] : []),
     createUndoRedoKeymap(),
     commentsExtension(),
+    highlightCompartement.of(getHighlightExtensions()),
   ];
   return extensions;
 }
@@ -1642,6 +1622,32 @@ function updateSearchMatches() {
   }
 
   searchMatches.set(matchesMap);
+  updateMatchHighlights();
+}
+
+function updateMatchHighlights() {
+  const selectedFileValue = get(selectedFile);
+  const searchMatchesValue = get(searchMatches);
+  const viewValue = get(view);
+  if (!selectedFileValue || !viewValue) return;
+
+  const fileMatches = searchMatchesValue.find(
+    (m) => m.filePath === selectedFileValue.path,
+  );
+  if (!fileMatches) {
+    viewValue.dispatch({
+      effects: setMatchHighlights.of([]),
+    });
+    return;
+  }
+
+  const highlights = fileMatches.matches.map((match) => ({
+    from: match.startIndex,
+    to: match.endIndex,
+  }));
+  viewValue.dispatch({
+    effects: setMatchHighlights.of(highlights),
+  });
 }
 
 export function gotoSearchMatch(match: SearchMatch) {
@@ -1698,4 +1704,41 @@ export function replaceAllMatches() {
   for (const file of get(files)) {
     replaceAllInFile(file.path);
   }
+}
+
+
+import { StateEffect, StateField } from "@codemirror/state";
+import { Decoration } from "@codemirror/view";
+
+const setMatchHighlights = StateEffect.define<{ from: number; to: number }[]>();
+
+const matchHighlight = Decoration.mark({
+  class: "search-match"
+});
+
+function getHighlightExtensions() {
+  const matchHighlightField = StateField.define({
+    create() {
+      return Decoration.none;
+    },
+
+    update(decorations, tr) {
+      decorations = decorations.map(tr.changes);
+
+      for (const effect of tr.effects) {
+        if (effect.is(setMatchHighlights)) {
+          decorations = Decoration.set(
+            effect.value.map(({ from, to }) =>
+              matchHighlight.range(from, to)
+            )
+          );
+        }
+      }
+
+      return decorations;
+    },
+
+    provide: field => EditorView.decorations.from(field)
+  });
+  return [matchHighlightField];
 }
