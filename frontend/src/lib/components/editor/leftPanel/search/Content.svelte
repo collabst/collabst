@@ -14,7 +14,6 @@
     flex: 1;
     display: flex;
     align-items: center;
-    padding: var(--space-2);
     flex-direction: column;
     gap: var(--space-4);
   }

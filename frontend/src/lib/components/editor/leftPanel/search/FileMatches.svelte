@@ -18,14 +18,11 @@
   <div class="header">
   <div class="top">
     <div class="path">{fileMatches.filePath}</div>
+    <div class="badge">{fileMatches.matches.length}</div>
     <Button onclick={() => replaceAllInFile(fileMatches.filePath)}>
       <ReplaceAll />
     </Button>
   </div>
-    <div class="match-count">
-      {fileMatches.matches.length}
-      {fileMatches.matches.length === 1 ? "match" : "matches"}
-    </div>
   </div>
   <div class="match-list">
     {#each fileMatches.matches as match}
@@ -40,12 +37,15 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    padding: 0 var(--space-2);
+    color: var(--text-primary);
   }
 
   .header {
     display: flex;
     flex: 1;
     flex-direction: column;
+    padding: 0 var(--space-3);
   }
 
   .top {
@@ -58,13 +58,24 @@
     font-weight: bold;
   }
 
-  .match-count {
-    font-size: 0.7rem;
+  .badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 1rem;
+    background-color: var(--surface-hover);
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-secondary);
+    padding: 0 0.5rem;
+    margin-right: var(--space-2);
   }
 
   .match-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    /* gap: var(--space-1); */
   }
 </style>
