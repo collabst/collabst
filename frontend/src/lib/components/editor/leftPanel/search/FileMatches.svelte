@@ -2,6 +2,7 @@
   import {
     replaceAllInFile,
     type FileSearchMatches,
+    toggleFileCollapsed,
   } from "$lib/components/editor/context";
   import Button from "../Button.svelte";
   import ReplaceAll from "@lucide/svelte/icons/replace-all";
@@ -12,13 +13,13 @@
   }
 
   let { fileMatches }: Props = $props();
-  let collapsed = $state(false);
+  let collapsed = $derived(fileMatches.collapsed);
   let fileName = $derived(fileMatches.filePath.split("/").pop() || fileMatches.filePath);
 </script>
 
 <div class="file-matches">
   <div class="header">
-    <button class="top" onclick={() => (collapsed = !collapsed)}>
+    <button class="top" onclick={() => toggleFileCollapsed(fileMatches)}>
     <div class="left">
       <div class="name">{fileName}</div>
       <div class="path">{fileMatches.filePath}</div>

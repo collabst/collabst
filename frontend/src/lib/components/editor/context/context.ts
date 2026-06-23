@@ -1514,10 +1514,9 @@ export interface SearchMatch {
 
 export interface FileSearchMatches {
   filePath: string;
+  collapsed: boolean;
   matches: SearchMatch[];
 }
-
-const extraChar = 100;
 
 export let searchText = writable("");
 export let replaceText = writable("");
@@ -1577,8 +1576,6 @@ function updateSearchMatches() {
     );
     const searchMatches: SearchMatch[] = [];
 
-    const filePath = file.path.slice(1); // Remove leading slash for display
-
     matches.forEach((match) => {
       const startIndex = match.index || 0;
       const endIndex = startIndex + match[0].length;
@@ -1601,7 +1598,7 @@ function updateSearchMatches() {
       let postMatchText = content.substring(endIndex, extraEndIndex);
 
       searchMatches.push({
-        filePath,
+        filePath: file.path,
         startLine,
         startChar,
         startIndex,
@@ -1615,7 +1612,7 @@ function updateSearchMatches() {
     });
 
     if (searchMatches.length > 0) {
-      matchesMap.push({ filePath, matches: searchMatches });
+      matchesMap.push({ filePath: file.path.slice(1), matches: searchMatches, collapsed: false });
     }
   }
 
@@ -1739,6 +1736,16 @@ function getHighlightExtensions() {
     provide: field => EditorView.decorations.from(field)
   });
   return [matchHighlightField];
+}
+
+export function toggleFileCollapsed(fileMatches: FileSearchMatches) {
+  searchMatches.update((files) =>
+    files.map((file) =>
+      file.filePath === fileMatches.filePath
+        ? { ...file, collapsed: !file.collapsed }
+        : file
+    )
+  );
 }
 
 export let showCommentButton = writable(false);
