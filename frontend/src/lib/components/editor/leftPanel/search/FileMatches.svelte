@@ -12,23 +12,31 @@
   }
 
   let { fileMatches }: Props = $props();
+  let collapsed = $state(false);
 </script>
 
 <div class="file-matches">
   <div class="header">
-  <div class="top">
+  <button class="top" onclick={() => (collapsed = !collapsed)}>
     <div class="path">{fileMatches.filePath}</div>
-    <div class="badge">{fileMatches.matches.length}</div>
-    <Button onclick={() => replaceAllInFile(fileMatches.filePath)}>
-      <ReplaceAll />
-    </Button>
+    <div class="right">
+      <div class="badge">{fileMatches.matches.length}</div>
+      <Button onclick={(e) => {
+        e.stopPropagation();
+        replaceAllInFile(fileMatches.filePath);
+      }}>
+        <ReplaceAll />
+      </Button>
+    </div>
+  </button>
   </div>
-  </div>
-  <div class="match-list">
-    {#each fileMatches.matches as match}
-      <Match {match} />
-    {/each}
-  </div>
+  {#if !collapsed}
+    <div class="match-list">
+      {#each fileMatches.matches as match}
+        <Match {match} />
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -36,7 +44,7 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 0;
     padding: 0 var(--space-2);
     color: var(--text-primary);
   }
@@ -44,18 +52,40 @@
   .header {
     display: flex;
     flex: 1;
-    flex-direction: column;
-    padding: 0 var(--space-3);
+    flex-direction: column;  
+    padding: 0.25rem var(--space-3);
+    border-radius: 6px;
+  }
+
+  .header:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .header:active {
+    background-color: var(--surface-active);
   }
 
   .top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
   }
 
   .path {
     font-weight: bold;
+    font-size: 0.89rem;
+  }
+
+  .right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .badge {
@@ -70,12 +100,11 @@
     font-weight: bold;
     color: var(--text-secondary);
     padding: 0 0.5rem;
-    margin-right: var(--space-2);
   }
 
   .match-list {
     display: flex;
     flex-direction: column;
-    /* gap: var(--space-1); */
+    height: 100%;
   }
 </style>

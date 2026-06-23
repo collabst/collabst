@@ -20,17 +20,20 @@
     gotoSearchMatch(match);
   }}
 >
-  <div class="content">
-    <div class="text">
-      <span>{match.preMatchText}</span>
-      <mark>{match.matchText}</mark>
-      <span>{match.postMatchText}</span>
-    </div>
-    <div class="line">Line {match.startLine + 1}</div>
+  <div class="text">
+    <span>{match.preMatchText}</span>
+    <mark>{match.matchText}</mark>
+    <span>{match.postMatchText}</span>
   </div>
-  <Button onclick={() => replaceSearchMatch(match)}>
-    <Replace />
-  </Button>
+  <div class="right">
+    <div class="line">Line {match.startLine + 1}</div>
+    <Button onclick={(e) => {
+      e.stopPropagation();
+      replaceSearchMatch(match);
+    }}>
+      <Replace />
+    </Button>
+  </div>
 </button>
 
 <style>
@@ -43,6 +46,7 @@
     border-radius: 6px;
     padding: 0.1rem var(--space-3);
     color: var(--text-secondary);
+    width: 100%;
   }
 
   .match:hover {
@@ -53,15 +57,14 @@
     transform: translateY(2px);
   }
 
-  .content {
+  .right {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
 
   .line {
     font-size: 0.8rem;
     color: var(--text-tertiary);
-    flex-shrink: 0;
   }
 </style>

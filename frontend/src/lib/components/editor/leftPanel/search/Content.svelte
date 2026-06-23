@@ -15,6 +15,8 @@
     display: flex;
     align-items: center;
     flex-direction: column;
-    gap: var(--space-4);
+    overflow-y: auto;
+    padding: 0 0 5rem;
+    gap: var(--space-1);
   }
 </style>
