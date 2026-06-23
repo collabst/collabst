@@ -1577,6 +1577,8 @@ function updateSearchMatches() {
     );
     const searchMatches: SearchMatch[] = [];
 
+    const filePath = file.path.slice(1); // Remove leading slash for display
+
     matches.forEach((match) => {
       const startIndex = match.index || 0;
       const endIndex = startIndex + match[0].length;
@@ -1599,7 +1601,7 @@ function updateSearchMatches() {
       let postMatchText = content.substring(endIndex, extraEndIndex);
 
       searchMatches.push({
-        filePath: file.path,
+        filePath,
         startLine,
         startChar,
         startIndex,
@@ -1613,7 +1615,7 @@ function updateSearchMatches() {
     });
 
     if (searchMatches.length > 0) {
-      matchesMap.push({ filePath: file.path, matches: searchMatches });
+      matchesMap.push({ filePath, matches: searchMatches });
     }
   }
 

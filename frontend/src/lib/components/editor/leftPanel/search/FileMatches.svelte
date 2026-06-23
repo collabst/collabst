@@ -13,12 +13,16 @@
 
   let { fileMatches }: Props = $props();
   let collapsed = $state(false);
+  let fileName = $derived(fileMatches.filePath.split("/").pop() || fileMatches.filePath);
 </script>
 
 <div class="file-matches">
   <div class="header">
     <button class="top" onclick={() => (collapsed = !collapsed)}>
+    <div class="left">
+      <div class="name">{fileName}</div>
       <div class="path">{fileMatches.filePath}</div>
+    </div>
       <div class="right">
         <div class="badge">{fileMatches.matches.length}</div>
         <Button
@@ -79,10 +83,21 @@
     cursor: pointer;
   }
 
-  .path {
+  .left {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .name {
     font-weight: bold;
-    font-size: 0.89rem;
+    font-size: 0.75rem;
     color: var(--text-primary);
+  }
+
+  .path {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
   }
 
   .right {
