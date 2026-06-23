@@ -17,18 +17,20 @@
 
 <div class="file-matches">
   <div class="header">
-  <button class="top" onclick={() => (collapsed = !collapsed)}>
-    <div class="path">{fileMatches.filePath}</div>
-    <div class="right">
-      <div class="badge">{fileMatches.matches.length}</div>
-      <Button onclick={(e) => {
-        e.stopPropagation();
-        replaceAllInFile(fileMatches.filePath);
-      }}>
-        <ReplaceAll />
-      </Button>
-    </div>
-  </button>
+    <button class="top" onclick={() => (collapsed = !collapsed)}>
+      <div class="path">{fileMatches.filePath}</div>
+      <div class="right">
+        <div class="badge">{fileMatches.matches.length}</div>
+        <Button
+          onclick={(e) => {
+            e.stopPropagation();
+            replaceAllInFile(fileMatches.filePath);
+          }}
+        >
+          <ReplaceAll />
+        </Button>
+      </div>
+    </button>
   </div>
   {#if !collapsed}
     <div class="match-list">
@@ -52,7 +54,7 @@
   .header {
     display: flex;
     flex: 1;
-    flex-direction: column;  
+    flex-direction: column;
     padding: 0.25rem var(--space-3);
     border-radius: 6px;
   }
@@ -80,6 +82,7 @@
   .path {
     font-weight: bold;
     font-size: 0.89rem;
+    color: var(--text-primary);
   }
 
   .right {

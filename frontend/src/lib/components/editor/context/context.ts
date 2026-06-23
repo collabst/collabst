@@ -1517,7 +1517,7 @@ export interface FileSearchMatches {
   matches: SearchMatch[];
 }
 
-const extraChar = 10;
+const extraChar = 100;
 
 export let searchText = writable("");
 export let replaceText = writable("");
@@ -1589,19 +1589,14 @@ function updateSearchMatches() {
       const endChar =
         content.substring(0, endIndex).split("\n").pop()?.length || 0;
 
-      const extraStartIndex = Math.max(0, startIndex - extraChar);
-      const extraEndIndex = Math.min(content.length, endIndex + extraChar);
+      const endLineContent = content.split("\n")[endLine] || "";
+
+      const extraStartIndex = Math.max(0, startIndex - startChar);
+      const extraEndIndex = Math.min(content.length, endIndex + (endLineContent.length - endChar));
 
       let preMatchText = content.substring(extraStartIndex, startIndex);
       const matchText = content.substring(startIndex, endIndex);
       let postMatchText = content.substring(endIndex, extraEndIndex);
-
-      if (extraStartIndex > 0) {
-        preMatchText = "…" + preMatchText;
-      }
-      if (extraEndIndex < content.length) {
-        postMatchText = postMatchText + "…";
-      }
 
       searchMatches.push({
         filePath: file.path,

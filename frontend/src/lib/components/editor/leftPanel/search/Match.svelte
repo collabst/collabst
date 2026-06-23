@@ -21,9 +21,9 @@
   }}
 >
   <div class="text">
-    <span>{match.preMatchText}</span>
-    <mark>{match.matchText}</mark>
-    <span>{match.postMatchText}</span>
+    <div class="pre-match">{match.preMatchText}</div>
+    <div class="match-text">{match.matchText}</div>
+    <div class="post-match">{match.postMatchText}</div>
   </div>
   <div class="right">
     <div class="line">Line {match.startLine + 1}</div>
@@ -53,7 +53,31 @@
     background-color: var(--surface-hover);
   }
 
-  .match:active .text, .match:active .line {
+  .text {
+    display: flex;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pre-match,
+  .post-match {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pre-match {
+    direction: rtl;
+    text-align: left;
+  }
+
+  .match-text {
+    background-color: yellow;
+  }
+
+  .match:active .text,
+  .match:active .line {
     transform: translateY(2px);
   }
 
@@ -64,6 +88,7 @@
   }
 
   .line {
+    margin-left: 0.5rem;
     font-size: 0.8rem;
     color: var(--text-tertiary);
   }
