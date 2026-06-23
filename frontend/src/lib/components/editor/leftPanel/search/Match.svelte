@@ -76,8 +76,8 @@
     background-color: yellow;
   }
 
-  .match:active .text,
-  .match:active .line {
+  .match:active:not(:has(.button:active)) .text,
+  .match:active:not(:has(.button:active)) .line {
     transform: translateY(2px);
   }
 

@@ -39,8 +39,8 @@
   }
 
   .button:hover :global(svg) {
-    width: 16px;
-    height: 16px;
+    stroke-width: 2.4;
+    transform: scale(1.05);
   }
 
   .button:active :global(svg) {

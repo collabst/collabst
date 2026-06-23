@@ -68,7 +68,7 @@
     background-color: var(--surface-hover);
   }
 
-  .header:active {
+  .header:active:not(:has(.button:active)) {
     background-color: var(--surface-active);
   }
 
