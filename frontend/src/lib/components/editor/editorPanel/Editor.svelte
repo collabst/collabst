@@ -1,10 +1,42 @@
 <script lang="ts">
-  import { editorElement } from "../context";
+  import MessageSquarePlus from "@lucide/svelte/icons/message-square-plus";
+  import {
+    editorElement,
+    showCommentButton,
+    commentButtonPosition,
+    currentUserRole,
+  } from "../context";
+  import Button from "../leftPanel/Button.svelte";
+
+  let canComment = $derived(
+    $currentUserRole === "owner" ||
+      $currentUserRole === "admin" ||
+      $currentUserRole === "writer" ||
+      $currentUserRole === "commentor",
+  );
 </script>
 
-<div bind:this={$editorElement} class="editor"></div>
+<div class="container">
+  <div bind:this={$editorElement} class="editor"></div>
+  {#if showCommentButton && canComment}
+    <div
+      class="floating-comment-wrapper" class:show={$showCommentButton}
+      style="position: absolute; top: {$commentButtonPosition.top}px; left: {$commentButtonPosition.left}px;"
+    >
+      <Button onclick={() => {}}>
+        <MessageSquarePlus />
+      </Button>
+    </div>
+  {/if}
+</div>
 
 <style>
+  .container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+  }
+
   .editor {
     flex: 1;
     height: 100%;
@@ -41,5 +73,13 @@
 
   :global(.search-match) {
     background: yellow;
+  }
+
+  .floating-comment-wrapper {
+    display: none;
+  }
+
+  .floating-comment-wrapper.show {
+    display: block;
   }
 </style>

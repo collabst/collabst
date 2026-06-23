@@ -891,6 +891,7 @@ export async function initContext(projectIdValue: string) {
   ));
   await initSelectedFile();
   initWorker();
+  setupSelectionListener();
 }
 
 export async function initSelectedFile() {
@@ -1741,4 +1742,51 @@ function getHighlightExtensions() {
     provide: field => EditorView.decorations.from(field)
   });
   return [matchHighlightField];
+}
+
+export let showCommentButton = writable(false);
+export let commentButtonPosition = writable({ top: 0, left: 0 });
+
+function getSelection() {
+  const viewValue = get(view);
+  if (!viewValue) return null;
+  const { from, to } = viewValue.state.selection.main;
+  return {
+    from,
+    to,
+    text: viewValue.state.doc.sliceString(from, to),
+  };
+}
+
+function setupSelectionListener() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  const editorDom = viewValue.dom;
+
+  const handleSelectionChange = () => {
+    setTimeout(() => {
+      const selection = getSelection();
+      if (
+        selection &&
+        selection.from !== selection.to &&
+        selection.text.trim()
+      ) {
+        // Get the coordinates of the selection
+        const coords = viewValue.coordsAtPos(selection.to);
+        if (coords) {
+          const containerRect = viewValue.dom.getBoundingClientRect();
+          showCommentButton.set(true);
+          commentButtonPosition.set({
+            top: coords.top - containerRect.top + 20,
+            left: coords.left - containerRect.left,
+          });
+        }
+      } else {
+        showCommentButton.set(false);
+      }
+    }, 10);
+  };
+
+  editorDom.addEventListener("mouseup", handleSelectionChange);
+  editorDom.addEventListener("keyup", handleSelectionChange);
 }
