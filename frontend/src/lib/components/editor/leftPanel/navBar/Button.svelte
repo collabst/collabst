@@ -115,6 +115,7 @@
   }
 
   .button:active {
+    border: 1px solid var(--navbar-border);
     box-shadow: inset 0px 4px 0px 0px var(--navbar-shadow);
     height: var(--width);
     margin-top: 0px;

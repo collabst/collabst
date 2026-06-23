@@ -92,12 +92,12 @@
 
   .name {
     font-weight: bold;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-primary);
   }
 
   .path {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-tertiary);
   }
 
@@ -111,11 +111,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 1.5rem;
-    height: 1.5rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
     border-radius: 1rem;
     background-color: var(--surface-hover);
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: bold;
     color: var(--text-secondary);
     padding: 0 0.5rem;

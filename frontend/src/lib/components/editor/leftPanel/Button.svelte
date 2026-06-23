@@ -18,41 +18,43 @@
   .button {
     background: none;
     border: none;
-    padding: 0.25rem;
+    padding: 0.4rem 0.4rem 0.5rem 0.4rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-primary);
-    border-radius: 5px;
+    border-radius: 7px;
+    border: 1px transparent solid;
   }
 
   .button :global(svg) {
     stroke-width: 2;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .button:hover {
-    background: var(--surface-hover);
+    background: var(--navbar-bg);
     color: var(--text-primary);
-    border-color: var(--border-secondary);
-  }
+    border-color: var(--navbar-border);
 
-  .button:hover :global(svg) {
-    width: 16px;
-    height: 16px;
+    box-shadow: inset 0px -3px 0px 0px var(--navbar-shadow);
+    transform: translateY(-1px);
   }
 
   .button:active,
   .button.selected {
+    background: var(--navbar-bg);
     color: var(--text-active);
+    border-color: var(--navbar-border);
+    border-bottom-width: 1px;
+    box-shadow: inset 0px 3px 0px 0px var(--navbar-shadow);
+    transform: translateY(-1px);
   }
 
   .button:active :global(svg),
   .button.selected :global(svg) {
-    stroke-width: 3;
-    width: 16px;
-    height: 16px;
+    transform: translateY(2px) scaleY(0.9) scaleX(1.1);
   }
 </style>

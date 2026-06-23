@@ -44,7 +44,7 @@
   }
 
   .button:active :global(svg) {
-    transform: scaleY(0.9) scaleX(1.15);
+    transform: scaleY(0.9) scaleX(1.2);
   }
 
   .button:active :global(svg),
