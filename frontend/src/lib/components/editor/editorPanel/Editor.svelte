@@ -4,26 +4,21 @@
     editorElement,
     showCommentButton,
     commentButtonPosition,
-    currentUserRole,
+    canComment,
+    addComment,
   } from "../context";
   import Button from "../leftPanel/Button.svelte";
-
-  let canComment = $derived(
-    $currentUserRole === "owner" ||
-      $currentUserRole === "admin" ||
-      $currentUserRole === "writer" ||
-      $currentUserRole === "commentor",
-  );
 </script>
 
 <div class="container">
   <div bind:this={$editorElement} class="editor"></div>
-  {#if showCommentButton && canComment}
+  {#if $showCommentButton && $canComment}
     <div
-      class="floating-comment-wrapper" class:show={$showCommentButton}
+      class="floating-comment-wrapper"
+      class:show={$showCommentButton}
       style="position: absolute; top: {$commentButtonPosition.top}px; left: {$commentButtonPosition.left}px;"
     >
-      <Button onclick={() => {}}>
+      <Button onclick={addComment}>
         <MessageSquarePlus />
       </Button>
     </div>

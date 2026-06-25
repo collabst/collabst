@@ -7,7 +7,7 @@
  * Get the base API URL using the current hostname with port from env
  * Uses http/https based on current protocol
  */
-export const getApiUrl = (): string => {
+export function getApiUrl() {
   const configuredUrl = import.meta.env.VITE_API_URL
   if (!configuredUrl) {
     return '/api/v1'
@@ -15,7 +15,7 @@ export const getApiUrl = (): string => {
   return `${configuredUrl}`
 }
 
-export const getProfilePicUrl = (userId: string): string => {
+export function getProfilePicUrl(userId: string) {
   const apiUrl = getApiUrl().replace(/\/$/, '')
   return `${apiUrl}/profile-pic/${userId}`
 }
@@ -24,7 +24,7 @@ export const getProfilePicUrl = (userId: string): string => {
  * Get the WebSocket URL using the current hostname with port from env
  * Automatically converts http -> ws and https -> wss
  */
-export const getWsUrl = (): string => {
+export function getWsUrl() {
   const configuredApiUrl = getApiUrl()
   const apiUrl = configuredApiUrl.startsWith('http://') || configuredApiUrl.startsWith('https://')
     ? new URL(configuredApiUrl)

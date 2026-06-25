@@ -21,11 +21,11 @@ import { setDiagnostics } from "@codemirror/lint";
 import { derived, get, writable, type Writable } from "svelte/store";
 import type { LeftPanelTab } from "./types";
 import { type File } from "./types";
-import { assetsApi, commentsApi, filesApi, projectsApi } from "$lib/services/api";
+import { assetsApi, commentsApi, filesApi, projectsApi, usersApi } from "$lib/services/api";
 import { createProjectYjs, getFileText, type YjsConnection } from "$lib/yjs";
 import { auth } from "$lib/stores/auth";
 import { createProjectSync } from "$lib/projectSync";
-import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagnostic } from "$lib/types";
+import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagnostic, UserProfile } from "$lib/types";
 import { cacheAsset, getCachedAsset, removeCachedAsset } from "$lib/utils/assetCache";
 import { notifications } from "$lib/stores/notifications";
 import { goto } from "$app/navigation";
@@ -36,7 +36,7 @@ import { greyDarkSyntax, greyDarkTheme, greyLightSyntax, greyLightTheme } from "
 import { theme } from "$lib/stores/theme";
 import { editorSettings } from "$lib/stores/editorSettings";
 import { yCollab } from "y-codemirror.next";
-import { UndoManager } from "yjs";
+import * as Y from "yjs";
 import { commentsExtension } from "$lib/codemirror/comments";
 import { convertDiagnosticsToLint, parseRange } from "$lib/preview/diagnostics";
 
@@ -227,11 +227,11 @@ export const projectSync = writable<ReturnType<typeof createProjectSync> | null>
 export const commentSync = writable<ReturnType<typeof createCommentSync> | null>(null);
 export const activeCommentId = writable<string | null>(null);
 export const view = writable<EditorView | null>(null);
-let undoManager: UndoManager;
+let undoManager: Y.UndoManager;
 export const ytext = derived([ydoc, selectedFile], ([$ydoc, $selectedFile]) => {
   const ytextValue = $ydoc?.getText(`file-${$selectedFile?.id}`);
   if (ytextValue) {
-    undoManager = new UndoManager(ytextValue);
+    undoManager = new Y.UndoManager(ytextValue);
   }
   return ytextValue;
 });
@@ -591,8 +591,8 @@ function initRealtimeConnections() {
     get(projectId),
     {
       onConnected: ({ reconnected }) => {
-        if (reconnected && get(selectedFile)?.is_folder) {
-          void loadCommentsForSelectedFile(get(selectedFile));
+        if (reconnected) {
+          void loadCommentsForSelectedFile();
         }
       },
       onThreadCreated: (message) => {
@@ -650,9 +650,7 @@ async function resetRealtimeConnectionsForWriteLoss() {
       selectedFile.set(reopenedFile);
     }
 
-    if (get(selectedFile)?.is_folder) {
-      await loadCommentsForSelectedFile(get(selectedFile));
-    }
+    await loadCommentsForSelectedFile();
   } finally {
     isResettingRealtime = false;
   }
@@ -776,8 +774,31 @@ function mapThreadToComment(thread: CommentThreadDTO): Comment {
   };
 }
 
-async function loadCommentsForSelectedFile(file: File | null) {
-  if (!file || file.is_folder || selectedAsset) {
+export function commentorColor(userId: string) {
+  const safeUserId = String(userId ?? "");
+  const seed = safeUserId
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hue = (seed * 47) % 360;
+  return `hsl(${hue} 55% 45%)`;
+}
+
+export function isCommentorGuest(userId: string) {
+  const profile = get(commentors).find((c) => c.id === userId);
+  if (!profile) return false;
+  return profile.user_type === "guest";
+}
+
+export function commentorName(userId: string) {
+  const profile = get(commentors).find((c) => c.id === userId);
+  return profile?.display_name || `User ${userId}`;
+}
+
+export let commentors: Writable<UserProfile[]> = writable([]);
+
+async function loadCommentsForSelectedFile() {
+  const file = get(selectedFile);
+  if (!file || file.is_folder || get(selectedAsset)) {
     comments.set([]);
     return;
   }
@@ -788,10 +809,32 @@ async function loadCommentsForSelectedFile(file: File | null) {
       return;
     }
 
-    comments.set(threads
+    const newComments = threads
       .filter((thread) => thread.status !== "deleted")
       .map(mapThreadToComment)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+    commentors.set([]);
+    newComments.forEach(async (comment) => {
+      const profile = await usersApi.getProfile(comment.authorId);
+      commentors.update((currentCommentors) => {
+        if (!currentCommentors.find((c) => c.id === profile.id)) {
+          return [...currentCommentors, profile];
+        }
+        return currentCommentors;
+      });
+      comment.replies.forEach(async (reply) => {
+        const replyProfile = await usersApi.getProfile(reply.authorId);
+        commentors.update((currentCommentors) => {
+          if (!currentCommentors.find((c) => c.id === replyProfile.id)) {
+            return [...currentCommentors, replyProfile];
+          }
+          return currentCommentors;
+        });
+      });
+    });
+
+    comments.set(newComments);
   } catch (error: any) {
     console.error("Failed to load comments:", error);
     const message = error?.response?.data?.detail || "Failed to load comments";
@@ -853,9 +896,8 @@ export async function initContext(projectIdValue: string) {
     projectIdValue,
     {
       onConnected: ({ reconnected }) => {
-        const selectedFileValue = get(selectedFile);
-        if (reconnected && selectedFileValue && !selectedFileValue.is_folder) {
-          void loadCommentsForSelectedFile(selectedFileValue);
+        if (reconnected) {
+          void loadCommentsForSelectedFile();
         }
       },
       onThreadCreated: (message) => {
@@ -891,8 +933,11 @@ export async function initContext(projectIdValue: string) {
   ));
   await initSelectedFile();
   initWorker();
-  setupSelectionListener();
 }
+
+view.subscribe(() => {
+  setupSelectionListener();
+});
 
 export async function initSelectedFile() {
   const allFiles = get(files);
@@ -942,6 +987,7 @@ export function selectFile(fileId: string) {
   if (file) {
     selectedFile.set(file);
   }
+  void loadCommentsForSelectedFile();
 }
 
 async function updateEditorContent() {
@@ -1748,8 +1794,22 @@ export function toggleFileCollapsed(fileMatches: FileSearchMatches) {
   );
 }
 
+export interface CommentDraft {
+  text: string;
+  range: { from: number; to: number };
+  selectedText: string;
+}
+
 export let showCommentButton = writable(false);
 export let commentButtonPosition = writable({ top: 0, left: 0 });
+export let canComment = writable(false);
+export let canManageProject = writable(false);
+export let commentDraft: Writable<CommentDraft | null> = writable(null);
+
+currentUserRole.subscribe((role) => {
+  canComment.set(["owner", "admin", "writer", "commentor"].includes(role));
+  canManageProject.set(["owner", "admin"].includes(role));
+});
 
 function getSelection() {
   const viewValue = get(view);
@@ -1792,5 +1852,199 @@ function setupSelectionListener() {
   };
 
   editorDom.addEventListener("mouseup", handleSelectionChange);
+  editorDom.addEventListener("mousedown", handleSelectionChange);
   editorDom.addEventListener("keyup", handleSelectionChange);
+  editorDom.addEventListener("keydown", handleSelectionChange);
+}
+
+export function addComment() {
+  if (!get(canComment)) return;
+
+  const selection = getSelection();
+  if (!selection || selection.from === selection.to) {
+    return;
+  }
+
+  leftPanelTab.set("comments");
+
+  // Create a draft comment and open it in the panel
+  commentDraft.set({
+    text: "",
+    range: { from: selection.from, to: selection.to },
+    selectedText: selection.text,
+  });
+
+  // Hide the button
+  showCommentButton.set(false);
+}
+
+function getCommentContextFromSelection(from: number, to: number) {
+  if (!get(view)) {
+    return {
+      anchorRelJson: null,
+      headRelJson: null,
+    };
+  }
+
+  let anchorRelJson: string | null = null;
+  let headRelJson: string | null = null;
+  const ytextValue = get(ytext);
+  if (ytextValue) {
+    try {
+      const anchor = Y.createRelativePositionFromTypeIndex(ytextValue, from);
+      const head = Y.createRelativePositionFromTypeIndex(ytextValue, to);
+      anchorRelJson = JSON.stringify(Y.relativePositionToJSON(anchor));
+      headRelJson = JSON.stringify(Y.relativePositionToJSON(head));
+    } catch (error) {
+      console.warn("Failed to create relative anchor positions for comment:", error);
+    }
+  }
+
+  return {
+    anchorRelJson,
+    headRelJson,
+  };
+}
+
+async function createComment(payload: {
+  file_id: string;
+  content: string;
+  anchor_rel_json: string | null;
+  head_rel_json: string | null;
+}) {
+  if (!canComment) return;
+
+  const thread = await commentsApi.createThread(get(projectId), {
+    file_id: payload.file_id,
+    content: payload.content,
+    anchor_rel_json: payload.anchor_rel_json,
+    head_rel_json: payload.head_rel_json,
+  });
+
+  applyThreadUpdate(thread);
+  activeCommentId.set(thread.id);
+}
+
+export async function submitNewComment() {
+  if (!canComment) return;
+
+  const commentDraftValue = get(commentDraft);
+  const selectedFileValue = get(selectedFile);
+  if (!commentDraftValue || !selectedFileValue) return;
+
+  const context = getCommentContextFromSelection(
+    commentDraftValue.range.from,
+    commentDraftValue.range.to,
+  );
+
+  try {
+    await createComment({
+      file_id: selectedFileValue.id,
+      content: commentDraftValue.text,
+      anchor_rel_json: context.anchorRelJson,
+      head_rel_json: context.headRelJson,
+    });
+  } catch (error) {
+    console.error("Failed to create comment:", error);
+    return;
+  }
+
+  commentDraft.set(null);
+}
+
+export function cancelNewComment() {
+  commentDraft.set(null);
+}
+
+export function selectComment(comment: Comment) {
+  activeCommentId.set(comment.id);
+  scrollToComment(comment);
+  leftPanelTab.set("comments");
+}
+
+function resolveRangeFromComment(comment: Comment): { from: number; to: number } | null {
+  const doc = get(projectYjs)?.ydoc;
+  if (!doc) return null;
+  // Preferred path: resolve persisted Yjs relative anchors against current text.
+  if (comment.anchorRelJson && comment.headRelJson) {
+    try {
+      const anchor = Y.createRelativePositionFromJSON(JSON.parse(comment.anchorRelJson));
+      const head = Y.createRelativePositionFromJSON(JSON.parse(comment.headRelJson));
+      const anchorPos = Y.createAbsolutePositionFromRelativePosition(anchor, doc);
+      const headPos = Y.createAbsolutePositionFromRelativePosition(head, doc);
+      if (anchorPos && headPos) {
+        return {
+          from: Math.min(anchorPos.index, headPos.index),
+          to: Math.max(anchorPos.index, headPos.index),
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+export function scrollToComment(comment: Comment) {
+  if (!comment) return;
+
+  const range = resolveRangeFromComment(comment);
+  if (range) {
+    get(view)?.dispatch({
+      selection: { anchor: range.from, head: range.to },
+      scrollIntoView: true,
+    });
+  }
+}
+
+export function formatCommentDate(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+export async function resolveComment(commentId: string) {
+  if (!canComment) return;
+
+  const thread = await commentsApi.updateThread(get(projectId), commentId, {
+    status: "resolved",
+  });
+  applyThreadUpdate(thread);
+}
+
+export async function reopenComment(commentId: string) {
+  if (!canComment) return;
+
+  const thread = await commentsApi.updateThread(get(projectId), commentId, {
+    status: "open",
+  });
+  applyThreadUpdate(thread);
+}
+
+export async function deleteComment(commentId: string) {
+  if (!canManageProject) return;
+
+  const thread = await commentsApi.updateThread(get(projectId), commentId, {
+    status: "deleted",
+  });
+  applyThreadUpdate(thread);
+}
+
+export async function replyComment(commentId: string, content: string) {
+  if (!canComment) return;
+
+  const reply = await commentsApi.createReply(get(projectId), commentId, {
+    content,
+  });
+  applyReplyUpdate(commentId, reply);
 }
