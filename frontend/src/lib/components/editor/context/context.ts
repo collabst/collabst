@@ -237,20 +237,6 @@ export const ytext = derived([ydoc, selectedFile], ([$ydoc, $selectedFile]) => {
 });
 export const previewIframe = writable<HTMLIFrameElement | undefined>();
 export const currentUserRole = writable<"owner" | "admin" | "writer" | "commentor" | "reader">("reader");
-export const context = {
-  projectId,
-  leftPanelTab,
-  files,
-  assets,
-  selectedFile,
-  editorElement,
-  ydoc,
-  ytext,
-  view,
-  previewIframe,
-  projectSync,
-};
-
 
 export function toggleWrap(prefix: string, suffix: string) {
   const viewValue = get(view);

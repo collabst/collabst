@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { projectYjs } from "$lib/components/editor/context/context";
+  import { projectYjs } from "$lib/components/editor/context";
   import { getProfilePicUrl } from "$lib/utils/urls";
   import VenetianMask from "@lucide/svelte/icons/venetian-mask";
 
