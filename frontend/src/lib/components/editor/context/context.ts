@@ -12,7 +12,13 @@ import {
   foldGutter,
   indentUnit,
 } from "@codemirror/language";
-import { indentLess, indentMore } from "@codemirror/commands";
+import {
+  indentLess,
+  indentMore,
+  selectAll as selectAllCommand,
+  toggleBlockComment as toggleBlockCommentCommand,
+  toggleLineComment as toggleLineCommentCommand,
+} from "@codemirror/commands";
 import {
   closeBrackets,
 } from "@codemirror/autocomplete";
@@ -37,7 +43,11 @@ import { theme } from "$lib/stores/theme";
 import { editorSettings } from "$lib/stores/editorSettings";
 import { yCollab } from "y-codemirror.next";
 import * as Y from "yjs";
-import { commentsExtension } from "$lib/codemirror/comments";
+import {
+  commentsExtension,
+  setActiveCommentEffect,
+  updateCommentsEffect,
+} from "$lib/codemirror/comments";
 import { convertDiagnosticsToLint, parseRange } from "$lib/preview/diagnostics";
 
 const themeCompartment = new Compartment();
@@ -54,7 +64,6 @@ const highlightCompartement = new Compartment();
 
 let wrapLines = true;
 let errorLines = new Set<number>();
-let editable = true;
 
 function getLineWrappingExtensions() {
   return wrapLines ? [EditorView.lineWrapping] : [];
@@ -166,6 +175,30 @@ function getLigaturesExtension() {
   });
 }
 
+// `commentsExtension()` carries its own click handler, but it dispatches through
+// the `CommentRangeTracker` singleton — part of the old Yjs-map comment storage,
+// which this tree does not use — so it can never fire. Same behaviour, wired
+// straight to the context: a plain click (no selection) inside a highlight opens
+// its thread.
+function createCommentClickHandler() {
+  return EditorView.domEventHandlers({
+    mouseup(event, viewValue) {
+      const selection = viewValue.state.selection.main;
+      if (selection.from !== selection.to) return false;
+
+      const target = event.target as HTMLElement;
+      const commentId = target
+        .closest(".cm-comment-highlight")
+        ?.getAttribute("data-comment-id");
+      if (!commentId) return false;
+
+      const comment = get(comments).find((c) => c.id === commentId);
+      if (comment) selectComment(comment);
+      return false;
+    },
+  });
+}
+
 function createErrorIconPlugin() {
   return ViewPlugin.fromClass(
     class {
@@ -258,6 +291,7 @@ export const previewIframe = writable<HTMLIFrameElement | undefined>();
 export const currentUserRole = writable<"owner" | "admin" | "writer" | "commentor" | "reader">("reader");
 
 export function toggleWrap(prefix: string, suffix: string) {
+  if (!get(canWrite)) return;
   const viewValue = get(view);
   if (!viewValue) return;
 
@@ -318,42 +352,118 @@ export function toggleWrap(prefix: string, suffix: string) {
   viewValue.focus();
 }
 
+// Undo/redo go through the Yjs `UndoManager`, not CodeMirror's history: the
+// document is a shared type, so CodeMirror's own history would undo other
+// people's edits. `undoManager` is rebuilt by the `ytext` derived store on every
+// file switch, so read it at call time and never hold on to it.
+export function undo() {
+  if (!get(canWrite)) return false;
+  if (!undoManager?.canUndo()) return false;
+  undoManager.undo();
+  get(view)?.focus();
+  return true;
+}
+
+export function redo() {
+  if (!get(canWrite)) return false;
+  if (!undoManager?.canRedo()) return false;
+  undoManager.redo();
+  get(view)?.focus();
+  return true;
+}
+
+export function canUndo() {
+  return get(canWrite) && !!undoManager?.canUndo();
+}
+
+export function canRedo() {
+  return get(canWrite) && !!undoManager?.canRedo();
+}
+
+export function selectAll() {
+  const viewValue = get(view);
+  if (!viewValue) return false;
+  const result = selectAllCommand(viewValue);
+  viewValue.focus();
+  return result;
+}
+
+export function toggleLineComment() {
+  if (!get(canWrite)) return false;
+  const viewValue = get(view);
+  if (!viewValue) return false;
+  const result = toggleLineCommentCommand(viewValue);
+  viewValue.focus();
+  return result;
+}
+
+export function toggleBlockComment() {
+  if (!get(canWrite)) return false;
+  const viewValue = get(view);
+  if (!viewValue) return false;
+  const result = toggleBlockCommentCommand(viewValue);
+  viewValue.focus();
+  return result;
+}
+
+// Line-structure counterpart of `toggleWrap`, for the list buttons: adds
+// `prefix` to every line the selection touches, or strips it from all of them
+// when they all already carry it. The prefix goes after the indentation so that
+// nested list items keep their level.
+export function toggleLinePrefix(prefix: string) {
+  if (!get(canWrite)) return;
+  const viewValue = get(view);
+  if (!viewValue) return;
+
+  const { state } = viewValue;
+  const { from, to } = state.selection.main;
+  const firstLineNumber = state.doc.lineAt(from).number;
+  const lastLineNumber = state.doc.lineAt(to).number;
+
+  const lines = [];
+  for (let n = firstLineNumber; n <= lastLineNumber; n++) {
+    lines.push(state.doc.line(n));
+  }
+
+  const indentLength = (text: string) => text.length - text.trimStart().length;
+  const hasPrefix = (text: string) => text.slice(indentLength(text)).startsWith(prefix);
+
+  // Blank lines are ignored on a multi-line selection: they are separators, not
+  // list items. A single blank line (just a cursor) still gets the prefix.
+  const targets = lines.length > 1
+    ? lines.filter((line) => line.text.trim() !== "")
+    : lines;
+  if (targets.length === 0) return;
+
+  const allPrefixed = targets.every((line) => hasPrefix(line.text));
+
+  const changes = allPrefixed
+    ? targets.map((line) => {
+      const at = line.from + indentLength(line.text);
+      return { from: at, to: at + prefix.length, insert: "" };
+    })
+    : targets
+      .filter((line) => !hasPrefix(line.text))
+      .map((line) => {
+        const at = line.from + indentLength(line.text);
+        return { from: at, to: at, insert: prefix };
+      });
+
+  if (changes.length === 0) return;
+
+  viewValue.dispatch({ changes });
+  viewValue.focus();
+}
+
 function createUndoRedoKeymap() {
   if (!undoManager) {
     return keymap.of([]);
   }
 
   return keymap.of([
-    {
-      key: "Mod-z",
-      run: (view) => {
-        if (undoManager && undoManager.canUndo()) {
-          undoManager.undo();
-          return true;
-        }
-        return false;
-      },
-    },
-    {
-      key: "Mod-Shift-z",
-      run: (view) => {
-        if (undoManager && undoManager.canRedo()) {
-          undoManager.redo();
-          return true;
-        }
-        return false;
-      },
-    },
-    {
-      key: "Mod-y",
-      run: (view) => {
-        if (undoManager && undoManager.canRedo()) {
-          undoManager.redo();
-          return true;
-        }
-        return false;
-      },
-    },
+    { key: "Mod-z", run: () => undo() },
+    { key: "Mod-Shift-z", run: () => redo() },
+    { key: "Mod-y", run: () => redo() },
     {
       key: "Mod-b",
       run: () => {
@@ -411,15 +521,65 @@ async function createExtensions() {
     closeBrackets(),
     indentOnInput(),
     indentUnit.of("  "), // Set indentation to 2 spaces
-    readOnlyCompartment.of(EditorState.readOnly.of(!editable)),
-    editableCompartment.of(EditorView.editable.of(editable)),
+    readOnlyCompartment.of(EditorState.readOnly.of(!get(canWrite))),
+    editableCompartment.of(EditorView.editable.of(get(canWrite))),
     ...(collabReady ? [yCollab(ytextValue, provider.awareness, { undoManager })] : []),
     createUndoRedoKeymap(),
     commentsExtension(),
+    createCommentClickHandler(),
     highlightCompartement.of(getHighlightExtensions()),
   ];
   return extensions;
 }
+
+
+// `createExtensions()` only *seeds* the compartments — nothing ever called
+// `reconfigure()`, so a theme, font or file-type change did not reach a view that
+// was already built, and only took effect at the next full rebuild. Each
+// subscription below bails out when there is no view yet (the next
+// `createExtensions()` reads the new value anyway) and re-checks the view after
+// every `await`, so a rebuild that happens mid-flight is not clobbered.
+
+async function reconfigureSyntaxHighlighting(viewValue: EditorView) {
+  const syntax = await getSyntaxHighlighting();
+  if (get(view) !== viewValue) return;
+  viewValue.dispatch({ effects: syntaxCompartment.reconfigure(syntax) });
+}
+
+async function reconfigureLanguage(viewValue: EditorView) {
+  const language = await getLanguageExtensions();
+  if (get(view) !== viewValue) return;
+  viewValue.dispatch({ effects: languageCompartment.reconfigure(language) });
+}
+
+theme.subscribe(() => {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  viewValue.dispatch({
+    effects: themeCompartment.reconfigure(getThemeExtensions()),
+  });
+  void reconfigureSyntaxHighlighting(viewValue);
+});
+
+editorSettings.subscribe(() => {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  viewValue.dispatch({
+    effects: [
+      editorStyleCompartment.reconfigure(getEditorStyleExtensions()),
+      ligaturesCompartment.reconfigure(getLigaturesExtension()),
+    ],
+  });
+});
+
+// The file extension is what picks Typst over BibTeX. `ytext` normally rebuilds
+// the whole state just after this, but not when the Yjs document is not up yet.
+selectedFile.subscribe(() => {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  void reconfigureLanguage(viewValue);
+  void reconfigureSyntaxHighlighting(viewValue);
+});
 
 
 function onFileCreated(file: File) {
@@ -904,6 +1064,9 @@ export async function initContext(projectIdValue: string) {
   const newFiles = await filesApi.list(projectIdValue);
   if (generation !== contextGeneration) return;
   files.update(() => newFiles);
+  const newAssets = await assetsApi.list(projectIdValue);
+  if (generation !== contextGeneration) return;
+  assets.set(newAssets);
   await initSelectedFile();
   if (generation !== contextGeneration) return;
   initWorker();
@@ -962,11 +1125,64 @@ view.subscribe(() => {
   setupSelectionListener();
 });
 
+// The compiler entry point. `compile()` used to fall back to the literal
+// "/main.typ", so a project whose entry point is named anything else never
+// compiled. The choice is remembered per project, because it is a property of
+// how the author works on that document, not of this browser session.
+const MAIN_FILE_STORAGE_PREFIX = "collabst:main-file:";
+
+function readStoredMainFileId(projectIdValue: string): string | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    return localStorage.getItem(`${MAIN_FILE_STORAGE_PREFIX}${projectIdValue}`);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredMainFileId(projectIdValue: string, fileId: string) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(`${MAIN_FILE_STORAGE_PREFIX}${projectIdValue}`, fileId);
+  } catch {
+    // Storage can be unavailable (private mode, quota); the choice is then
+    // simply not remembered across reloads.
+  }
+}
+
+function resolveMainFile(): File | null {
+  const candidates = get(files).filter((f) => !f.is_folder);
+
+  const rememberedId = readStoredMainFileId(get(projectId));
+  const remembered = rememberedId
+    ? candidates.find((f) => f.id === rememberedId)
+    : undefined;
+  if (remembered) return remembered;
+
+  return (
+    candidates.find((f) => f.path === "/main.typ") ??
+    candidates.find((f) => f.name.toLowerCase().endsWith(".typ")) ??
+    null
+  );
+}
+
+export function setMainFile(fileId: string) {
+  const file = get(files).find((f) => f.id === fileId);
+  if (!file || file.is_folder) return;
+
+  mainFile.set(file);
+  writeStoredMainFileId(get(projectId), file.id);
+  syncFilesAndAssets();
+}
+
 export async function initSelectedFile() {
   const allFiles = get(files);
-  const mainFile = allFiles.find((f) => f.path === "/main.typ");
-  if (mainFile) {
-    selectFile(mainFile.id);
+
+  const entryFile = resolveMainFile();
+  mainFile.set(entryFile);
+
+  if (entryFile) {
+    selectFile(entryFile.id);
     return;
   }
 
@@ -1027,6 +1243,9 @@ async function updateEditorContent() {
       extensions,
     }),
   );
+  // `setState` recreates `commentField`, which starts at `Decoration.none`, so
+  // the comment highlights have to be re-applied to the rebuilt state.
+  syncCommentDecorations();
 }
 
 ytext.subscribe(async (newYText) => {
@@ -1130,6 +1349,32 @@ export function gotoDiagnostic(diagnostic: Diagnostic) {
   }
 }
 
+// `getLineNumbersExtension()`'s `formatNumber` reads `errorLines` at render
+// time, so the Set must hold the *open* file's error lines only. `diagnostics`
+// covers the whole project, hence the path filter — the same one
+// `convertDiagnosticsToLint` uses, so gutter and lint underlines always agree.
+// The reconfigure is what forces the gutter to redraw with the new Set.
+function updateErrorLines() {
+  const currentPath = get(selectedFile)?.path || "";
+  errorLines = new Set(
+    get(diagnostics)
+      .filter((d) => d.severity === "error" && d.range && (!d.path || d.path === currentPath))
+      .map((d) => d.range!.start.line + 1),
+  );
+
+  const viewValue = get(view);
+  if (!viewValue) return;
+  viewValue.dispatch({
+    effects: lineNumbersCompartment.reconfigure(getLineNumbersExtension()),
+  });
+}
+
+// Diagnostics outlive a file switch, so the gutter of the newly opened file has
+// to be recomputed even though no new compile has happened.
+selectedFile.subscribe(() => {
+  updateErrorLines();
+});
+
 function onDiagnostics(diags: any[] = []) {
   // Parse diagnostics range from compiler format
   diagnostics.set(
@@ -1140,6 +1385,7 @@ function onDiagnostics(diags: any[] = []) {
       path: d.path,
     }))
   );
+  updateErrorLines();
   updateLinter();
 }
 
@@ -1170,6 +1416,13 @@ function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean
   }, '*');
 }
 
+// The compiler's human-readable line ("Ready (123 ms)", "Compile error: …") and
+// the coarse lifecycle state the preview toolbar renders. Both used to be plain
+// module variables — and `status` was not even declared, so every assignment
+// silently wrote `window.status` and no UI could ever read it.
+export const compileStatus = writable<string>("");
+export const previewStatus = writable<"idle" | "compiling" | "ready" | "error">("idle");
+
 export function initWorker() {
   if (!workerInitialized) {
     workerInitialized = true;
@@ -1184,14 +1437,14 @@ export function initWorker() {
 
       switch (type) {
         case 'status':
-          status = e.data.message;
+          compileStatus.set(e.data.message);
           break;
 
         case 'initialized':
           workerReady = true;
-          status = compileEnabled
+          compileStatus.set(compileEnabled
             ? 'Compiler ready - waiting for iframe...'
-            : 'Preparing files...';
+            : 'Preparing files...');
 
           // Force a sync only when file hydration is ready.
           if (compileEnabled) {
@@ -1202,17 +1455,18 @@ export function initWorker() {
 
         case 'compiled':
           if (!initialized) {
-            status = 'Waiting for iframe...';
+            compileStatus.set('Waiting for iframe...');
             return;
           }
 
           if (!vectorData) {
-            status = `Ready (${compileTime}ms) - no output`;
+            compileStatus.set(`Ready (${compileTime}ms) - no output`);
+            previewStatus.set('ready');
             return;
           }
 
           try {
-            status = 'Rendering...';
+            compileStatus.set('Rendering...');
 
             if (separateWindow) {
               sendVectorDataToWindow(separateWindow, vectorData, isFirstCompile);
@@ -1221,47 +1475,111 @@ export function initWorker() {
               sendVectorDataToIframe(vectorData, isFirstCompile);
             }
 
-            status = `Ready (${compileTime}ms)`;
+            compileStatus.set(`Ready (${compileTime}ms)`);
+            previewStatus.set('ready');
           } catch (error: any) {
-            status = `Render error: ${error.message}`;
+            compileStatus.set(`Render error: ${error.message}`);
+            previewStatus.set('error');
             console.error('Render error:', error);
           }
           break;
 
         case 'error':
-          status = `Compile error: ${e.data.error}`;
+          compileStatus.set(`Compile error: ${e.data.error}`);
+          previewStatus.set('error');
           console.error('Compilation error:', e.data);
           break;
 
         case 'pdf':
-          const pdfBlob = new Blob([e.data.pdfData], { type: 'application/pdf' });
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          const pdfLink = document.createElement('a');
-          pdfLink.href = pdfUrl;
-          // get project name
-          const projectName = get(project)?.name || 'document';
-          pdfLink.download = `${projectName || 'document'}.pdf`;
-          document.body.appendChild(pdfLink);
-          pdfLink.click();
-          document.body.removeChild(pdfLink);
-          URL.revokeObjectURL(pdfUrl);
+          downloadBlob(
+            new Blob([e.data.pdfData], { type: 'application/pdf' }),
+            `${get(project)?.name || 'document'}.pdf`,
+          );
           break;
 
         case 'reset':
           console.log('Worker: Resetting document as requested');
           // if (typstDoc) typstDoc.reset();
-          status = 'Reset complete';
+          compileStatus.set('Reset complete');
           break;
       }
     };
 
     worker.onerror = (e) => {
       const errorMsg = e.message || (e.error as any)?.message || 'Unknown error';
-      status = `Worker error: ${errorMsg}`;
+      compileStatus.set(`Worker error: ${errorMsg}`);
+      previewStatus.set('error');
       console.error('Worker error:', e);
     };
   }
 }
+
+// --- Exports -----------------------------------------------------------------
+
+export function exportPdf() {
+  if (!worker || !workerReady) {
+    notifications.show("The compiler is not ready yet", "warning", 3000);
+    return;
+  }
+  const mainFilePath = get(mainFile)?.path || '/main.typ';
+  const path = mainFilePath.startsWith('/') ? mainFilePath : `/${mainFilePath}`;
+  worker.postMessage({ type: 'exportPDF', payload: { mainFilePath: path } });
+}
+
+// File contents come from the Yjs document, never from `file.content`: the REST
+// row carries whatever was last persisted, which lags behind what the user (and
+// everyone else) has typed.
+export async function exportSourcesAsZip() {
+  const { default: JSZip } = await import("jszip");
+  const zip = new JSZip();
+
+  const ydocValue = get(projectYjs)?.ydoc ?? null;
+
+  for (const file of get(files)) {
+    if (file.is_folder) continue;
+    const path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
+    zip.file(path, getFileText(ydocValue, file.id)?.toString() ?? "");
+  }
+
+  for (const asset of get(assets)) {
+    try {
+      let arrayBuffer: ArrayBuffer;
+      const cached = await getCachedAsset(String(asset.project_id), asset.id, asset.storage_path);
+      if (cached) {
+        arrayBuffer = cached.blob;
+      } else {
+        const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
+        const response = await fetch(url);
+        arrayBuffer = await response.arrayBuffer();
+      }
+      const path = asset.path.startsWith('/') ? asset.path.slice(1) : asset.path;
+      zip.file(path, arrayBuffer);
+    } catch (error) {
+      console.error('Failed to add asset to ZIP:', asset.path, error);
+      notifications.show(`Could not add ${asset.filename} to the archive`, "warning", 4000);
+    }
+  }
+
+  try {
+    const blob = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(blob, `${get(project)?.name || 'project'}-sources.zip`);
+  } catch (error) {
+    console.error('Failed to export sources as ZIP:', error);
+    notifications.show("Failed to export sources as ZIP", "error", 5000);
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 
 let inhibNextZoomChange = false;
 
@@ -1336,6 +1654,7 @@ let workerReady = false;
 
 function compile() {
   if (!worker || !workerReady) return;
+  previewStatus.set('compiling');
   const mainFilePath = get(mainFile)?.path || '/main.typ';
   const path = mainFilePath.startsWith('/') ? mainFilePath : `/${mainFilePath}`;
   worker.postMessage({
@@ -1446,7 +1765,6 @@ function syncFilesAndAssets() {
 }
 
 let iframeMockReady = false;
-let previewStatus: 'Ready' | 'Compiling' | 'Error' = 'Ready';
 let isPreviewZoomInitialized = false;
 let initialized = false;
 
@@ -1457,7 +1775,6 @@ function handleIframeSend(data: string | ArrayBuffer) {
         // First time receiving 'current' - iframe mock is ready
         iframeMockReady = true;
         initialized = true;
-        previewStatus = 'Ready';
       }
       // Iframe is requesting current state - trigger a recompile
       syncFilesAndAssets();
@@ -1513,25 +1830,169 @@ export function handleIframeMessage(event: MessageEvent) {
 }
 
 
+// The server is the source of truth for the file tree, and the projectSync WS
+// echoes every mutation back to the client that made it (the REST handlers
+// broadcast without a `sender`, so nobody is excluded). Rename / move / delete
+// therefore never touch the `files` / `assets` stores here: `onFileUpdated` &co.
+// do it. Only the create paths update locally, because the caller needs the
+// created row straight away — and the server may have renamed it.
+
+function errorDetail(error: unknown, fallback: string) {
+  return (error as any)?.response?.data?.detail || fallback;
+}
+
+// Resolve the directory part of `path` to the id of an existing folder.
+// `null` means the project root; `undefined` means the path names a folder that
+// does not exist, so the caller must refuse rather than silently create at the
+// root.
+function resolveParentId(path: string): string | null | undefined {
+  const lastSlash = path.lastIndexOf("/");
+  if (lastSlash <= 0) return null;
+
+  const dir = path.slice(0, lastSlash);
+  const folderPath = dir.startsWith("/") ? dir : `/${dir}`;
+  const folder = get(files).find((f) => f.is_folder && f.path === folderPath);
+  return folder ? folder.id : undefined;
+}
+
 export async function newFile(path: string) {
+  if (!get(canWrite)) return;
+
   const $projectId = get(projectId);
   const name = path.split('/').pop();
   if (!name) {
     throw new Error("Invalid file path");
   }
-  const parentId = null;
-  const content = "";
-  await filesApi.create($projectId, name, content, parentId)
+
+  const parentId = resolveParentId(path);
+  if (parentId === undefined) {
+    notifications.show(`No such folder for ${path}`, "error", 5000);
+    return;
+  }
+
+  try {
+    const createdFile = await filesApi.create($projectId, name, "", parentId);
+    onFileCreated(createdFile);
+    selectedAsset.set(null);
+    selectFile(createdFile.id);
+    if (createdFile.name !== name) {
+      notifications.show(`Name already used, created as ${createdFile.name}`, "info");
+    }
+    return createdFile;
+  } catch (error) {
+    console.error("Failed to create file:", error);
+    notifications.show(errorDetail(error, "Failed to create file"), "error", 5000);
+    throw error;
+  }
 }
 
 export async function newFolder(path: string) {
+  if (!get(canWrite)) return;
+
   const $projectId = get(projectId);
   const name = path.split('/').pop();
   if (!name) {
     throw new Error("Invalid folder path");
   }
-  const parentId = null;
-  await filesApi.createFolder($projectId, name, parentId)
+
+  const parentId = resolveParentId(path);
+  if (parentId === undefined) {
+    notifications.show(`No such folder for ${path}`, "error", 5000);
+    return;
+  }
+
+  try {
+    // Deliberately not selected: selecting a folder would steal focus from the
+    // editor for something that has no content to show.
+    const createdFolder = await filesApi.createFolder($projectId, name, parentId);
+    onFileCreated(createdFolder);
+    if (createdFolder.name !== name) {
+      notifications.show(`Name already used, created as ${createdFolder.name}`, "info");
+    }
+    return createdFolder;
+  } catch (error) {
+    console.error("Failed to create folder:", error);
+    notifications.show(errorDetail(error, "Failed to create folder"), "error", 5000);
+    throw error;
+  }
+}
+
+export async function renameFile(fileId: string, newName: string) {
+  if (!get(canWrite)) return;
+
+  try {
+    await filesApi.update(get(projectId), fileId, { name: newName });
+  } catch (error) {
+    console.error("Failed to rename file:", error);
+    notifications.show(errorDetail(error, "Failed to rename file"), "error", 5000);
+    throw error;
+  }
+}
+
+export async function moveFile(fileId: string, targetFolderId: string | null) {
+  if (!get(canWrite)) return;
+
+  const fileToMove = get(files).find((f) => f.id === fileId);
+  if (!fileToMove || fileToMove.parent_id === targetFolderId) return;
+
+  try {
+    await filesApi.move(get(projectId), fileId, targetFolderId);
+  } catch (error) {
+    console.error("Failed to move file:", error);
+    notifications.show(errorDetail(error, "Failed to move file"), "error", 5000);
+    throw error;
+  }
+}
+
+export async function deleteFile(fileId: string) {
+  if (!get(canWrite)) return;
+
+  try {
+    await filesApi.delete(get(projectId), fileId);
+  } catch (error) {
+    console.error("Failed to delete file:", error);
+    notifications.show(errorDetail(error, "Failed to delete file"), "error", 5000);
+    throw error;
+  }
+}
+
+export async function renameAsset(assetId: string, newName: string) {
+  if (!get(canWrite)) return;
+
+  try {
+    await assetsApi.update(get(projectId), assetId, { filename: newName });
+  } catch (error) {
+    console.error("Failed to rename asset:", error);
+    notifications.show(errorDetail(error, "Failed to rename asset"), "error", 5000);
+    throw error;
+  }
+}
+
+export async function moveAsset(assetId: string, targetFolderId: string | null) {
+  if (!get(canWrite)) return;
+
+  const assetToMove = get(assets).find((a) => a.id === assetId);
+  if (!assetToMove || assetToMove.parent_id === targetFolderId) return;
+
+  try {
+    await assetsApi.move(get(projectId), assetId, targetFolderId);
+  } catch (error) {
+    console.error("Failed to move asset:", error);
+    notifications.show(errorDetail(error, "Failed to move asset"), "error", 5000);
+    throw error;
+  }
+}
+
+export async function deleteAsset(assetId: string) {
+  if (!get(canWrite)) return;
+
+  try {
+    await assetsApi.delete(get(projectId), assetId);
+  } catch (error) {
+    console.error("Failed to delete asset:", error);
+    notifications.show(errorDetail(error, "Failed to delete asset"), "error", 5000);
+    throw error;
+  }
 }
 
 
@@ -1843,13 +2304,29 @@ export interface CommentDraft {
 
 export let showCommentButton = writable(false);
 export let commentButtonPosition = writable({ top: 0, left: 0 });
+export let canWrite = writable(false);
 export let canComment = writable(false);
 export let canManageProject = writable(false);
 export let commentDraft: Writable<CommentDraft | null> = writable(null);
 
 currentUserRole.subscribe((role) => {
+  canWrite.set(["owner", "admin", "writer"].includes(role));
   canComment.set(["owner", "admin", "writer", "commentor"].includes(role));
   canManageProject.set(["owner", "admin"].includes(role));
+});
+
+// A live role change must lock or unlock the open document without a reload:
+// `createExtensions()` seeds both compartments from `canWrite`, so only an
+// already-built view needs reconfiguring here.
+canWrite.subscribe((writeAllowed) => {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  viewValue.dispatch({
+    effects: [
+      readOnlyCompartment.reconfigure(EditorState.readOnly.of(!writeAllowed)),
+      editableCompartment.reconfigure(EditorView.editable.of(writeAllowed)),
+    ],
+  });
 });
 
 function getSelection() {
@@ -2055,6 +2532,53 @@ export async function replyComment(commentId: string, content: string) {
   applyReplyUpdate(commentId, reply);
 }
 
+// --- Comment decorations -----------------------------------------------------
+//
+// `commentsExtension()` has always been installed, but nothing ever dispatched
+// into it, so commented ranges had no highlight and clicking one did nothing.
+// The ranges come from the threads themselves — their Yjs relative anchors,
+// resolved by `resolveRangeFromComment` against the live document — so they
+// follow other people's edits without any extra bookkeeping.
+
+function syncCommentDecorations() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+
+  const docLength = viewValue.state.doc.length;
+  const ranges = new Map<string, { from: number; to: number }>();
+
+  for (const comment of get(comments)) {
+    if (comment.resolved) continue;
+    const range = resolveRangeFromComment(comment);
+    if (!range) continue;
+    const from = Math.min(range.from, docLength);
+    const to = Math.min(range.to, docLength);
+    // A mark decoration may not be empty, and a thread whose anchored text has
+    // been deleted resolves to exactly that.
+    if (to <= from) continue;
+    ranges.set(comment.id, { from, to });
+  }
+
+  viewValue.dispatch({
+    effects: [
+      updateCommentsEffect.of({ comments: ranges }),
+      setActiveCommentEffect.of(get(activeCommentId)),
+    ],
+  });
+}
+
+view.subscribe(() => {
+  syncCommentDecorations();
+});
+
+comments.subscribe(() => {
+  syncCommentDecorations();
+});
+
+activeCommentId.subscribe((commentId) => {
+  get(view)?.dispatch({ effects: setActiveCommentEffect.of(commentId) });
+});
+
 export function destroyContext() {
   contextGeneration++;
 
@@ -2100,4 +2624,6 @@ export function destroyContext() {
   commentButtonPosition.set({ top: 0, left: 0 });
   currentZoomValue.set(1);
   currentZoomMode.set("custom");
+  compileStatus.set("");
+  previewStatus.set("idle");
 }
