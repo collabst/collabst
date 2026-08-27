@@ -1658,7 +1658,7 @@ function updateSearchMatches() {
     });
 
     if (searchMatches.length > 0) {
-      matchesMap.push({ filePath: file.path.slice(1), matches: searchMatches, collapsed: false });
+      matchesMap.push({ filePath: file.path, matches: searchMatches, collapsed: false });
     }
   }
 
