@@ -857,66 +857,24 @@ function applyThreadUpdate(thread: CommentThreadDTO) {
 }
 
 export async function initContext(projectIdValue: string) {
+  files.set([]);
+  assets.set([]);
+  comments.set([]);
+  commentors.set([]);
+  diagnostics.set([]);
+  selectedFile.set(null);
+  selectedAsset.set(null);
+  mainFile.set(null);
+  searchText.set("");
+  searchMatches.set([]);
+  activeCommentId.set(null);
+  commentDraft.set(null);
+
   projectId.set(projectIdValue);
   await loadProject();
-  projectYjs.set(
-    createProjectYjs(projectIdValue, get(auth).user, get(auth).token),
-  );
-  projectSync.set(createProjectSync(projectIdValue, {
-    onFileCreated,
-    onFileUpdated,
-    onFileDeleted,
-    onAssetCreated,
-    onAssetUpdated,
-    onAssetDeleted,
-    onProjectUpdated,
-    onUnauthorized: (event) => {
-      void handlePermissionSignal(
-        event.reason || "You no longer have permission for this realtime action",
-      );
-    },
-  }, get(auth).token));
+  initRealtimeConnections();
   const newFiles = await filesApi.list(projectIdValue);
   files.update(() => newFiles);
-  commentSync.set(createCommentSync(
-    projectIdValue,
-    {
-      onConnected: ({ reconnected }) => {
-        if (reconnected) {
-          void loadCommentsForSelectedFile();
-        }
-      },
-      onThreadCreated: (message) => {
-        if (message.thread) {
-          applyThreadUpdate(message.thread);
-        }
-      },
-      onThreadUpdated: (message) => {
-        if (message.thread) {
-          applyThreadUpdate(message.thread);
-        }
-      },
-      onReplyCreated: (message) => {
-        if (message.reply && message.thread_id) {
-          applyReplyUpdate(message.thread_id, message.reply);
-        }
-      },
-      onPermissionChanged: (message) => {
-        void handlePermissionSignal({
-          reason: message.reason || "Your project permissions have changed",
-          action: message.action,
-          newRole: message.new_role,
-        });
-      },
-      onUnauthorized: (event) => {
-        void handlePermissionSignal(
-          event.reason ||
-          "You no longer have permission for realtime comment updates",
-        );
-      },
-    },
-    get(auth).token,
-  ));
   await initSelectedFile();
   initWorker();
 }
