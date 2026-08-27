@@ -879,6 +879,55 @@ export async function initContext(projectIdValue: string) {
   initWorker();
 }
 
+let disposeSelectionListener: (() => void) | null = null;
+
+function setupSelectionListener() {
+  if (disposeSelectionListener) {
+    disposeSelectionListener();
+    disposeSelectionListener = null;
+  }
+
+  const viewValue = get(view);
+  if (!viewValue) return;
+  const editorDom = viewValue.dom;
+
+  const handleSelectionChange = () => {
+    setTimeout(() => {
+      const selection = getSelection();
+      if (
+        selection &&
+        selection.from !== selection.to &&
+        selection.text.trim()
+      ) {
+        // Get the coordinates of the selection
+        const coords = viewValue.coordsAtPos(selection.to);
+        if (coords) {
+          const containerRect = viewValue.dom.getBoundingClientRect();
+          showCommentButton.set(true);
+          commentButtonPosition.set({
+            top: coords.top - containerRect.top + 20,
+            left: coords.left - containerRect.left,
+          });
+        }
+      } else {
+        showCommentButton.set(false);
+      }
+    }, 10);
+  };
+
+  editorDom.addEventListener("mouseup", handleSelectionChange);
+  editorDom.addEventListener("mousedown", handleSelectionChange);
+  editorDom.addEventListener("keyup", handleSelectionChange);
+  editorDom.addEventListener("keydown", handleSelectionChange);
+
+  disposeSelectionListener = () => {
+    editorDom.removeEventListener("mouseup", handleSelectionChange);
+    editorDom.removeEventListener("mousedown", handleSelectionChange);
+    editorDom.removeEventListener("keyup", handleSelectionChange);
+    editorDom.removeEventListener("keydown", handleSelectionChange);
+  };
+}
+
 view.subscribe(() => {
   setupSelectionListener();
 });
@@ -897,19 +946,19 @@ export async function initSelectedFile() {
 }
 
 editorElement.subscribe(async (el) => {
+  if (!el) return;
   const extensions = await createExtensions();
-  if (el) {
-    view.update((v) => {
-      if (v) {
-        v.destroy();
-      }
-      return new EditorView({
-        doc: "",
-        parent: el,
-        extensions,
-      });
+  const ytextValue = get(ytext);
+  view.update((v) => {
+    if (v) {
+      v.destroy();
+    }
+    return new EditorView({
+      doc: ytextValue?.toString() ?? "",
+      parent: el,
+      extensions,
     });
-  }
+  });
 });
 
 export function cycleLeftPanelTab(direction: 1 | -1) {
@@ -949,11 +998,6 @@ async function updateEditorContent() {
 }
 
 ytext.subscribe(async (newYText) => {
-  updateEditorContent();
-});
-
-
-view.subscribe(async (newView) => {
   updateEditorContent();
 });
 
@@ -1766,41 +1810,6 @@ function getSelection() {
     to,
     text: viewValue.state.doc.sliceString(from, to),
   };
-}
-
-function setupSelectionListener() {
-  const viewValue = get(view);
-  if (!viewValue) return;
-  const editorDom = viewValue.dom;
-
-  const handleSelectionChange = () => {
-    setTimeout(() => {
-      const selection = getSelection();
-      if (
-        selection &&
-        selection.from !== selection.to &&
-        selection.text.trim()
-      ) {
-        // Get the coordinates of the selection
-        const coords = viewValue.coordsAtPos(selection.to);
-        if (coords) {
-          const containerRect = viewValue.dom.getBoundingClientRect();
-          showCommentButton.set(true);
-          commentButtonPosition.set({
-            top: coords.top - containerRect.top + 20,
-            left: coords.left - containerRect.left,
-          });
-        }
-      } else {
-        showCommentButton.set(false);
-      }
-    }, 10);
-  };
-
-  editorDom.addEventListener("mouseup", handleSelectionChange);
-  editorDom.addEventListener("mousedown", handleSelectionChange);
-  editorDom.addEventListener("keyup", handleSelectionChange);
-  editorDom.addEventListener("keydown", handleSelectionChange);
 }
 
 export function addComment() {
