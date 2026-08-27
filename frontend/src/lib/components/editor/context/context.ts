@@ -1912,7 +1912,7 @@ async function createComment(payload: {
   anchor_rel_json: string | null;
   head_rel_json: string | null;
 }) {
-  if (!canComment) return;
+  if (!get(canComment)) return;
 
   const thread = await commentsApi.createThread(get(projectId), {
     file_id: payload.file_id,
@@ -1926,7 +1926,7 @@ async function createComment(payload: {
 }
 
 export async function submitNewComment() {
-  if (!canComment) return;
+  if (!get(canComment)) return;
 
   const commentDraftValue = get(commentDraft);
   const selectedFileValue = get(selectedFile);
@@ -2014,7 +2014,7 @@ export function formatCommentDate(dateStr: string) {
 }
 
 export async function resolveComment(commentId: string) {
-  if (!canComment) return;
+  if (!get(canComment)) return;
 
   const thread = await commentsApi.updateThread(get(projectId), commentId, {
     status: "resolved",
@@ -2023,7 +2023,7 @@ export async function resolveComment(commentId: string) {
 }
 
 export async function reopenComment(commentId: string) {
-  if (!canComment) return;
+  if (!get(canComment)) return;
 
   const thread = await commentsApi.updateThread(get(projectId), commentId, {
     status: "open",
@@ -2032,7 +2032,7 @@ export async function reopenComment(commentId: string) {
 }
 
 export async function deleteComment(commentId: string) {
-  if (!canManageProject) return;
+  if (!get(canManageProject)) return;
 
   const thread = await commentsApi.updateThread(get(projectId), commentId, {
     status: "deleted",
@@ -2041,7 +2041,7 @@ export async function deleteComment(commentId: string) {
 }
 
 export async function replyComment(commentId: string, content: string) {
-  if (!canComment) return;
+  if (!get(canComment)) return;
 
   const reply = await commentsApi.createReply(get(projectId), commentId, {
     content,
