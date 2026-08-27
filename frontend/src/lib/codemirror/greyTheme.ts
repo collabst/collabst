@@ -3,7 +3,6 @@ import type { Extension } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
-import { customGutter } from './customGutter'
 
 // Dark theme colors
 const darkText = "var(--text-primary)",
@@ -160,7 +159,7 @@ export const greyDarkSyntax: Extension = syntaxHighlighting(greyDarkHighlightSty
 
 /// Extension to enable the Grey Dark theme (both the editor theme and
 /// the highlight style).
-export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax, customGutter]
+export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax]
 
 // Light theme colors
 const lightText = "var(--text-primary)",
@@ -384,4 +383,4 @@ export const greyLightSyntax: Extension = syntaxHighlighting(greyLightHighlightS
 
 /// Extension to enable the Grey Light theme (both the editor theme and
 /// the highlight style).
-export const greyLight: Extension = [greyLightTheme, greyLightSyntax, customGutter]
+export const greyLight: Extension = [greyLightTheme, greyLightSyntax]
