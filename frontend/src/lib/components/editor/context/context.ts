@@ -1110,6 +1110,7 @@ function onDiagnostics(diags: any[] = []) {
 }
 
 let worker: Worker;
+let workerInitialized = false;
 
 function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
   const previewIframeValue = get(previewIframe);
@@ -1136,7 +1137,8 @@ function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean
 }
 
 export function initWorker() {
-  if (!worker) {
+  if (!workerInitialized) {
+    workerInitialized = true;
     worker = new Worker(
       new URL('/src/lib/preview/typst-worker.ts', import.meta.url),
       { type: 'module' }
@@ -2033,4 +2035,48 @@ export async function replyComment(commentId: string, content: string) {
     content,
   });
   applyReplyUpdate(commentId, reply);
+}
+
+export function destroyContext() {
+  destroyRealtimeConnections();
+
+  worker?.terminate();
+  workerInitialized = false;
+  workerReady = false;
+
+  get(view)?.destroy();
+  view.set(null);
+
+  for (const unobserve of fileObservers.values()) {
+    unobserve();
+  }
+  fileObservers.clear();
+
+  loadedFiles.clear();
+  loadedAssets.clear();
+
+  projectId.set("");
+  project.set(null);
+  files.set([]);
+  assets.set([]);
+  comments.set([]);
+  commentors.set([]);
+  diagnostics.set([]);
+  selectedFile.set(null);
+  mainFile.set(null);
+  selectedAsset.set(null);
+  editorNewCommentDraft.set(null);
+  activeCommentId.set(null);
+  commentDraft.set(null);
+  currentUserRole.set("reader");
+  searchText.set("");
+  replaceText.set("");
+  searchMatches.set([]);
+  caseSensitiveSearch.set(false);
+  wholeWordSearch.set(false);
+  regexSearch.set(false);
+  showCommentButton.set(false);
+  commentButtonPosition.set({ top: 0, left: 0 });
+  currentZoomValue.set(1);
+  currentZoomMode.set("custom");
 }

@@ -2,15 +2,22 @@
   import EditorPage from "$lib/components/editor/EditorPage.svelte";
   import { page } from "$app/state";
   import { onMount } from "svelte";
-  import { initContext, handleIframeMessage } from "$lib/components/editor/context/index";
+  import { initContext, destroyContext, handleIframeMessage } from "$lib/components/editor/context/index";
 
   let pageProjectId = $derived(page.params.projectId ?? "");
   let loading = $state(true);
 
-  onMount(async () => {
-    await initContext(pageProjectId);
-    window.addEventListener("message", handleIframeMessage);
-    loading = false;
+  onMount(() => {
+    (async () => {
+      await initContext(pageProjectId);
+      window.addEventListener("message", handleIframeMessage);
+      loading = false;
+    })();
+
+    return () => {
+      window.removeEventListener("message", handleIframeMessage);
+      destroyContext();
+    };
   });
 </script>
 
