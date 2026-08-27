@@ -157,9 +157,6 @@ export const greyDarkHighlightStyle = oneDarkHighlightStyle
 /// The syntax highlighting extension for the Grey Dark theme.
 export const greyDarkSyntax: Extension = syntaxHighlighting(greyDarkHighlightStyle)
 
-/// Extension to enable the Grey Dark theme (both the editor theme and
-/// the highlight style).
-export const greyDark: Extension = [greyDarkTheme, greyDarkSyntax]
 
 // Light theme colors
 const lightText = "var(--text-primary)",
@@ -381,6 +378,3 @@ export const greyLightHighlightStyle = HighlightStyle.define([
 /// The syntax highlighting extension for the Grey Light theme.
 export const greyLightSyntax: Extension = syntaxHighlighting(greyLightHighlightStyle)
 
-/// Extension to enable the Grey Light theme (both the editor theme and
-/// the highlight style).
-export const greyLight: Extension = [greyLightTheme, greyLightSyntax]

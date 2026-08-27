@@ -1,39 +1,16 @@
 <script lang="ts">
-  import { projectYjs } from "$lib/components/editor/context";
+  import { awarenessStates } from "$lib/components/editor/context";
   import { getProfilePicUrl } from "$lib/utils/urls";
   import VenetianMask from "@lucide/svelte/icons/venetian-mask";
 
-  let awareness = $projectYjs?.provider.awareness;
-  let awarenessStates: [number, any][] = $state([]);
   let loadedProfilePics = $state<Record<string, boolean>>({});
 
-  function updateAwareness() {
-    if (awareness) {
-      awarenessStates = Array.from(awareness.getStates().entries());
-    } else {
-      awarenessStates = [];
-    }
-  }
   function getUserName(state: any) {
     return state?.user?.name || state?.user?.display_name || null;
   }
 
-  $effect(() => {
-    if (!awareness) {
-      awarenessStates = [];
-      return;
-    }
-
-    awareness.on("change", updateAwareness);
-    updateAwareness();
-
-    return () => {
-      awareness.off("change", updateAwareness);
-    };
-  });
-
   let users = $derived(
-    awarenessStates.filter(([_, state]) => getUserName(state)).slice(0, 10),
+    $awarenessStates.filter(([_, state]) => getUserName(state)).slice(0, 10),
   );
 
   function profilePicSrc(userId: string) {

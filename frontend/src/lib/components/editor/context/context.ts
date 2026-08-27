@@ -218,6 +218,25 @@ export const ydoc = derived(
   projectYjs,
   ($projectYjs) => $projectYjs?.ydoc || null,
 );
+export const awarenessStates = writable<[number, Record<string, any>][]>([]);
+let stopAwarenessListener: (() => void) | null = null;
+projectYjs.subscribe((yjsConnection) => {
+  stopAwarenessListener?.();
+  stopAwarenessListener = null;
+
+  const awareness = yjsConnection?.provider.awareness;
+  if (!awareness) {
+    awarenessStates.set([]);
+    return;
+  }
+
+  const updateAwarenessStates = () => {
+    awarenessStates.set(Array.from(awareness.getStates().entries()));
+  };
+  awareness.on("change", updateAwarenessStates);
+  updateAwarenessStates();
+  stopAwarenessListener = () => awareness.off("change", updateAwarenessStates);
+});
 export const editorNewCommentDraft = writable<{
   text: string;
   range: { from: number; to: number };
@@ -856,7 +875,15 @@ function applyThreadUpdate(thread: CommentThreadDTO) {
   ));
 }
 
+// Bumped by initContext (new session starting) and destroyContext (session
+// torn down), so an in-flight initContext or editorElement.subscribe callback
+// can tell its work has been superseded and stop before touching stores or
+// opening connections for an abandoned project.
+let contextGeneration = 0;
+
 export async function initContext(projectIdValue: string) {
+  const generation = ++contextGeneration;
+
   files.set([]);
   assets.set([]);
   comments.set([]);
@@ -872,10 +899,13 @@ export async function initContext(projectIdValue: string) {
 
   projectId.set(projectIdValue);
   await loadProject();
+  if (generation !== contextGeneration) return;
   initRealtimeConnections();
   const newFiles = await filesApi.list(projectIdValue);
+  if (generation !== contextGeneration) return;
   files.update(() => newFiles);
   await initSelectedFile();
+  if (generation !== contextGeneration) return;
   initWorker();
 }
 
@@ -947,7 +977,9 @@ export async function initSelectedFile() {
 
 editorElement.subscribe(async (el) => {
   if (!el) return;
+  const generation = contextGeneration;
   const extensions = await createExtensions();
+  if (generation !== contextGeneration) return;
   const ytextValue = get(ytext);
   view.update((v) => {
     if (v) {
@@ -1582,13 +1614,18 @@ function updateSearchMatches() {
   const searchTextValue = get(searchText);
   if (!searchTextValue) {
     searchMatches.set([]);
+    updateMatchHighlights();
     return;
   }
 
   const matchesMap = [];
   const filesValue = get(files);
   const yjsConnection = get(projectYjs);
-  if (!yjsConnection?.ydoc) return;
+  if (!yjsConnection?.ydoc) {
+    searchMatches.set([]);
+    updateMatchHighlights();
+    return;
+  }
 
   for (const file of filesValue) {
     const ytext = getFileText(yjsConnection.ydoc, file.id);
@@ -1656,28 +1693,35 @@ function updateSearchMatches() {
   updateMatchHighlights();
 }
 
-function updateMatchHighlights() {
+// The search-match ranges that belong to the file currently open in the editor,
+// clamped to `docLength` and stripped of empty ranges (a mark decoration may not
+// be empty). Read both when the editor state is rebuilt from scratch — see
+// `getHighlightExtensions()` — and when a new search result set is dispatched.
+function selectedFileMatchRanges(docLength: number) {
   const selectedFileValue = get(selectedFile);
-  const searchMatchesValue = get(searchMatches);
-  const viewValue = get(view);
-  if (!selectedFileValue || !viewValue) return;
+  if (!selectedFileValue) return [];
 
-  const fileMatches = searchMatchesValue.find(
+  const fileMatches = get(searchMatches).find(
     (m) => m.filePath === selectedFileValue.path,
   );
-  if (!fileMatches) {
-    viewValue.dispatch({
-      effects: setMatchHighlights.of([]),
-    });
-    return;
-  }
+  if (!fileMatches) return [];
 
-  const highlights = fileMatches.matches.map((match) => ({
-    from: match.startIndex,
-    to: match.endIndex,
-  }));
+  return fileMatches.matches
+    .map((match) => ({
+      from: Math.min(match.startIndex, docLength),
+      to: Math.min(match.endIndex, docLength),
+    }))
+    .filter(({ from, to }) => from < to);
+}
+
+function updateMatchHighlights() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+
   viewValue.dispatch({
-    effects: setMatchHighlights.of(highlights),
+    effects: setMatchHighlights.of(
+      selectedFileMatchRanges(viewValue.state.doc.length),
+    ),
   });
 }
 
@@ -1749,8 +1793,15 @@ const matchHighlight = Decoration.mark({
 
 function getHighlightExtensions() {
   const matchHighlightField = StateField.define({
-    create() {
-      return Decoration.none;
+    // Seeded from `searchMatches`, not empty: this field is re-created on every
+    // `setState` (file switch, theme/settings change) and on every new view, and
+    // the highlights must survive those rebuilds.
+    create(state) {
+      return Decoration.set(
+        selectedFileMatchRanges(state.doc.length).map(({ from, to }) =>
+          matchHighlight.range(from, to),
+        ),
+      );
     },
 
     update(decorations, tr) {
@@ -2005,11 +2056,14 @@ export async function replyComment(commentId: string, content: string) {
 }
 
 export function destroyContext() {
+  contextGeneration++;
+
   destroyRealtimeConnections();
 
   worker?.terminate();
   workerInitialized = false;
   workerReady = false;
+  if (syncTimeout) clearTimeout(syncTimeout);
 
   get(view)?.destroy();
   view.set(null);
