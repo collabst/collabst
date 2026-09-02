@@ -1433,7 +1433,10 @@ export function initWorker() {
 
     worker.onmessage = async (e) => {
       const { type, vectorData, compileTime, isFirstCompile, diagnostics } = e.data;
-      onDiagnostics(diagnostics);
+      // Only compile results carry diagnostics. `status`, `pdf` and `reset`
+      // messages do not, and passing their `undefined` through defaulted to an
+      // empty list — which wiped the issues panel right after a failed compile.
+      if (Array.isArray(diagnostics)) onDiagnostics(diagnostics);
 
       switch (type) {
         case 'status':
@@ -1454,6 +1457,9 @@ export function initWorker() {
           break;
 
         case 'compiled':
+          // Mirrors the worker, which only flips its own `hasCompiled` when it
+          // actually emitted an artifact.
+          if (vectorData) workerHasCompiled = true;
           if (!initialized) {
             compileStatus.set('Waiting for iframe...');
             return;
@@ -1651,9 +1657,42 @@ let syncTimeout: ReturnType<typeof setTimeout>;
 const loadedFiles = new Map<string, { path: string; content: string }>();
 const loadedAssets = new Map<string, { path: string; storage_path: string }>();
 let workerReady = false;
+// Mirrors the worker's own `hasCompiled`: once it is set, the worker only
+// produces diffs, and only a `reset` makes it emit a full artifact again.
+let workerHasCompiled = false;
+// A sync walks the assets asynchronously, so a reset or a teardown can land
+// while one is still in flight. Its remaining `addAsset` messages would reach a
+// worker that no longer holds the sources they belong to, and the cache entries
+// it writes afterwards would make the next sync skip re-adding them.
+let syncGeneration = 0;
+
+// A preview socket that has just opened called `svgDoc.reset()` and holds no
+// document, so it needs a full artifact. Only the worker can produce one, and
+// only after a reset — which also drops the sources it was given, so the caches
+// mirroring them have to be dropped too or `_syncFilesAndAssets` would skip
+// re-adding files the worker no longer has.
+function resetWorkerDocument() {
+  if (!worker || !workerReady || !workerHasCompiled) return;
+  syncGeneration++;
+  worker.postMessage({ type: 'reset' });
+  workerHasCompiled = false;
+  loadedFiles.clear();
+  loadedAssets.clear();
+}
 
 function compile() {
   if (!worker || !workerReady) return;
+  // The compiler emits one full artifact and diffs from then on, and the
+  // preview iframe can only merge a diff into the document it already holds.
+  // An artifact produced before the iframe is listening is therefore not just
+  // lost: every later diff rebases onto a document it never received, its
+  // renderer faults and drops the socket, and it reconnects into the same
+  // fault forever. So hold compilation until the iframe has asked for the
+  // document; `handleIframeSend` compiles as soon as it does.
+  if (!initialized) {
+    compileStatus.set('Preparing files...');
+    return;
+  }
   previewStatus.set('compiling');
   const mainFilePath = get(mainFile)?.path || '/main.typ';
   const path = mainFilePath.startsWith('/') ? mainFilePath : `/${mainFilePath}`;
@@ -1664,6 +1703,19 @@ function compile() {
 }
 
 async function _syncFilesAndAssets() {
+  // The worker registers its message handler immediately but only creates
+  // `compiler` once the WASM bundle finishes loading; an `addFile`/`addAsset`
+  // sent before that is silently dropped on the worker side (`if (!compiler)
+  // return;`) with no signal back here. Without this guard this function still
+  // records the file as loaded in `loadedFiles`/`loadedAssets`, so the real
+  // sync that runs once the worker actually reports ready (see the
+  // `'initialized'` handler) sees no diff and never re-sends it — the worker
+  // ends up missing sources `compile()` then fails to find. Bailing out before
+  // touching either cache keeps them honest until there is a worker to sync to.
+  if (!worker || !workerReady) return;
+
+  const generation = syncGeneration;
+
   // Handle files
   const currentFilesMap = new Map(get(files).map(f => [f.id, f]));
 
@@ -1739,6 +1791,8 @@ async function _syncFilesAndAssets() {
             .catch(err => console.warn('Failed to cache asset:', err));
         }
 
+        if (generation !== syncGeneration) return;
+
         const uint8Array = new Uint8Array(arrayBuffer);
 
         worker.postMessage({
@@ -1752,6 +1806,8 @@ async function _syncFilesAndAssets() {
       }
     }
   }
+
+  if (generation !== syncGeneration) return;
 
   // Trigger compilation
   compile();
@@ -1776,6 +1832,10 @@ function handleIframeSend(data: string | ArrayBuffer) {
         iframeMockReady = true;
         initialized = true;
       }
+      // The preview resets its document every time its socket opens, so a
+      // 'current' after we have already compiled means the next artifact it
+      // gets must be a full one, not a diff.
+      resetWorkerDocument();
       // Iframe is requesting current state - trigger a recompile
       syncFilesAndAssets();
     }
@@ -1820,6 +1880,7 @@ export function handleIframeMessage(event: MessageEvent) {
 
     case 'typst-request-current':
       // Iframe is requesting current state - trigger a recompile
+      resetWorkerDocument();
       syncFilesAndAssets();
       break;
 
@@ -1996,13 +2057,34 @@ export async function deleteAsset(assetId: string) {
 }
 
 
+// These observers are what turns an edit — anyone's, local or remote — into a
+// recompile and a refreshed search index.
 let fileObservers = new Map<string, () => void>();
+// The document the observers in `fileObservers` are attached to. Keying them by
+// file id alone was not enough: `initContext` and
+// `resetRealtimeConnectionsForWriteLoss` both swap the `Y.Doc` out from under
+// them, and because the ids do not change, no observer was ever re-attached to
+// the new document — edits went unnoticed and the preview stopped recompiling.
+let observedYdoc: Y.Doc | null = null;
 
-files.subscribe((filesValue) => {
-  const yjsConnection = get(projectYjs);
-  if (!yjsConnection?.ydoc) return;
+function clearFileObservers() {
+  for (const unobserve of fileObservers.values()) {
+    unobserve();
+  }
+  fileObservers.clear();
+  observedYdoc = null;
+}
 
-  const ydoc = yjsConnection.ydoc;
+function syncFileObservers() {
+  const ydocValue = get(projectYjs)?.ydoc ?? null;
+
+  if (ydocValue !== observedYdoc) {
+    clearFileObservers();
+    observedYdoc = ydocValue;
+  }
+  if (!ydocValue) return;
+
+  const filesValue = get(files);
 
   // Clean up observers for deleted files
   for (const [fileId, unobserve] of fileObservers) {
@@ -2015,18 +2097,30 @@ files.subscribe((filesValue) => {
   // Set up observers for new files
   for (const file of filesValue) {
     if (!fileObservers.has(file.id)) {
-      const ytext = getFileText(ydoc, file.id);
+      const ytext = getFileText(ydocValue, file.id);
       if (ytext) {
+        // Yjs fires `observe` handlers synchronously, and for a local edit that
+        // happens from inside yCollab's own CodeMirror `ViewPlugin.update()` —
+        // i.e. while `view.dispatch()` for the keystroke is still on the call
+        // stack. `updateSearchMatches()` can reach `updateMatchHighlights()`,
+        // which calls `view.dispatch()` again; CodeMirror throws ("Calls to
+        // EditorView.update are not allowed while an update is in progress"),
+        // and its plugin error boundary disables yCollab for the view — after
+        // that, local edits stop reaching Yjs entirely. Deferring past the
+        // current call stack lets the in-flight dispatch finish first.
         const handler = () => {
           syncFilesAndAssets();
-          updateSearchMatches();
+          setTimeout(updateSearchMatches, 0);
         };
         ytext.observe(handler);
         fileObservers.set(file.id, () => ytext.unobserve(handler));
       }
     }
   }
-});
+}
+
+files.subscribe(syncFileObservers);
+projectYjs.subscribe(syncFileObservers);
 
 export interface SearchMatch {
   filePath: string;
@@ -2587,15 +2681,20 @@ export function destroyContext() {
   worker?.terminate();
   workerInitialized = false;
   workerReady = false;
+  workerHasCompiled = false;
+  syncGeneration++;
+  // The next project mounts a fresh iframe with an empty document. Leaving
+  // these set made us treat it as ready for diffs before it had asked for
+  // anything, and it would never receive a full artifact.
+  iframeMockReady = false;
+  initialized = false;
+  isPreviewZoomInitialized = false;
   if (syncTimeout) clearTimeout(syncTimeout);
 
   get(view)?.destroy();
   view.set(null);
 
-  for (const unobserve of fileObservers.values()) {
-    unobserve();
-  }
-  fileObservers.clear();
+  clearFileObservers();
 
   loadedFiles.clear();
   loadedAssets.clear();
