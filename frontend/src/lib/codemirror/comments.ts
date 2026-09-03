@@ -21,22 +21,26 @@ export const updateCommentsEffect = StateEffect.define<{
 // State effect for setting the active comment
 export const setActiveCommentEffect = StateEffect.define<string | null>()
 
-// Decoration for highlighted comment ranges
-const commentMark = (commentId: string) =>
-  Decoration.mark({
-    class: 'cm-comment-highlight',
-    attributes: {
-      'data-comment-id': commentId,
-    }
-  })
+// State effect for setting the hovered comment (a thread hovered in the panel)
+export const setHoveredCommentEffect = StateEffect.define<string | null>()
 
-const activeCommentMark = (commentId: string) =>
-  Decoration.mark({
-    class: 'cm-comment-highlight cm-comment-highlight-active',
+// Decoration for highlighted comment ranges. Active and hovered are independent
+// — a thread can be both — so the classes are composed rather than switched.
+const commentMark = (
+  commentId: string,
+  activeId: string | null,
+  hoveredId: string | null,
+) => {
+  let className = 'cm-comment-highlight'
+  if (commentId === activeId) className += ' cm-comment-highlight-active'
+  if (commentId === hoveredId) className += ' cm-comment-highlight-hovered'
+  return Decoration.mark({
+    class: className,
     attributes: {
       'data-comment-id': commentId,
     }
   })
+}
 
 // State field to track the active comment ID
 export const activeCommentField = StateField.define<string | null>({
@@ -53,6 +57,21 @@ export const activeCommentField = StateField.define<string | null>({
   }
 })
 
+// State field to track the comment hovered in the comments panel
+export const hoveredCommentField = StateField.define<string | null>({
+  create() {
+    return null
+  },
+  update(hoveredId, tr) {
+    for (let effect of tr.effects) {
+      if (effect.is(setHoveredCommentEffect)) {
+        return effect.value
+      }
+    }
+    return hoveredId
+  }
+})
+
 // State field to track comment decorations
 export const commentField = StateField.define<DecorationSet>({
   create() {
@@ -61,22 +80,26 @@ export const commentField = StateField.define<DecorationSet>({
   update(decorations, tr) {
     decorations = decorations.map(tr.changes)
 
-    // Check if active comment changed
+    // Check whether the active or the hovered comment changed. The fields are
+    // updated in the same transaction, so their new values have to be read from
+    // the effects rather than from `tr.state`.
     let activeChanged = false
-    let newActiveId: string | null = null
+    let newActiveId: string | null = tr.startState.field(activeCommentField)
+    let hoveredChanged = false
+    let newHoveredId: string | null = tr.startState.field(hoveredCommentField)
     for (let effect of tr.effects) {
       if (effect.is(setActiveCommentEffect)) {
         activeChanged = true
         newActiveId = effect.value
+      } else if (effect.is(setHoveredCommentEffect)) {
+        hoveredChanged = true
+        newHoveredId = effect.value
       }
     }
 
     for (let effect of tr.effects) {
       if (effect.is(addCommentEffect)) {
-        const activeId = tr.state.field(activeCommentField)
-        const mark = effect.value.commentId === activeId
-          ? activeCommentMark(effect.value.commentId)
-          : commentMark(effect.value.commentId)
+        const mark = commentMark(effect.value.commentId, newActiveId, newHoveredId)
         decorations = decorations.update({
           add: [mark.range(effect.value.from, effect.value.to)]
         })
@@ -88,29 +111,23 @@ export const commentField = StateField.define<DecorationSet>({
           }
         })
       } else if (effect.is(updateCommentsEffect)) {
-        const activeId = activeChanged ? newActiveId : tr.state.field(activeCommentField)
         const ranges: any[] = []
         effect.value.comments.forEach((range, commentId) => {
-          const mark = commentId === activeId
-            ? activeCommentMark(commentId)
-            : commentMark(commentId)
-          ranges.push(mark.range(range.from, range.to))
+          ranges.push(commentMark(commentId, newActiveId, newHoveredId).range(range.from, range.to))
         })
         decorations = Decoration.set(ranges, true)
       }
     }
 
-    // If only the active comment changed (no other effects), rebuild decorations
-    if (activeChanged && !tr.effects.some(e => e.is(updateCommentsEffect))) {
+    // If only the active or hovered comment changed (no other effects), rebuild
+    // the existing decorations with their new classes.
+    if ((activeChanged || hoveredChanged) && !tr.effects.some(e => e.is(updateCommentsEffect))) {
       const iter = decorations.iter()
       const ranges: any[] = []
       while (iter.value) {
         const commentId = iter.value.spec?.attributes?.['data-comment-id']
         if (commentId) {
-          const mark = commentId === newActiveId
-            ? activeCommentMark(commentId)
-            : commentMark(commentId)
-          ranges.push(mark.range(iter.from, iter.to))
+          ranges.push(commentMark(commentId, newActiveId, newHoveredId).range(iter.from, iter.to))
         }
         iter.next()
       }
@@ -490,6 +507,7 @@ const docChangeListener = EditorView.updateListener.of((update) => {
 export function commentsExtension(): Extension {
   return [
     activeCommentField,
+    hoveredCommentField,
     commentField,
     commentClickHandler,
     commentHoverHandler,

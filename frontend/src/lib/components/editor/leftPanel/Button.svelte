@@ -5,12 +5,20 @@
     children: Snippet;
     onclick?: (e: MouseEvent) => void;
     selected?: boolean;
+    disabled?: boolean;
+    title?: string;
   }
 
-  let { children, onclick, selected = false }: Props = $props();
+  let {
+    children,
+    onclick,
+    selected = false,
+    disabled = false,
+    title,
+  }: Props = $props();
 </script>
 
-<button class="button" class:selected {onclick}>
+<button class="button" class:selected {onclick} {disabled} {title}>
   {@render children()}
 </button>
 
@@ -56,5 +64,22 @@
   .button:active :global(svg),
   .button.selected :global(svg) {
     transform: translateY(2px) scaleY(0.9) scaleX(1.1);
+  }
+
+  .button:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .button:disabled:hover,
+  .button:disabled:active {
+    background: none;
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .button:disabled:active :global(svg) {
+    transform: none;
   }
 </style>

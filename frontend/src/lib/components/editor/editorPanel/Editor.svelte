@@ -6,13 +6,18 @@
     commentButtonPosition,
     canComment,
     addComment,
+    selectedAsset,
   } from "../context";
   import Button from "../leftPanel/Button.svelte";
+  import AssetView from "./AssetView.svelte";
 </script>
 
 <div class="container">
-  <div bind:this={$editorElement} class="editor"></div>
-  {#if $showCommentButton && $canComment}
+  <!-- Hidden rather than unmounted: `bind:this` would drop `editorElement`, and
+       the context rebuilds the whole `EditorView` when it comes back. -->
+  <div bind:this={$editorElement} class="editor" class:hidden={$selectedAsset}></div>
+  <AssetView />
+  {#if $showCommentButton && $canComment && !$selectedAsset}
     <div
       class="floating-comment-wrapper"
       class:show={$showCommentButton}
@@ -37,6 +42,10 @@
     height: 100%;
     overflow: hidden;
     background-color: var(--bg-editor);
+  }
+
+  .editor.hidden {
+    visibility: hidden;
   }
 
   .editor :global(.cm-gutter) {

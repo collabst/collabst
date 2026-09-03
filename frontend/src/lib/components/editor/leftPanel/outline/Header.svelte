@@ -1,34 +1,14 @@
 <script lang="ts">
-  import {
-    comments,
-    showResolvedComments,
-    toggleShowResolvedComments,
-  } from "$lib/components/editor/context";
-  import Button from "../Button.svelte";
-  import Eye from "@lucide/svelte/icons/eye";
-  import EyeOff from "@lucide/svelte/icons/eye-off";
-
-  let unresolved = $derived($comments.filter((c) => !c.resolved).length);
+  import { outline } from "$lib/components/editor/context";
 </script>
 
 <div class="header">
   <div class="title">
-    <div class="name">Comments</div>
-    {#if unresolved > 0}
-      <div class="badge">{unresolved}</div>
+    <div class="name">Outline</div>
+    {#if $outline.length > 0}
+      <div class="badge">{$outline.length}</div>
     {/if}
   </div>
-  <Button
-    onclick={toggleShowResolvedComments}
-    selected={$showResolvedComments}
-    title={$showResolvedComments ? "Hide resolved" : "Show resolved"}
-  >
-    {#if $showResolvedComments}
-      <Eye />
-    {:else}
-      <EyeOff />
-    {/if}
-  </Button>
 </div>
 
 <style>

@@ -1,4 +1,4 @@
-import { EditorState as CMState, Compartment, EditorState } from "@codemirror/state";
+import { EditorState as CMState, Compartment, EditorState, Prec } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -23,6 +23,16 @@ import {
   closeBrackets,
 } from "@codemirror/autocomplete";
 import { setDiagnostics } from "@codemirror/lint";
+import {
+  SearchQuery,
+  findNext as findNextCommand,
+  findPrevious as findPreviousCommand,
+  replaceAll as replaceAllCommand,
+  replaceNext as replaceNextCommand,
+  search,
+  selectMatches as selectMatchesCommand,
+  setSearchQuery,
+} from "@codemirror/search";
 
 import { derived, get, writable, type Writable } from "svelte/store";
 import type { LeftPanelTab } from "./types";
@@ -31,8 +41,9 @@ import { assetsApi, commentsApi, filesApi, projectsApi, usersApi } from "$lib/se
 import { createProjectYjs, getFileText, type YjsConnection } from "$lib/yjs";
 import { auth } from "$lib/stores/auth";
 import { createProjectSync } from "$lib/projectSync";
-import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagnostic, UserProfile } from "$lib/types";
-import { cacheAsset, getCachedAsset, removeCachedAsset } from "$lib/utils/assetCache";
+import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagnostic, FileTreeNode, UserProfile } from "$lib/types";
+import { cacheAsset, createBlobUrl, getCachedAsset, removeCachedAsset, revokeBlobUrl } from "$lib/utils/assetCache";
+import { buildFileTree, flattenTree, getAncestorIds } from "$lib/utils/fileTree";
 import { notifications } from "$lib/stores/notifications";
 import { goto } from "$app/navigation";
 import { createCommentSync } from "$lib/commentSync";
@@ -46,6 +57,7 @@ import * as Y from "yjs";
 import {
   commentsExtension,
   setActiveCommentEffect,
+  setHoveredCommentEffect,
   updateCommentsEffect,
 } from "$lib/codemirror/comments";
 import { convertDiagnosticsToLint, parseRange } from "$lib/preview/diagnostics";
@@ -78,6 +90,37 @@ function readStoredWrapLines(): boolean {
 }
 
 export const wrapLines = writable<boolean>(readStoredWrapLines());
+
+// Whether resolved threads stay in the comments panel. Like `wrapLines` this is
+// a reader preference remembered under the key the old panel already used, and
+// it is shared: the header toggles it, the list filters on it.
+const SHOW_RESOLVED_COMMENTS_STORAGE_KEY = "editor.comments.showResolved";
+
+function readStoredShowResolvedComments(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    return localStorage.getItem(SHOW_RESOLVED_COMMENTS_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export const showResolvedComments = writable<boolean>(
+  readStoredShowResolvedComments(),
+);
+
+showResolvedComments.subscribe((show) => {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(SHOW_RESOLVED_COMMENTS_STORAGE_KEY, String(show));
+  } catch {
+    // Storage can be unavailable; the preference is then not remembered.
+  }
+});
+
+export function toggleShowResolvedComments() {
+  showResolvedComments.update((show) => !show);
+}
 let errorLines = new Set<number>();
 
 function getLineWrappingExtensions() {
@@ -306,6 +349,14 @@ export const editorNewCommentDraft = writable<{
 export const projectSync = writable<ReturnType<typeof createProjectSync> | null>(null);
 export const commentSync = writable<ReturnType<typeof createCommentSync> | null>(null);
 export const activeCommentId = writable<string | null>(null);
+// Hovering a thread in the panel emphasises its range in the document. Purely
+// presentational, but two components have to agree on it — the panel writes it,
+// the editor reads it — so it is context state, not local state.
+export const hoveredCommentId = writable<string | null>(null);
+
+export function hoverComment(commentId: string | null) {
+  hoveredCommentId.set(commentId);
+}
 export const view = writable<EditorView | null>(null);
 let undoManager: Y.UndoManager | null = null;
 
@@ -386,6 +437,20 @@ export function toggleWrap(prefix: string, suffix: string) {
     }
   }
   viewValue.focus();
+}
+
+// The three inline-formatting commands, named once so the toolbar and the
+// keymap cannot drift apart: both call these, neither knows the Typst markup.
+export function toggleBold() {
+  toggleWrap("*", "*");
+}
+
+export function toggleItalic() {
+  toggleWrap("_", "_");
+}
+
+export function toggleUnderline() {
+  toggleWrap("#underline[", "]");
 }
 
 // Undo/redo go through the Yjs `UndoManager`, not CodeMirror's history: the
@@ -491,6 +556,147 @@ export function toggleLinePrefix(prefix: string) {
   viewValue.focus();
 }
 
+// --- Find in the open file ---------------------------------------------------
+
+// Distinct from the global search panel in the left panel, which greps every
+// file's Yjs document. This one drives CodeMirror's own search state on the open
+// document, so the component below stays presentational: it binds the stores and
+// calls the verbs.
+export const findOpen = writable(false);
+export const findQuery = writable("");
+export const findReplace = writable("");
+export const findCaseSensitive = writable(false);
+export const findWholeWord = writable(false);
+export const findRegex = writable(false);
+export const findMatchCount = writable(0);
+export const findMatchIndex = writable(0);
+
+function buildFindQuery() {
+  return new SearchQuery({
+    search: get(findQuery),
+    replace: get(findReplace),
+    caseSensitive: get(findCaseSensitive),
+    wholeWord: get(findWholeWord),
+    regexp: get(findRegex),
+  });
+}
+
+// "3 of 17": the count comes from walking the query's own cursor, and the index
+// from whichever match the selection is currently sitting on (0 = none).
+function refreshFindMatches() {
+  const viewValue = get(view);
+  const query = buildFindQuery();
+  if (!viewValue || !query.valid) {
+    findMatchCount.set(0);
+    findMatchIndex.set(0);
+    return;
+  }
+
+  const selection = viewValue.state.selection.main;
+  let count = 0;
+  let index = 0;
+  try {
+    const cursor = query.getCursor(viewValue.state);
+    for (let step = cursor.next(); !step.done; step = cursor.next()) {
+      count += 1;
+      if (step.value.from === selection.from && step.value.to === selection.to) {
+        index = count;
+      }
+    }
+  } catch {
+    // An in-progress regular expression can throw; treat it as "no matches".
+    count = 0;
+    index = 0;
+  }
+
+  findMatchCount.set(count);
+  findMatchIndex.set(index);
+}
+
+function applyFindQuery() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  viewValue.dispatch({ effects: setSearchQuery.of(buildFindQuery()) });
+  refreshFindMatches();
+}
+
+derived(
+  [findQuery, findReplace, findCaseSensitive, findWholeWord, findRegex],
+  (values) => values,
+).subscribe(() => applyFindQuery());
+
+export function openFind() {
+  findOpen.set(true);
+  applyFindQuery();
+}
+
+export function closeFind() {
+  findOpen.set(false);
+  get(view)?.focus();
+}
+
+export function findNextMatch() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  findNextCommand(viewValue);
+  refreshFindMatches();
+}
+
+export function findPreviousMatch() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  findPreviousCommand(viewValue);
+  refreshFindMatches();
+}
+
+export function selectAllFindMatches() {
+  const viewValue = get(view);
+  if (!viewValue) return;
+  selectMatchesCommand(viewValue);
+}
+
+export function replaceFindMatch() {
+  if (!get(canWrite)) return;
+  const viewValue = get(view);
+  if (!viewValue) return;
+  replaceNextCommand(viewValue);
+  refreshFindMatches();
+}
+
+export function replaceAllFindMatches() {
+  if (!get(canWrite)) return;
+  const viewValue = get(view);
+  if (!viewValue) return;
+  replaceAllCommand(viewValue);
+  refreshFindMatches();
+}
+
+// `Prec.highest` because `basicSetup` brings `searchKeymap`, whose own `Mod-f`
+// would otherwise open CodeMirror's default panel instead of ours.
+function createFindKeymap() {
+  return Prec.highest(
+    keymap.of([
+      {
+        key: "Mod-f",
+        run: () => {
+          openFind();
+          return true;
+        },
+      },
+      {
+        key: "Escape",
+        run: () => {
+          // Returning false when the panel is closed lets whatever else is
+          // bound to Escape (autocompletion, for one) have it.
+          if (!get(findOpen)) return false;
+          closeFind();
+          return true;
+        },
+      },
+    ]),
+  );
+}
+
 export function toggleLineWrapping() {
   wrapLines.update((enabled) => !enabled);
 }
@@ -507,21 +713,21 @@ function createUndoRedoKeymap() {
     {
       key: "Mod-b",
       run: () => {
-        toggleWrap("*", "*");
+        toggleBold();
         return true;
       },
     },
     {
       key: "Mod-i",
       run: () => {
-        toggleWrap("_", "_");
+        toggleItalic();
         return true;
       },
     },
     {
       key: "Mod-u",
       run: () => {
-        toggleWrap("#underline[", "]");
+        toggleUnderline();
         return true;
       },
     },
@@ -553,7 +759,10 @@ async function createExtensions() {
     lineWrappingCompartment.of(getLineWrappingExtensions()),
     lineNumbersCompartment.of(getLineNumbersExtension()),
     basicSetup,
-    // search({ createPanel: createFindPanel }),
+    // The search *state* only; the panel is `editorPanel/Find.svelte`, a normal
+    // component driven by the stores above.
+    search({ top: true }),
+    createFindKeymap(),
     themeCompartment.of(getThemeExtensions()),
     syntaxCompartment.of(await getSyntaxHighlighting()),
     languageCompartment.of(await getLanguageExtensions()),
@@ -1113,13 +1322,24 @@ export async function initContext(projectIdValue: string) {
   comments.set([]);
   commentors.set([]);
   diagnostics.set([]);
+  outline.set([]);
   selectedFile.set(null);
   selectedAsset.set(null);
+  releaseAssetBlobUrls();
   mainFile.set(null);
   searchText.set("");
   searchMatches.set([]);
   activeCommentId.set(null);
+  hoveredCommentId.set(null);
   commentDraft.set(null);
+  findOpen.set(false);
+  findQuery.set("");
+  findReplace.set("");
+  expandedFolders.set(new Set<string>());
+  renamingNodeId.set(null);
+  fileMenu.set(null);
+  pendingDeletion.set(null);
+  draggedNodeId.set(null);
 
   projectId.set(projectIdValue);
 
@@ -1338,6 +1558,11 @@ export function selectFile(fileId: string) {
   const file = get(files).find((f) => f.id === fileId);
   if (file) {
     selectedFile.set(file);
+    // Opening a document closes the asset view; the two share the editor panel.
+    selectedAsset.set(null);
+    // A file selected from anywhere but the tree — the entry point at init, a
+    // search hit, a diagnostic — has to become visible in it.
+    expandFolders(getAncestorIds(get(files), fileId));
   }
   void loadCommentsForSelectedFile();
 }
@@ -1458,6 +1683,70 @@ export function gotoDiagnostic(diagnostic: Diagnostic) {
       );
     }, 100);
   }
+}
+
+// --- Outline -----------------------------------------------------------------
+
+// Headings of the open document, for the outline tab. Parsed with a regex over
+// the Yjs text rather than the syntax tree: it is one pass, it costs nothing,
+// and the previous editor had no outline at all, so a first version that is
+// occasionally too eager still beats an empty panel. Fenced raw blocks are
+// skipped, because a `=` inside one is not a heading.
+export interface OutlineEntry {
+  id: string;
+  level: number;
+  title: string;
+  line: number;
+}
+
+export const outline = writable<OutlineEntry[]>([]);
+
+const HEADING_PATTERN = /^(=+)\s+(.*\S)\s*$/;
+
+function parseOutline(text: string): OutlineEntry[] {
+  const entries: OutlineEntry[] = [];
+  let inRawBlock = false;
+
+  text.split("\n").forEach((rawLine, index) => {
+    const line = rawLine.trimStart();
+    if (line.startsWith("```")) {
+      inRawBlock = !inRawBlock;
+      return;
+    }
+    if (inRawBlock) return;
+
+    const match = HEADING_PATTERN.exec(line);
+    if (!match) return;
+    entries.push({
+      // The line number is what makes an entry unique: two sections can share a
+      // title, and `{#each}` needs a stable key.
+      id: `${index + 1}`,
+      level: match[1].length,
+      title: match[2],
+      line: index + 1,
+    });
+  });
+
+  return entries;
+}
+
+function updateOutline() {
+  const fileName = get(selectedFile)?.name ?? "";
+  // Only Typst documents have Typst headings.
+  if (!fileName.toLowerCase().endsWith(".typ")) {
+    outline.set([]);
+    return;
+  }
+  outline.set(parseOutline(get(ytext)?.toString() ?? ""));
+}
+
+// A file switch swaps the `Y.Text`; edits are picked up by the file observers,
+// which call this for the open file only.
+ytext.subscribe(() => updateOutline());
+selectedFile.subscribe(() => updateOutline());
+
+export function gotoOutlineEntry(entry: OutlineEntry) {
+  navigateTo([entry.line, 0]);
 }
 
 // `getLineNumbersExtension()`'s `formatNumber` reads `errorLines` at render
@@ -2027,6 +2316,22 @@ function resolveParentId(path: string): string | null | undefined {
   return folder ? folder.id : undefined;
 }
 
+// Inline rename is a two-component flow: the panel header creates a node and the
+// tree row that appears for it has to open its editor, so "which node is being
+// renamed" cannot be local state in either of them. It is deliberately *not*
+// cleared when `files` changes: the rename target is created by `newFile()` a
+// moment before the row exists.
+export const renamingNodeId = writable<string | null>(null);
+
+export function startRenaming(nodeId: string) {
+  if (!get(canWrite)) return;
+  renamingNodeId.set(nodeId);
+}
+
+export function stopRenaming() {
+  renamingNodeId.set(null);
+}
+
 export async function newFile(path: string) {
   if (!get(canWrite)) return;
 
@@ -2047,6 +2352,9 @@ export async function newFile(path: string) {
     onFileCreated(createdFile);
     selectedAsset.set(null);
     selectFile(createdFile.id);
+    // The name the caller passed is a placeholder ("newFile.typ"): a freshly
+    // created node opens straight into its inline editor so it can be named.
+    renamingNodeId.set(createdFile.id);
     if (createdFile.name !== name) {
       notifications.show(`Name already used, created as ${createdFile.name}`, "info");
     }
@@ -2078,6 +2386,7 @@ export async function newFolder(path: string) {
     // editor for something that has no content to show.
     const createdFolder = await filesApi.createFolder($projectId, name, parentId);
     onFileCreated(createdFolder);
+    renamingNodeId.set(createdFolder.id);
     if (createdFolder.name !== name) {
       notifications.show(`Name already used, created as ${createdFolder.name}`, "info");
     }
@@ -2168,6 +2477,410 @@ export async function deleteAsset(assetId: string) {
 }
 
 
+// --- The explorer tree -------------------------------------------------------
+
+// Files and assets are two tables but one tree on screen: they share the folder
+// rows (an asset's `parent_id` points at a `File` folder), so they have to be
+// merged before the tree is built, not after. `kind` is what the list item needs
+// to know whether clicking it opens a document or an image; everything else is
+// the `File` shape `buildFileTree()` already understands.
+export type ExplorerNode = FileTreeNode & { kind: "file" | "asset" };
+
+function assetAsTreeRow(asset: Asset): File & { kind: "asset" } {
+  return {
+    id: asset.id,
+    project_id: asset.project_id,
+    name: asset.filename,
+    path: asset.path,
+    parent_id: asset.parent_id,
+    is_folder: false,
+    created_at: asset.created_at,
+    updated_at: asset.updated_at,
+    kind: "asset",
+  };
+}
+
+export const fileTree = derived([files, assets], ([$files, $assets]) =>
+  buildFileTree([
+    ...$files.map((file) => ({ ...file, kind: "file" as const })),
+    ...$assets.map(assetAsTreeRow),
+  ]) as ExplorerNode[],
+);
+
+export const expandedFolders = writable<Set<string>>(new Set<string>());
+
+export function toggleFolder(folderId: string) {
+  expandedFolders.update((expanded) => {
+    // A new Set, not a mutation: subscribers compare by reference.
+    const next = new Set(expanded);
+    if (next.has(folderId)) {
+      next.delete(folderId);
+    } else {
+      next.add(folderId);
+    }
+    return next;
+  });
+}
+
+export function expandFolders(folderIds: string[]) {
+  if (folderIds.length === 0) return;
+  expandedFolders.update((expanded) => {
+    const next = new Set(expanded);
+    for (const id of folderIds) next.add(id);
+    return next;
+  });
+}
+
+// What the panel actually renders: the tree flattened to a list, collapsed
+// folders' children dropped. Derived here rather than computed in the component
+// so the panel never has to know the tree shape.
+export const visibleTree = derived(
+  [fileTree, expandedFolders],
+  ([$fileTree, $expandedFolders]) =>
+    flattenTree($fileTree, $expandedFolders) as ExplorerNode[],
+);
+
+// --- Tree actions: context menu and delete confirmation ----------------------
+
+// The menu is opened by a tree row (or the empty space under it) and rendered
+// once at the region root, so that a `position: fixed` card is not clipped by
+// the scrolling list. Two components, one piece of state — it belongs here.
+// `node` is `null` when the menu was opened on the panel background, which means
+// "at the project root".
+export interface FileMenuState {
+  node: ExplorerNode | null;
+  x: number;
+  y: number;
+}
+
+export const fileMenu = writable<FileMenuState | null>(null);
+
+export function openFileMenu(state: FileMenuState) {
+  fileMenu.set(state);
+}
+
+export function closeFileMenu() {
+  fileMenu.set(null);
+}
+
+// Deleting is the one destructive action in the panel, so it goes through a
+// confirmation the user has to answer. Same reasoning as the menu: the row asks,
+// the dialog answers.
+export interface PendingDeletion {
+  id: string;
+  name: string;
+  kind: "file" | "asset";
+  isFolder: boolean;
+}
+
+export const pendingDeletion = writable<PendingDeletion | null>(null);
+
+export function requestDeletion(node: ExplorerNode) {
+  if (!get(canWrite)) return;
+  pendingDeletion.set({
+    id: node.id,
+    name: node.name,
+    kind: node.kind,
+    isFolder: node.is_folder,
+  });
+}
+
+export function cancelDeletion() {
+  pendingDeletion.set(null);
+}
+
+export async function confirmDeletion() {
+  const pending = get(pendingDeletion);
+  if (!pending) return;
+  pendingDeletion.set(null);
+  if (pending.kind === "asset") {
+    await deleteAsset(pending.id);
+  } else {
+    await deleteFile(pending.id);
+  }
+}
+
+// Where a node created "next to" `nodeId` lands: inside it when it is a folder,
+// beside it when it is a file, at the root when there is no anchor. Assets are
+// looked up too — the explorer shows them in the same tree, so an id coming from
+// a row is not necessarily a `File`.
+function anchorFolder(nodeId: string | null): File | null {
+  if (!nodeId) return null;
+  const $files = get(files);
+  const node: File | Asset | undefined =
+    $files.find((f) => f.id === nodeId) ??
+    get(assets).find((a) => a.id === nodeId);
+  if (!node) return null;
+  if ("is_folder" in node && node.is_folder) return node;
+  if (!node.parent_id) return null;
+  return $files.find((f) => f.id === node.parent_id) ?? null;
+}
+
+export function newFileNextTo(nodeId: string | null) {
+  const folder = anchorFolder(nodeId);
+  if (folder) expandFolders([folder.id]);
+  return newFile(folder ? `${folder.path}/newFile.typ` : "newFile.typ");
+}
+
+export function newFolderNextTo(nodeId: string | null) {
+  const folder = anchorFolder(nodeId);
+  if (folder) expandFolders([folder.id]);
+  return newFolder(folder ? `${folder.path}/newFolder` : "newFolder");
+}
+
+// --- Dragging a node onto a folder -------------------------------------------
+
+// Which row is being dragged has to be readable by every *other* row: `dragover`
+// only exposes the data transfer's types, never its data, so a row cannot ask
+// the event what is being dropped on it. One drag is in flight at a time, so it
+// is one store — same reasoning as the context menu above.
+export const draggedNodeId = writable<string | null>(null);
+
+export function startNodeDrag(nodeId: string) {
+  if (!get(canWrite)) return;
+  draggedNodeId.set(nodeId);
+}
+
+export function endNodeDrag() {
+  draggedNodeId.set(null);
+}
+
+// Walking up from `candidateId`: a folder cannot be dropped inside its own
+// subtree, which would detach that whole branch from the root.
+function isInSubtreeOf(candidateId: string, ancestorId: string): boolean {
+  const $files = get(files);
+  let current = $files.find((f) => f.id === candidateId);
+  while (current?.parent_id) {
+    if (current.parent_id === ancestorId) return true;
+    const parentId: string = current.parent_id;
+    current = $files.find((f) => f.id === parentId);
+  }
+  return false;
+}
+
+// `targetNodeId` is a row the pointer is over, or `null` for the panel
+// background. The destination folder follows the same anchor rule as creation:
+// a folder takes the node, a file hands it to its own folder.
+export function canDropOnNode(targetNodeId: string | null): boolean {
+  const sourceId = get(draggedNodeId);
+  if (!sourceId || !get(canWrite)) return false;
+  if (sourceId === targetNodeId) return false;
+
+  const source =
+    get(files).find((f) => f.id === sourceId) ??
+    get(assets).find((a) => a.id === sourceId);
+  if (!source) return false;
+
+  const destinationId = anchorFolder(targetNodeId)?.id ?? null;
+  // Already where it would land — a move that changes nothing.
+  if (source.parent_id === destinationId) return false;
+  if (destinationId === sourceId) return false;
+  if (destinationId && isInSubtreeOf(destinationId, sourceId)) return false;
+  return true;
+}
+
+export async function dropOnNode(targetNodeId: string | null) {
+  const sourceId = get(draggedNodeId);
+  const allowed = canDropOnNode(targetNodeId);
+  endNodeDrag();
+  if (!sourceId || !allowed) return;
+
+  const destinationId = anchorFolder(targetNodeId)?.id ?? null;
+  if (destinationId) expandFolders([destinationId]);
+
+  if (get(assets).some((a) => a.id === sourceId)) {
+    await moveAsset(sourceId, destinationId);
+  } else {
+    await moveFile(sourceId, destinationId);
+  }
+}
+
+// --- Asset upload ------------------------------------------------------------
+
+// The server decides what an upload becomes: anything it can read as text comes
+// back as a `File` (a source it will let people edit), everything else as an
+// `Asset`. It also renames on collision, which is why the created row — not the
+// one we sent — is what goes into the stores. Binary assets are cached on the
+// way in so the compiler and the viewer do not have to fetch back what this
+// browser just uploaded.
+export async function uploadAssets(
+  filesToUpload: globalThis.File[],
+  parentId: string | null = null,
+) {
+  if (!get(canWrite)) return;
+  if (filesToUpload.length === 0) return;
+
+  const $projectId = get(projectId);
+  let uploaded = 0;
+  let failed = 0;
+  const renamed: string[] = [];
+
+  for (const file of filesToUpload) {
+    try {
+      const created = await assetsApi.upload($projectId, file, parentId);
+
+      if ("mime_type" in created) {
+        cacheAsset(
+          $projectId,
+          created.id,
+          created.storage_path,
+          created.mime_type,
+          await file.arrayBuffer(),
+        ).catch((err) => console.warn("Failed to cache uploaded asset:", err));
+        onAssetCreated(created);
+        if (created.filename !== file.name) {
+          renamed.push(`${file.name} → ${created.filename}`);
+        }
+      } else {
+        onFileCreated(created);
+        if (created.name !== file.name) {
+          renamed.push(`${file.name} → ${created.name}`);
+        }
+      }
+
+      uploaded += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("Failed to upload file:", file.name, error);
+      notifications.show(
+        errorDetail(error, `Failed to upload ${file.name}`),
+        "error",
+        5000,
+      );
+    }
+  }
+
+  if (uploaded > 0 && failed === 0) {
+    notifications.show(`Uploaded ${uploaded} file(s)`, "info");
+  } else if (uploaded > 0) {
+    notifications.show(
+      `Uploaded ${uploaded} file(s), ${failed} failed`,
+      "warning",
+      5000,
+    );
+  } else {
+    notifications.show("No files uploaded", "error", 5000);
+  }
+
+  if (renamed.length > 0) {
+    const preview = renamed.slice(0, 3).join("; ");
+    const suffix = renamed.length > 3 ? ` (+${renamed.length - 3} more)` : "";
+    notifications.show(`Auto-renamed: ${preview}${suffix}`, "info", 5000);
+  }
+
+  // The realtime handlers keep `assets` in sync for everyone else, but the
+  // compiler only learns about the new bytes when something asks it to.
+  if (uploaded > 0) syncFilesAndAssets();
+}
+
+// Same anchor rule as `newFileNextTo`: a folder takes the upload, a file hands it
+// to the folder it sits in, nothing means the project root.
+export function uploadAssetsNextTo(
+  filesToUpload: globalThis.File[],
+  nodeId: string | null,
+) {
+  const folder = anchorFolder(nodeId);
+  if (folder) expandFolders([folder.id]);
+  return uploadAssets(filesToUpload, folder?.id ?? null);
+}
+
+// --- Asset viewing -----------------------------------------------------------
+
+// Blob URLs, keyed by asset *and* storage path: replacing an asset keeps its id
+// but changes where the bytes live, and handing back the previous URL would show
+// the previous picture. The old URL is revoked when its key is superseded, and
+// the whole map when the context is torn down — an un-revoked blob URL pins its
+// data in memory for the lifetime of the document.
+const assetBlobUrls = new Map<string, string>();
+
+function assetBlobKey(asset: Asset) {
+  return `${asset.id}:${asset.storage_path}`;
+}
+
+function releaseAssetBlobUrls(keep?: string) {
+  for (const [key, url] of assetBlobUrls) {
+    if (key === keep) continue;
+    revokeBlobUrl(url);
+    assetBlobUrls.delete(key);
+  }
+}
+
+// The URL the asset view renders, or `null` while it is being fetched.
+export const selectedAssetUrl = writable<string | null>(null);
+
+export function selectAsset(assetId: string) {
+  const asset = get(assets).find((a) => a.id === assetId);
+  if (!asset) return;
+  selectedAsset.set(asset);
+}
+
+export function deselectAsset() {
+  selectedAsset.set(null);
+}
+
+async function loadAssetBlobUrl(asset: Asset): Promise<string> {
+  const key = assetBlobKey(asset);
+  const known = assetBlobUrls.get(key);
+  if (known) return known;
+
+  let arrayBuffer: ArrayBuffer;
+  const cached = await getCachedAsset(
+    String(asset.project_id),
+    asset.id,
+    asset.storage_path,
+  );
+  if (cached) {
+    arrayBuffer = cached.blob;
+  } else {
+    const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
+    const response = await fetch(url);
+    arrayBuffer = await response.arrayBuffer();
+    cacheAsset(
+      String(asset.project_id),
+      asset.id,
+      asset.storage_path,
+      asset.mime_type,
+      arrayBuffer,
+    ).catch((err) => console.warn("Failed to cache asset:", err));
+  }
+
+  const blobUrl = createBlobUrl(arrayBuffer, asset.mime_type);
+  assetBlobUrls.set(key, blobUrl);
+  return blobUrl;
+}
+
+let assetUrlGeneration = 0;
+selectedAsset.subscribe(async (asset) => {
+  const generation = ++assetUrlGeneration;
+
+  if (!asset) {
+    selectedAssetUrl.set(null);
+    return;
+  }
+
+  const key = assetBlobKey(asset);
+  const known = assetBlobUrls.get(key);
+  if (known) {
+    selectedAssetUrl.set(known);
+    return;
+  }
+
+  // Clear first: showing the previous asset's picture under the new asset's
+  // name is worse than showing nothing for a moment.
+  selectedAssetUrl.set(null);
+  try {
+    const url = await loadAssetBlobUrl(asset);
+    // Two guards, not one: the selection can have moved on, and the whole
+    // context can have been torn down while the bytes were in flight.
+    if (generation !== assetUrlGeneration) return;
+    selectedAssetUrl.set(url);
+  } catch (error) {
+    if (generation !== assetUrlGeneration) return;
+    console.error("Failed to load asset:", asset.filename, error);
+    notifications.show(`Could not open ${asset.filename}`, "error", 5000);
+  }
+});
+
 // These observers are what turns an edit — anyone's, local or remote — into a
 // recompile and a refreshed search index.
 let fileObservers = new Map<string, () => void>();
@@ -2222,6 +2935,7 @@ function syncFileObservers() {
         const handler = () => {
           syncFilesAndAssets();
           setTimeout(updateSearchMatches, 0);
+          if (get(selectedFile)?.id === file.id) setTimeout(updateOutline, 0);
         };
         ytext.observe(handler);
         fileObservers.set(file.id, () => ytext.unobserve(handler));
@@ -2768,9 +3482,14 @@ function syncCommentDecorations() {
     effects: [
       updateCommentsEffect.of({ comments: ranges }),
       setActiveCommentEffect.of(get(activeCommentId)),
+      setHoveredCommentEffect.of(get(hoveredCommentId)),
     ],
   });
 }
+
+hoveredCommentId.subscribe((commentId) => {
+  get(view)?.dispatch({ effects: setHoveredCommentEffect.of(commentId) });
+});
 
 view.subscribe(() => {
   syncCommentDecorations();
@@ -2819,12 +3538,26 @@ export function destroyContext() {
   comments.set([]);
   commentors.set([]);
   diagnostics.set([]);
+  outline.set([]);
   selectedFile.set(null);
   mainFile.set(null);
   selectedAsset.set(null);
+  releaseAssetBlobUrls();
+  selectedAssetUrl.set(null);
+  expandedFolders.set(new Set<string>());
+  renamingNodeId.set(null);
+  fileMenu.set(null);
+  pendingDeletion.set(null);
+  draggedNodeId.set(null);
   editorNewCommentDraft.set(null);
   activeCommentId.set(null);
+  hoveredCommentId.set(null);
   commentDraft.set(null);
+  findOpen.set(false);
+  findQuery.set("");
+  findReplace.set("");
+  findMatchCount.set(0);
+  findMatchIndex.set(0);
   currentUserRole.set("reader");
   initError.set(null);
   searchText.set("");

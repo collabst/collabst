@@ -30,3 +30,13 @@
     <Diagnostic {diagnostic} />
   {/each}
 </div>
+
+<style>
+  .content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 0 5rem;
+  }
+</style>

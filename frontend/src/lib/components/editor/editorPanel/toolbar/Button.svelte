@@ -7,14 +7,25 @@
     strokeWidth?: number;
     size?: number;
     class?: string;
+    disabled?: boolean;
+    title?: string;
   }
 
-  let { icon: Icon, onclick, size = 16, class: className }: Props = $props();
+  let {
+    icon: Icon,
+    onclick,
+    size = 16,
+    class: className,
+    disabled = false,
+    title,
+  }: Props = $props();
 </script>
 
 <button
   class="button {className}"
   {onclick}
+  {disabled}
+  {title}
   style="--icon-size: {size}px;"
 >
   <Icon />
@@ -64,5 +75,23 @@
 
   .button.bold-btn :global(svg) {
     stroke-width: 3;
+  }
+
+  .button:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .button:disabled:hover {
+    background: none;
+  }
+
+  .button:disabled:active {
+    color: var(--text-primary);
+  }
+
+  .button:disabled:active :global(svg) {
+    stroke-width: 2;
+    transform: none;
   }
 </style>

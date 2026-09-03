@@ -4,6 +4,7 @@
     activeCommentId,
     selectComment,
     canComment,
+    hoverComment,
     replyComment,
   } from "$lib/components/editor/context";
   import CommentHeader from "./comment/Header.svelte";
@@ -36,6 +37,8 @@
   class:resolved={comment.resolved}
   class:active={isActive}
   onclick={() => selectComment(comment)}
+  onmouseenter={() => hoverComment(comment.id)}
+  onmouseleave={() => hoverComment(null)}
 >
   <Menu {comment} />
 
