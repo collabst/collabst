@@ -12,6 +12,12 @@
   }
 
   let { match }: Props = $props();
+
+  // Reverse the pre-match text because
+  //   direction: rtl;
+  //   unicode-bidi: bidi-override;
+  // causes the text to be displayed in reverse order, but spaces are concistent
+  let preMatchText = $derived(match.preMatchText.split('').reverse().join(''));
 </script>
 
 <button
@@ -21,7 +27,7 @@
   }}
 >
   <div class="text">
-    <div class="pre-match">{match.preMatchText}</div>
+    <div class="pre-match">{preMatchText}</div>
     <div class="match-text">{match.matchText}</div>
     <div class="post-match">{match.postMatchText}</div>
   </div>
@@ -60,19 +66,28 @@
     overflow: hidden;
   }
 
-  .pre-match,
-  .post-match {
-    white-space: nowrap;
+  .pre-match {
+    flex: 1 1 0;
+    white-space: pre;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: right;
+    direction: rtl;
+    unicode-bidi: bidi-override;
   }
 
-  .pre-match {
-    direction: rtl;
+  .post-match {
+    flex: 1 1 0;
+    white-space: pre;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-align: left;
+    direction: ltr;
   }
 
   .match-text {
+    white-space: pre;
+    flex: 0 0 auto;
     background-color: yellow;
   }
 
