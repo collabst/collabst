@@ -62,11 +62,26 @@ const editableCompartment = new Compartment();
 const highlightCompartement = new Compartment();
 
 
-let wrapLines = true;
+// Line wrapping is a reader preference, not project state: it is remembered in
+// `localStorage` under the key the old editor already used, and deliberately
+// left alone by `destroyContext()` so it survives from one project to the next.
+const WRAP_LINES_STORAGE_KEY = "editor.wrapLines";
+
+function readStoredWrapLines(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    const stored = localStorage.getItem(WRAP_LINES_STORAGE_KEY);
+    return stored === null ? true : stored === "true";
+  } catch {
+    return true;
+  }
+}
+
+export const wrapLines = writable<boolean>(readStoredWrapLines());
 let errorLines = new Set<number>();
 
 function getLineWrappingExtensions() {
-  return wrapLines ? [EditorView.lineWrapping] : [];
+  return get(wrapLines) ? [EditorView.lineWrapping] : [];
 }
 
 function getLineNumbersExtension() {
@@ -124,7 +139,20 @@ async function getLanguageExtensions() {
   if (extension === "typ") {
     if (typeof window !== "undefined") {
       const { typst } = await import("codemirror-lang-typst");
-      return [typst()];
+      // `codemirror-lang-typst` does declare `commentTokens`, but only with a
+      // block token and — because it builds its `Language` with the base
+      // constructor instead of `LRLanguage.define()` — it never attaches that
+      // facet to its top node, so `state.languageDataAt("commentTokens")` comes
+      // back empty and *both* comment commands are no-ops in a `.typ` file.
+      // A language-data provider bypasses the syntax-tree lookup entirely; it
+      // is scoped to this compartment, which is reconfigured per file, so it
+      // only ever answers for Typst documents.
+      return [
+        EditorState.languageData.of(() => [
+          { commentTokens: { line: "//", block: { open: "/*", close: "*/" } } },
+        ]),
+        typst(),
+      ];
     }
   }
 
@@ -279,12 +307,20 @@ export const projectSync = writable<ReturnType<typeof createProjectSync> | null>
 export const commentSync = writable<ReturnType<typeof createCommentSync> | null>(null);
 export const activeCommentId = writable<string | null>(null);
 export const view = writable<EditorView | null>(null);
-let undoManager: Y.UndoManager;
+let undoManager: Y.UndoManager | null = null;
+
+// A `Y.UndoManager` registers observers on the type it tracks and on the
+// document itself; dropping the reference is not enough, so the one built for
+// the previous file has to be destroyed before it is replaced — otherwise every
+// file switch leaks a manager still listening on the file we left.
+function setUndoManager(next: Y.UndoManager | null) {
+  undoManager?.destroy();
+  undoManager = next;
+}
+
 export const ytext = derived([ydoc, selectedFile], ([$ydoc, $selectedFile]) => {
   const ytextValue = $ydoc?.getText(`file-${$selectedFile?.id}`);
-  if (ytextValue) {
-    undoManager = new Y.UndoManager(ytextValue);
-  }
+  setUndoManager(ytextValue ? new Y.UndoManager(ytextValue) : null);
   return ytextValue;
 });
 export const previewIframe = writable<HTMLIFrameElement | undefined>();
@@ -455,6 +491,10 @@ export function toggleLinePrefix(prefix: string) {
   viewValue.focus();
 }
 
+export function toggleLineWrapping() {
+  wrapLines.update((enabled) => !enabled);
+}
+
 function createUndoRedoKeymap() {
   if (!undoManager) {
     return keymap.of([]);
@@ -504,7 +544,10 @@ function createUndoRedoKeymap() {
 async function createExtensions() {
   const ytextValue = get(ytext);
   const provider = get(projectYjs)?.provider;
-  const collabReady = ytextValue && provider && undoManager;
+  // Read into a const: `undoManager` is reassigned on every file switch, and
+  // the extension list must be built against the one that existed when it ran.
+  const undoManagerValue = undoManager;
+  const collabReady = ytextValue && provider && undoManagerValue;
   const extensions = [
     foldGutter(),
     lineWrappingCompartment.of(getLineWrappingExtensions()),
@@ -523,7 +566,7 @@ async function createExtensions() {
     indentUnit.of("  "), // Set indentation to 2 spaces
     readOnlyCompartment.of(EditorState.readOnly.of(!get(canWrite))),
     editableCompartment.of(EditorView.editable.of(get(canWrite))),
-    ...(collabReady ? [yCollab(ytextValue, provider.awareness, { undoManager })] : []),
+    ...(collabReady ? [yCollab(ytextValue, provider.awareness, { undoManager: undoManagerValue })] : []),
     createUndoRedoKeymap(),
     commentsExtension(),
     createCommentClickHandler(),
@@ -569,6 +612,22 @@ editorSettings.subscribe(() => {
       editorStyleCompartment.reconfigure(getEditorStyleExtensions()),
       ligaturesCompartment.reconfigure(getLigaturesExtension()),
     ],
+  });
+});
+
+wrapLines.subscribe((enabled) => {
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(WRAP_LINES_STORAGE_KEY, String(enabled));
+    } catch {
+      // Storage can be unavailable (private mode, quota); the preference is
+      // then simply not remembered across reloads.
+    }
+  }
+  const viewValue = get(view);
+  if (!viewValue) return;
+  viewValue.dispatch({
+    effects: lineWrappingCompartment.reconfigure(getLineWrappingExtensions()),
   });
 });
 
@@ -1041,9 +1100,14 @@ function applyThreadUpdate(thread: CommentThreadDTO) {
 // opening connections for an abandoned project.
 let contextGeneration = 0;
 
+// Set when `initContext` gives up, so the route can show why instead of an
+// editor with no project behind it. Cleared at the start of every init.
+export const initError = writable<string | null>(null);
+
 export async function initContext(projectIdValue: string) {
   const generation = ++contextGeneration;
 
+  initError.set(null);
   files.set([]);
   assets.set([]);
   comments.set([]);
@@ -1058,18 +1122,38 @@ export async function initContext(projectIdValue: string) {
   commentDraft.set(null);
 
   projectId.set(projectIdValue);
-  await loadProject();
-  if (generation !== contextGeneration) return;
-  initRealtimeConnections();
-  const newFiles = await filesApi.list(projectIdValue);
-  if (generation !== contextGeneration) return;
-  files.update(() => newFiles);
-  const newAssets = await assetsApi.list(projectIdValue);
-  if (generation !== contextGeneration) return;
-  assets.set(newAssets);
-  await initSelectedFile();
-  if (generation !== contextGeneration) return;
-  initWorker();
+
+  // Every request below can reject, and the route only leaves its "Loading…"
+  // screen once this resolves — an unhandled rejection here used to hang the
+  // editor forever with nothing but a console message. A failure stops the
+  // sequence (there is no point opening sockets for a project we could not
+  // read) and is reported through `initError` for the route to render.
+  try {
+    const loaded = await loadProject();
+    if (generation !== contextGeneration) return;
+    if (!loaded) {
+      // `loadProject()` has already shown its own notification, and navigates
+      // away on 404/403.
+      initError.set("This project could not be opened.");
+      return;
+    }
+    initRealtimeConnections();
+    const newFiles = await filesApi.list(projectIdValue);
+    if (generation !== contextGeneration) return;
+    files.update(() => newFiles);
+    const newAssets = await assetsApi.list(projectIdValue);
+    if (generation !== contextGeneration) return;
+    assets.set(newAssets);
+    await initSelectedFile();
+    if (generation !== contextGeneration) return;
+    initWorker();
+  } catch (error) {
+    if (generation !== contextGeneration) return;
+    console.error("Failed to open the project:", error);
+    const detail = errorDetail(error, "This project could not be opened.");
+    initError.set(detail);
+    notifications.show(detail, "error", 5000);
+  }
 }
 
 let disposeSelectionListener: (() => void) | null = null;
@@ -1190,6 +1274,33 @@ export async function initSelectedFile() {
     selectFile(allFiles[0].id);
   }
 }
+
+// The entry point can move under us — a collaborator renames or deletes it, and
+// the projectSync WS pushes the new list. `mainFile` held the row it was given
+// at init, so `compile()` kept posting a path the worker no longer has until the
+// next reload. The stored id is left untouched on the delete path: falling back
+// to another file is a guess, not a choice the author made, so it should not
+// overwrite one they did make.
+files.subscribe(($files) => {
+  const current = get(mainFile);
+  if (!current) return;
+
+  const updated = $files.find((f) => f.id === current.id && !f.is_folder);
+  if (updated) {
+    if (updated === current) return;
+    // Same row, new object: a rename or a move changed its path, and the
+    // compiler has to be told which document to build.
+    mainFile.set(updated);
+    if (updated.path !== current.path) syncFilesAndAssets();
+    return;
+  }
+
+  const replacement = resolveMainFile();
+  mainFile.set(replacement);
+  // No replacement means the project has no `.typ` file left (or is being torn
+  // down); there is nothing to compile, and `compile()` keeps its own fallback.
+  if (replacement) syncFilesAndAssets();
+});
 
 editorElement.subscribe(async (el) => {
   if (!el) return;
@@ -2694,6 +2805,8 @@ export function destroyContext() {
   get(view)?.destroy();
   view.set(null);
 
+  setUndoManager(null);
+
   clearFileObservers();
 
   loadedFiles.clear();
@@ -2713,6 +2826,7 @@ export function destroyContext() {
   activeCommentId.set(null);
   commentDraft.set(null);
   currentUserRole.set("reader");
+  initError.set(null);
   searchText.set("");
   replaceText.set("");
   searchMatches.set([]);
