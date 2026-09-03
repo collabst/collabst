@@ -9,9 +9,16 @@
     leftPanelTab,
     type LeftPanelTab,
     cycleLeftPanelTab,
+    toggleLeftPanel,
   } from "$lib/components/editor/context/index";
 
+  // Clicking the tab that is already showing collapses the panel — the same
+  // toggle the old activity bar had.
   function handleTabClick(tab: LeftPanelTab) {
+    if ($leftPanelTab === tab) {
+      toggleLeftPanel();
+      return;
+    }
     $leftPanelTab = tab;
   }
 

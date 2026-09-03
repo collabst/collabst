@@ -2,9 +2,10 @@
   import Panel from "$lib/components/editor/Panel.svelte";
   import NavBar from "./navBar/NavBar.svelte";
   import Content from "./Content.svelte";
+  import { leftPanelWidth } from "$lib/components/editor/context";
 </script>
 
-<Panel sizeWeight={0.5}>
+<Panel width={$leftPanelWidth}>
   <div class="container">
     <Content />
     <NavBar />

@@ -1,10 +1,14 @@
 <script lang="ts">
   import Panel from "$lib/components/editor/Panel.svelte";
-  import { previewIframe } from "$lib/components/editor/context";
+  import {
+    editorPreviewRatio,
+    previewIframe,
+  } from "$lib/components/editor/context";
   import ToolBar from "./toolbar/ToolBar.svelte";
+  import SeparateOverlay from "./SeparateOverlay.svelte";
 </script>
 
-<Panel>
+<Panel sizeWeight={1 - $editorPreviewRatio}>
   <div class="container">
     <ToolBar />
     <iframe
@@ -15,6 +19,7 @@
       src="/typst-preview"
     >
     </iframe>
+    <SeparateOverlay />
   </div>
 </Panel>
 

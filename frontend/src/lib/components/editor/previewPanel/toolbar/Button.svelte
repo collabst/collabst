@@ -6,14 +6,22 @@
     onclick?: (e: MouseEvent) => void;
     strokeWidth?: number;
     size?: number;
+    title?: string;
   }
 
-  let { children, onclick, strokeWidth = 2, size = 16 }: Props = $props();
+  let {
+    children,
+    onclick,
+    strokeWidth = 2,
+    size = 16,
+    title,
+  }: Props = $props();
 </script>
 
 <button
   class="button"
   {onclick}
+  {title}
   style="--stroke-width: {strokeWidth}; --icon-size: {size}px;"
 >
   {@render children()}

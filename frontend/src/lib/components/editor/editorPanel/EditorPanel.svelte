@@ -3,14 +3,21 @@
   import ToolBar from "$lib/components/editor/editorPanel/toolbar/ToolBar.svelte";
   import Editor from "$lib/components/editor/editorPanel/Editor.svelte";
   import Find from "$lib/components/editor/editorPanel/Find.svelte";
-  import { findOpen, selectedAsset } from "$lib/components/editor/context";
+  import {
+    editorPreviewRatio,
+    findOpen,
+    selectedAsset,
+    showToolbar,
+  } from "$lib/components/editor/context";
 </script>
 
-<Panel>
+<Panel sizeWeight={$editorPreviewRatio}>
   <div class="container">
     <Editor />
     {#if !$selectedAsset}
-      <ToolBar />
+      {#if $showToolbar}
+        <ToolBar />
+      {/if}
       {#if $findOpen}
         <Find />
       {/if}

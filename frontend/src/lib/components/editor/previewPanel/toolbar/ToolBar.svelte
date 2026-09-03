@@ -6,7 +6,15 @@
   import Zoom from "./Zoom.svelte";
   import Minus from "@lucide/svelte/icons/minus";
   import Plus from "@lucide/svelte/icons/plus";
-  import { zoomIn, zoomOut } from "$lib/components/editor/context";
+  import Columns2 from "@lucide/svelte/icons/columns-2";
+  import ExternalLink from "@lucide/svelte/icons/external-link";
+  import {
+    closeSeparatePreview,
+    openSeparatePreview,
+    separatePreviewOpen,
+    zoomIn,
+    zoomOut,
+  } from "$lib/components/editor/context";
 </script>
 
 <div class="container">
@@ -18,12 +26,24 @@
     <Status />
     <Separator />
     <Export />
+    <Separator />
+    {#if $separatePreviewOpen}
+      <Button onclick={closeSeparatePreview} title="Back to split view">
+        <Columns2 />
+      </Button>
+    {:else}
+      <Button onclick={openSeparatePreview} title="Open in a separate window">
+        <ExternalLink />
+      </Button>
+    {/if}
   </div>
 </div>
 
 <style>
   .container {
     position: absolute;
+    /* Above the separate-window overlay, which covers the idle iframe. */
+    z-index: 3;
     display: flex;
     align-items: center;
     justify-content: center;

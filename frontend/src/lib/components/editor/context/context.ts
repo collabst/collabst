@@ -45,6 +45,7 @@ import type { Asset, CommentThreadDTO, Project, Comment, CommentReplyDTO, Diagno
 import { cacheAsset, createBlobUrl, getCachedAsset, removeCachedAsset, revokeBlobUrl } from "$lib/utils/assetCache";
 import { buildFileTree, flattenTree, getAncestorIds } from "$lib/utils/fileTree";
 import { notifications } from "$lib/stores/notifications";
+import { clearLayoutState, loadLayoutState, saveLayoutState } from "$lib/utils/layoutStorage";
 import { goto } from "$app/navigation";
 import { createCommentSync } from "$lib/commentSync";
 import { tick } from "svelte";
@@ -120,6 +121,95 @@ showResolvedComments.subscribe((show) => {
 
 export function toggleShowResolvedComments() {
   showResolvedComments.update((show) => !show);
+}
+
+// Whether the floating editor toolbar is drawn. Another reader preference, in
+// the same shape as `wrapLines`: the settings panel writes it, `EditorPanel`
+// reads it.
+const SHOW_TOOLBAR_STORAGE_KEY = "editor.showToolbar";
+
+function readStoredShowToolbar(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    const stored = localStorage.getItem(SHOW_TOOLBAR_STORAGE_KEY);
+    return stored === null ? true : stored === "true";
+  } catch {
+    return true;
+  }
+}
+
+export const showToolbar = writable<boolean>(readStoredShowToolbar());
+
+showToolbar.subscribe((show) => {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(SHOW_TOOLBAR_STORAGE_KEY, String(show));
+  } catch {
+    // Storage can be unavailable; the preference is then not remembered.
+  }
+});
+
+export function toggleShowToolbar() {
+  showToolbar.update((show) => !show);
+}
+
+// Panel geometry. Like the other reader preferences these outlive one project,
+// so they are read once at module load from `layoutStorage` and written back on
+// every change rather than reset by `destroyContext()`.
+const MIN_LEFT_PANEL_WIDTH = 180;
+const MAX_LEFT_PANEL_WIDTH = 640;
+const MIN_EDITOR_PREVIEW_RATIO = 0.15;
+const MAX_EDITOR_PREVIEW_RATIO = 0.85;
+
+const storedLayout = loadLayoutState();
+
+export const leftPanelVisible = writable<boolean>(storedLayout.leftPanelVisible);
+/** Width of the left panel in pixels; it is a fixed column, not a flex weight. */
+export const leftPanelWidth = writable<number>(
+  clamp(storedLayout.leftPanelWidth, MIN_LEFT_PANEL_WIDTH, MAX_LEFT_PANEL_WIDTH),
+);
+/** Share of the remaining width given to the editor, the rest goes to preview. */
+export const editorPreviewRatio = writable<number>(
+  clamp(
+    storedLayout.editorPreviewRatio,
+    MIN_EDITOR_PREVIEW_RATIO,
+    MAX_EDITOR_PREVIEW_RATIO,
+  ),
+);
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+leftPanelVisible.subscribe((visible) => saveLayoutState({ leftPanelVisible: visible }));
+leftPanelWidth.subscribe((width) => saveLayoutState({ leftPanelWidth: width }));
+editorPreviewRatio.subscribe((ratio) => saveLayoutState({ editorPreviewRatio: ratio }));
+
+export function toggleLeftPanel() {
+  leftPanelVisible.update((visible) => !visible);
+}
+
+export function showLeftPanel() {
+  leftPanelVisible.set(true);
+}
+
+export function setLeftPanelWidth(width: number) {
+  leftPanelWidth.set(clamp(width, MIN_LEFT_PANEL_WIDTH, MAX_LEFT_PANEL_WIDTH));
+}
+
+export function setEditorPreviewRatio(ratio: number) {
+  editorPreviewRatio.set(
+    clamp(ratio, MIN_EDITOR_PREVIEW_RATIO, MAX_EDITOR_PREVIEW_RATIO),
+  );
+}
+
+export function resetLayout() {
+  clearLayoutState();
+  const defaults = loadLayoutState();
+  leftPanelVisible.set(defaults.leftPanelVisible);
+  leftPanelWidth.set(defaults.leftPanelWidth);
+  editorPreviewRatio.set(defaults.editorPreviewRatio);
 }
 let errorLines = new Set<number>();
 
@@ -1089,6 +1179,29 @@ async function resetRealtimeConnectionsForWriteLoss() {
   }
 }
 
+/**
+ * Rename the open project. Returns `true` when the name actually changed, so
+ * the top bar can leave its inline editor open on failure.
+ */
+export async function renameProject(newName: string): Promise<boolean> {
+  if (!get(canManageProject)) return false;
+
+  const current = get(project);
+  const trimmed = newName.trim();
+  if (!current || !trimmed || trimmed === current.name) return true;
+
+  try {
+    project.set(await projectsApi.update(current.id, trimmed));
+    return true;
+  } catch (error) {
+    console.error("Failed to rename project:", error);
+    const message =
+      (error as any)?.response?.data?.detail || "Failed to rename project";
+    notifications.show(message, "error", 5000);
+    return false;
+  }
+}
+
 async function loadProject(): Promise<boolean> {
   try {
     project.set(await projectsApi.get(get(projectId)));
@@ -1590,7 +1703,102 @@ ytext.subscribe(async (newYText) => {
 
 
 let compileEnabled = true;
+
+// --- Separate preview window ---------------------------------------------
+//
+// The popup is a bare same-origin document holding one `<iframe src="/typst-preview">`
+// — the very page the preview panel embeds. That keeps a single renderer
+// implementation: the artifact stream and the zoom commands are simply pointed
+// at the popup's frame instead of the panel's, and the bridge scripts inside
+// the frame still talk to `window.parent`, which is now the popup. The main
+// window listens on the popup for those messages, so `handleIframeMessage`
+// serves both surfaces unchanged.
 let separateWindow: Window | null = null;
+let separateFrame: HTMLIFrameElement | null = null;
+let separateThemeUnsubscribe: (() => void) | null = null;
+
+/** Whether the preview currently lives in its own window. */
+export const separatePreviewOpen = writable(false);
+
+/** The window the artifact stream and the zoom commands are aimed at. */
+function activePreviewWindow(): Window | null {
+  if (separateWindow && !separateWindow.closed && separateFrame?.contentWindow) {
+    return separateFrame.contentWindow;
+  }
+  return get(previewIframe)?.contentWindow ?? null;
+}
+
+export function openSeparatePreview() {
+  if (separateWindow && !separateWindow.closed) {
+    separateWindow.focus();
+    return;
+  }
+
+  const popup = window.open("", "collabst-preview", "width=900,height=700");
+  if (!popup) {
+    notifications.show(
+      "The preview window was blocked by the browser",
+      "error",
+      5000,
+    );
+    return;
+  }
+
+  separateWindow = popup;
+  popup.document.title = `${get(project)?.name ?? "Preview"} — Collabst`;
+  popup.document.body.style.margin = "0";
+
+  const frame = popup.document.createElement("iframe");
+  frame.id = "preview-iframe";
+  frame.src = "/typst-preview";
+  frame.style.cssText = "display:block;border:none;width:100vw;height:100vh;";
+  popup.document.body.appendChild(frame);
+  separateFrame = frame;
+  // The frame has no document yet, so the theme is applied once it has one.
+  frame.addEventListener("load", () => applySeparateTheme(get(theme)));
+
+  // The frame's bridge posts to its parent, which is the popup, not us.
+  popup.addEventListener("message", handleIframeMessage);
+  popup.addEventListener("beforeunload", closeSeparatePreview);
+
+  separateThemeUnsubscribe = theme.subscribe((value) => applySeparateTheme(value));
+
+  separatePreviewOpen.set(true);
+  // The popup's frame connects with a fresh document, asks for 'current', and
+  // that request is what pulls a full artifact over — no push needed here.
+}
+
+function applySeparateTheme(value: string) {
+  if (!separateWindow || separateWindow.closed) return;
+  separateWindow.document.documentElement.setAttribute("data-theme", value);
+  separateFrame?.contentDocument?.documentElement.setAttribute("data-theme", value);
+}
+
+/** Close the popup without asking the (about to be terminated) worker for a
+ * fresh artifact. */
+function closeSeparatePreviewOnTeardown() {
+  separateThemeUnsubscribe?.();
+  separateThemeUnsubscribe = null;
+  const popup = separateWindow;
+  separateWindow = null;
+  separateFrame = null;
+  separatePreviewOpen.set(false);
+  if (popup && !popup.closed) {
+    popup.removeEventListener("message", handleIframeMessage);
+    popup.close();
+  }
+}
+
+export function closeSeparatePreview() {
+  if (!separateWindow) return;
+  closeSeparatePreviewOnTeardown();
+
+  // The panel's own frame has been idle meanwhile, so it needs a full artifact
+  // rather than a diff against a document it never received.
+  resetWorkerDocument();
+  syncFilesAndAssets();
+  reapplyCurrentZoomMode();
+}
 
 function updateLinter() {
   const editorView = get(view);
@@ -1603,17 +1811,6 @@ function updateLinter() {
     const transaction = setDiagnostics(editorView.state, lintDiagnostics);
     editorView.dispatch(transaction);
   }
-}
-
-function sendVectorDataToWindow(targetWindow: Window, vectorData: ArrayBuffer, isFirstCompile: boolean) {
-  targetWindow.postMessage(
-    {
-      type: 'typst-vector-data',
-      data: vectorData,
-      isFirstCompile: isFirstCompile,
-    },
-    '*'
-  );
 }
 
 export let diagnostics: Writable<Diagnostic[]> = writable([]);
@@ -1793,8 +1990,8 @@ let worker: Worker;
 let workerInitialized = false;
 
 function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean) {
-  const previewIframeValue = get(previewIframe);
-  if (!previewIframeValue?.contentWindow || !iframeMockReady) {
+  const target = activePreviewWindow();
+  if (!target || !iframeMockReady) {
     return;
   }
 
@@ -1810,7 +2007,7 @@ function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean
 
   // Send via postMessage to iframe
   // Note: We copy the buffer to avoid transferring ownership which would detach the original
-  previewIframeValue.contentWindow.postMessage({
+  target.postMessage({
     type: 'typst-ws-message',
     data: combined.buffer.slice(0)
   }, '*');
@@ -1874,12 +2071,9 @@ export function initWorker() {
           try {
             compileStatus.set('Rendering...');
 
-            if (separateWindow) {
-              sendVectorDataToWindow(separateWindow, vectorData, isFirstCompile);
-            } else {
-              // Send vector data to iframe
-              sendVectorDataToIframe(vectorData, isFirstCompile);
-            }
+            // `sendVectorDataToIframe` aims at whichever surface is showing
+            // the preview — the panel's frame or the separate window's.
+            sendVectorDataToIframe(vectorData, isFirstCompile);
 
             compileStatus.set(`Ready (${compileTime}ms)`);
             previewStatus.set('ready');
@@ -1990,14 +2184,11 @@ function downloadBlob(blob: Blob, filename: string) {
 let inhibNextZoomChange = false;
 
 export function sendCommandToIframe(command: string, payload?: any) {
-  const $previewIframe = get(previewIframe);
-  if ($previewIframe?.contentWindow) {
-    $previewIframe.contentWindow.postMessage({
-      type: 'typst-command',
-      command,
-      payload
-    }, '*');
-  }
+  activePreviewWindow()?.postMessage({
+    type: 'typst-command',
+    command,
+    payload
+  }, '*');
 }
 
 export function zoomIn() {
@@ -3507,6 +3698,10 @@ export function destroyContext() {
   contextGeneration++;
 
   destroyRealtimeConnections();
+
+  // A popup outlives the route otherwise, still listening for a stream that
+  // will never come again.
+  closeSeparatePreviewOnTeardown();
 
   worker?.terminate();
   workerInitialized = false;
