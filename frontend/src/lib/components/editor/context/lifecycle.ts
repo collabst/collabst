@@ -45,25 +45,18 @@ import { get } from "svelte/store";
 let contextGeneration = 0;
 
 /**
- * Read by the slices whose async work can outlive a teardown — `editor/view`
- * awaits `createExtensions()`, `preview/worker` awaits asset bytes. Disposal
- * cannot solve that race (A10): the await is already in flight.
+ * Read by the slices whose async work can outlive a teardown (`editor/view`
+ * awaits `createExtensions()`, `preview/worker` awaits asset bytes), where
+ * disposal comes too late — the await is already in flight.
  */
 export function getContextGeneration(): number {
   return contextGeneration;
 }
 
-// Set when `initContext` gives up, so the route can show why instead of an
-// editor with no project behind it. Cleared at the start of every init.
-
 /**
  * The project-scoped reactive wiring, live only between `initContext()` and
- * `destroyContext()`.
- *
- * Everything a slice's `wireX()` registers is torn down here *before* any store
- * is reset, so teardown cannot replay the reactive graph against a half-dead
- * world — see `PHASE2.md` §2.2 and §3.2. Slices are wired in order and disposed
- * in reverse.
+ * `destroyContext()`. Slices are wired in order and disposed in reverse, before
+ * any store is reset, so teardown cannot replay reactions on a half-dead world.
  */
 let disposeWiring: Disposer | null = null;
 
@@ -88,35 +81,28 @@ function wireContext(): Disposer {
 export async function initContext(projectIdValue: string) {
   const generation = ++contextGeneration;
 
-  // A previous project's wiring can still be live if the route remounted
-  // without unmounting; wiring twice would double every reaction. Silence it
-  // before the resets, for the same reason `destroyContext()` does.
+  // A previous project's wiring survives a remount without unmount; wiring
+  // twice would double every reaction.
   disposeWiring?.();
   disposeWiring = null;
 
-  // The single reset list both ends of the lifecycle share (`PHASE2.md` §3.7).
-  // `releaseAssetBlobUrls()` is the one thing it cannot do: `selectedAssetUrl`
-  // is a store, but the object URLs behind it have to be revoked, not dropped.
+  // `resetState()` drops `selectedAssetUrl`, but the object URLs behind it have
+  // to be revoked rather than dropped.
   releaseAssetBlobUrls();
   resetState();
 
   projectId.set(projectIdValue);
 
-  // Wired only now: everything above is a reset, and the whole point of moving
-  // these out of module scope is that a reset must not drive reactions.
+  // Only now: a reset must not drive reactions.
   disposeWiring = wireContext();
 
-  // Every request below can reject, and the route only leaves its "Loading…"
-  // screen once this resolves — an unhandled rejection here used to hang the
-  // editor forever with nothing but a console message. A failure stops the
-  // sequence (there is no point opening sockets for a project we could not
-  // read) and is reported through `initError` for the route to render.
+  // The route only leaves its "Loading…" screen once this resolves, so a
+  // failure has to stop the sequence and surface through `initError`.
   try {
     const loaded = await loadProject();
     if (generation !== contextGeneration) return;
     if (!loaded) {
-      // `loadProject()` has already shown its own notification, and navigates
-      // away on 404/403.
+      // `loadProject()` shows its own notification and navigates away on 404/403.
       initError.set("This project could not be opened.");
       return;
     }
@@ -143,7 +129,6 @@ export function errorDetail(error: unknown, fallback: string) {
   return (error as any)?.response?.data?.detail || fallback;
 }
 
-
 /** Derive the three permission flags from the role the server reports. */
 export function wirePermissions(): Disposer {
   return currentUserRole.subscribe((role) => {
@@ -156,15 +141,13 @@ export function wirePermissions(): Disposer {
 export function destroyContext() {
   contextGeneration++;
 
-  // First, before anything is reset: silence the wiring, so the resets below
-  // cannot drive reactions across a world that is half torn down.
+  // Before anything is reset, so the resets cannot drive reactions.
   disposeWiring?.();
   disposeWiring = null;
 
   destroyRealtimeConnections();
 
-  // A popup outlives the route otherwise, still listening for a stream that
-  // will never come again.
+  // Otherwise the popup outlives the route, listening for a dead stream.
   closeSeparatePreviewOnTeardown();
 
   disposeWorker();
@@ -178,7 +161,5 @@ export function destroyContext() {
   clearFileObservers();
   releaseAssetBlobUrls();
 
-  // Exactly the list `initContext()` runs, and the only one: the two used to be
-  // hand-maintained and had drifted apart by fifteen stores (`PHASE2.md` §2.5).
   resetState();
 }

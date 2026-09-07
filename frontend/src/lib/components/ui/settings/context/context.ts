@@ -1,9 +1,6 @@
-// Manager of the account-settings surface.
-//
-// Same split as the other regions: the `ui/settings/user/` components render
-// stores and call primitives, and every `usersApi` call lives here. The user
-// itself is not duplicated — it stays in the app-wide `auth` store, which these
-// primitives write back through `auth.setUser`.
+// Manager of the account-settings surface: every `usersApi` call lives here.
+// The user itself stays in the app-wide `auth` store, written back through
+// `auth.setUser`.
 
 import { get, writable } from "svelte/store";
 import { auth } from "$lib/stores/auth";

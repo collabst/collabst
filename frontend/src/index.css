@@ -99,15 +99,7 @@ a:hover {
   overflow: auto;
   overflow-clip-margin: 0;
 }
-/*
-  Button animations.
-
-  These used to be declared three times over inside individual button
-  components (`jumpAnimation` in `ui/topBar/TopButton` and
-  `projects/IconButton`, `iconJumpAnimation` in `editor/leftPanel/navBar/Button`)
-  with drifted numbers. `icon-jump` is the reconciled version, using the
-  values the two `jumpAnimation` copies agreed on.
-*/
+/* Button animations, shared by the button components. */
 @keyframes icon-jump {
   0% {
     transform: translateY(-3px) scaleX(0.8) scaleY(1.2);

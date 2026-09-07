@@ -22,7 +22,6 @@
         theme.toggle();
     }
 
-    // Calculate number of circles based on viewport size
     let circles = $state<Array<{ delay: number; row: number }>>([]);
 
     function calculateCircles() {
@@ -32,7 +31,6 @@
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
 
-        // Only calculate visible circles, no extra padding
         const cols = Math.ceil(viewportWidth / circleSize);
         const rows = Math.ceil(viewportHeight / circleSize);
 
@@ -55,7 +53,6 @@
 
             let resizeTimer: number;
             const handleResize = () => {
-                // Debounce resize to avoid excessive recalculations
                 clearTimeout(resizeTimer);
                 resizeTimer = window.setTimeout(() => {
                     circles = calculateCircles();
@@ -113,7 +110,6 @@
     }
 
     .container[data-theme="light"] {
-        /* Collabst diagonal gradient for light theme */
         background: linear-gradient(
             135deg,
             #5fd6b5 0%,
@@ -123,7 +119,6 @@
     }
 
     .container[data-theme="dark"] {
-        /* Darker gradient for dark theme */
         background: linear-gradient(
             135deg,
             #2d8b73 0%,
@@ -132,7 +127,6 @@
         );
     }
 
-    /* Animated circles background */
     .circles {
         position: absolute;
         top: 0;
@@ -149,11 +143,9 @@
         z-index: 0;
         justify-content: space-evenly;
         align-content: space-evenly;
-        contain: strict; /* Strict containment for best performance */
-        content-visibility: auto; /* Skip rendering off-screen elements */
-        /* Use a separate layer for better performance */
+        contain: strict;
+        content-visibility: auto;
         transform: translateZ(0);
-        /* Reduce priority to avoid blocking main thread */
         isolation: isolate;
     }
 
@@ -164,18 +156,12 @@
         animation: spin 9s linear infinite;
         justify-self: center;
         align-self: center;
-        /* Optimize for transform-only animations */
         will-change: transform;
         backface-visibility: hidden;
-        /* Force GPU acceleration */
         transform: translate3d(0, 0, 0);
-        /* Strict containment for isolation */
         contain: layout paint;
-        /* Prevent text/subpixel rendering */
         -webkit-font-smoothing: antialiased;
-        /* Composite on own layer */
         isolation: isolate;
-        /* Reduce rendering complexity */
         perspective: 1000px;
     }
 
@@ -206,7 +192,6 @@
         }
     }
 
-    /* Collabst logo */
     .logo-container {
         position: absolute;
         bottom: 2rem;
@@ -236,7 +221,6 @@
         opacity: 0.85;
     }
 
-    /* Theme toggle button */
     .theme-toggle {
         position: absolute;
         top: 1.5rem;

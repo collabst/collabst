@@ -153,15 +153,7 @@ export function createFindKeymap() {
   );
 }
 
-/**
- * Re-run the query whenever it or one of its modifiers changes.
- *
- * This was the thirty-first module-scope subscription, and the one `PHASE2.md`
- * §2.2's count missed: it is anonymous — `derived(...).subscribe(...)` with no
- * identifier in front of the dot — so the grep that found the other thirty
- * could not see it. Which is the argument for wiring being a *shape* the code
- * enforces rather than a list someone maintains.
- */
+/** Re-run the query whenever it or one of its modifiers changes. */
 export function wireFind(): Disposer {
   return derived(
     [findQuery, findReplace, findCaseSensitive, findWholeWord, findRegex],

@@ -1,14 +1,12 @@
 import { browser } from '$app/environment';
 
 interface LayoutState {
-    // Left panel state
     leftPanelVisible: boolean;
     leftPanelWidth: number;
 
-    // Editor/Preview ratio (editor width / total width)
+    // Editor width / total width.
     editorPreviewRatio: number;
 
-    // Preview zoom state
     zoomMode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom';
     zoomScale: number;
 }
@@ -23,9 +21,7 @@ const DEFAULT_LAYOUT: LayoutState = {
     zoomScale: 1,
 };
 
-/**
- * Save layout state to localStorage
- */
+/** Save layout state to localStorage. */
 export function saveLayoutState(state: Partial<LayoutState>): void {
     if (!browser) return;
 
@@ -38,9 +34,7 @@ export function saveLayoutState(state: Partial<LayoutState>): void {
     }
 }
 
-/**
- * Load layout state from localStorage
- */
+/** Load layout state from localStorage. */
 export function loadLayoutState(): LayoutState {
     if (!browser) return DEFAULT_LAYOUT;
 
@@ -56,9 +50,7 @@ export function loadLayoutState(): LayoutState {
     }
 }
 
-/**
- * Clear layout state from localStorage
- */
+/** Clear layout state from localStorage. */
 export function clearLayoutState(): void {
     if (!browser) return;
 

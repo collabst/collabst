@@ -77,7 +77,6 @@ export function navigateTo(
 export function gotoDiagnostic(diagnostic: Diagnostic) {
   if (!diagnostic.range) return;
 
-  // Find the file by path
   const diagnosticFile = get(files).find((f) => {
     const filePath = f.path.startsWith("/") ? f.path.slice(1) : f.path;
     const diagnosticPath = diagnostic.path
@@ -89,10 +88,7 @@ export function gotoDiagnostic(diagnostic: Diagnostic) {
   });
 
   if (diagnosticFile) {
-    // Select the file
     selectedFile.set(diagnosticFile);
-  
-    // Navigate to the diagnostic in the editor
     setTimeout(() => {
       navigateTo(
         [diagnostic.range!.start.line + 1,
@@ -106,10 +102,8 @@ export function gotoDiagnostic(diagnostic: Diagnostic) {
 
 // --- Outline -----------------------------------------------------------------
 
-// Headings of the open document, for the outline tab. Parsed with a regex over
-// the Yjs text rather than the syntax tree: it is one pass, it costs nothing,
-// and the previous editor had no outline at all, so a first version that is
-// occasionally too eager still beats an empty panel. Fenced raw blocks are
+// Headings of the open document, for the outline tab. A regex over the Yjs text
+// rather than the syntax tree: one pass, and cheap. Fenced raw blocks are
 // skipped, because a `=` inside one is not a heading.
 const HEADING_PATTERN = /^(=+)\s+(.*\S)\s*$/;
 
@@ -128,8 +122,7 @@ function parseOutline(text: string): OutlineEntry[] {
     const match = HEADING_PATTERN.exec(line);
     if (!match) return;
     entries.push({
-      // The line number is what makes an entry unique: two sections can share a
-      // title, and `{#each}` needs a stable key.
+      // Two sections can share a title, so the line number is the stable key.
       id: `${index + 1}`,
       level: match[1].length,
       title: match[2],
@@ -150,16 +143,13 @@ export function updateOutline() {
   outline.set(parseOutline(get(ytext)?.toString() ?? ""));
 }
 
-
 export function gotoOutlineEntry(entry: OutlineEntry) {
   navigateTo([entry.line, 0]);
 }
 
-// `getLineNumbersExtension()`'s `formatNumber` reads `errorLines` at render
-// time, so the Set must hold the *open* file's error lines only. `diagnostics`
-// covers the whole project, hence the path filter — the same one
-// `convertDiagnosticsToLint` uses, so gutter and lint underlines always agree.
-// The reconfigure is what forces the gutter to redraw with the new Set.
+// `formatNumber` reads `errorLines` at render time, so the Set holds the open
+// file's lines only — filtered by the same path rule `convertDiagnosticsToLint`
+// uses, so the gutter and the lint underlines agree. The reconfigure redraws it.
 function updateErrorLines() {
   const currentPath = get(selectedFile)?.path || "";
   errorLines = new Set(
@@ -173,9 +163,7 @@ function updateErrorLines() {
   reconfigureLineNumbers(viewValue);
 }
 
-
 export function onDiagnostics(diags: any[] = []) {
-  // Parse diagnostics range from compiler format
   diagnostics.set(
     diags.map((d: any) => ({
       severity: d.severity,
@@ -188,26 +176,14 @@ export function onDiagnostics(diags: any[] = []) {
   updateLinter();
 }
 
-
-// The server is the source of truth for the file tree, and the projectSync WS
-// echoes every mutation back to the client that made it (the REST handlers
-// broadcast without a `sender`, so nobody is excluded). Rename / move / delete
-// therefore never touch the `files` / `assets` stores here: `onFileUpdated` &co.
-// do it. Only the create paths update locally, because the caller needs the
-// created row straight away — and the server may have renamed it.
-
-/**
- * Recompute the outline and the error gutter as the document and the open file
- * change. Three module-scope subscriptions until now (`PHASE2.md` §2.2).
- */
+/** Recompute the outline and the error gutter as the document and open file change. */
 export function wireDiagnostics(): Disposer {
   const disposers = [
-    // A file switch swaps the `Y.Text`; edits are picked up by the file observers,
-    // which call this for the open file only.
+    // A file switch swaps the `Y.Text`; edits come through the file observers.
     ytext.subscribe(() => updateOutline()),
     selectedFile.subscribe(() => updateOutline()),
-    // Diagnostics outlive a file switch, so the gutter of the newly opened file has
-    // to be recomputed even though no new compile has happened.
+    // Diagnostics outlive a file switch, so the new file's gutter needs a
+    // recompute even though nothing was compiled.
     selectedFile.subscribe(() => {
       updateErrorLines();
     }),

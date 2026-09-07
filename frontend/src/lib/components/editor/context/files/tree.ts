@@ -84,24 +84,16 @@ export function expandFolders(folderIds: string[]) {
   });
 }
 
-// What the panel actually renders: the tree flattened to a list, collapsed
-// folders' children dropped. Derived here rather than computed in the component
-// so the panel never has to know the tree shape.
+// The tree flattened to a list, collapsed folders' children dropped.
 export const visibleTree = derived(
   [fileTree, expandedFolders],
   ([$fileTree, $expandedFolders]) =>
     flattenTree($fileTree, $expandedFolders) as ExplorerNode[],
 );
 
-// --- Tree actions: context menu and delete confirmation ----------------------
-
-// The menu is opened by a tree row (or the empty space under it) and rendered
-// once at the region root, so that a `position: fixed` card is not clipped by
-// the scrolling list. Two components, one piece of state — so the verbs that
-// move it live here, next to the tree they act on. `FileMenuState.node` is
-// `null` when the menu was opened on the panel background, meaning "at the
-// project root".
-
+// The menu is opened by a tree row but rendered once at the region root, so its
+// `position: fixed` card is not clipped by the scrolling list. `node` is `null`
+// when it was opened on the panel background, meaning "at the project root".
 export function openFileMenu(state: FileMenuState) {
   fileMenu.set(state);
 }
@@ -110,10 +102,7 @@ export function closeFileMenu() {
   fileMenu.set(null);
 }
 
-// Deleting is the one destructive action in the panel, so it goes through a
-// confirmation the user has to answer. Same reasoning as the menu: the row asks,
-// the dialog answers.
-
+// The row asks, the dialog answers.
 export function requestDeletion(node: ExplorerNode) {
   if (!get(canWrite)) return;
   pendingDeletion.set({
@@ -140,10 +129,8 @@ export async function confirmDeletion() {
 }
 
 // Where a node created "next to" `nodeId` lands: inside it when it is a folder,
-// beside it when it is a file, at the root when there is no anchor. Assets are
-// looked up too — the explorer shows them in the same tree, so an id coming from
-// a row is not necessarily a `File`.
-
+// beside it when it is a file, at the root when there is no anchor. The id can
+// name an asset — the explorer shows both in one tree.
 export function anchorFolder(nodeId: string | null): File | null {
   if (!nodeId) return null;
   const $files = get(files);
@@ -170,11 +157,8 @@ export function newFolderNextTo(nodeId: string | null) {
 
 // --- Dragging a node onto a folder -------------------------------------------
 
-// Which row is being dragged has to be readable by every *other* row: `dragover`
-// only exposes the data transfer's types, never its data, so a row cannot ask
-// the event what is being dropped on it. One drag is in flight at a time, so it
-// is one store — same reasoning as the context menu above.
-
+// `dragover` exposes the data transfer's types but never its data, so the
+// dragged row has to be readable from a store by every other row.
 export function startNodeDrag(nodeId: string) {
   if (!get(canWrite)) return;
   draggedNodeId.set(nodeId);
@@ -184,8 +168,7 @@ export function endNodeDrag() {
   draggedNodeId.set(null);
 }
 
-// Walking up from `candidateId`: a folder cannot be dropped inside its own
-// subtree, which would detach that whole branch from the root.
+// A folder dropped inside its own subtree would detach that branch.
 function isInSubtreeOf(candidateId: string, ancestorId: string): boolean {
   const $files = get(files);
   let current = $files.find((f) => f.id === candidateId);
@@ -197,9 +180,8 @@ function isInSubtreeOf(candidateId: string, ancestorId: string): boolean {
   return false;
 }
 
-// `targetNodeId` is a row the pointer is over, or `null` for the panel
-// background. The destination folder follows the same anchor rule as creation:
-// a folder takes the node, a file hands it to its own folder.
+// `targetNodeId` is the row under the pointer, or `null` for the panel
+// background; the destination follows the same anchor rule as creation.
 export function canDropOnNode(targetNodeId: string | null): boolean {
   const sourceId = get(draggedNodeId);
   if (!sourceId || !get(canWrite)) return false;
@@ -211,7 +193,6 @@ export function canDropOnNode(targetNodeId: string | null): boolean {
   if (!source) return false;
 
   const destinationId = anchorFolder(targetNodeId)?.id ?? null;
-  // Already where it would land — a move that changes nothing.
   if (source.parent_id === destinationId) return false;
   if (destinationId === sourceId) return false;
   if (destinationId && isInSubtreeOf(destinationId, sourceId)) return false;
@@ -236,9 +217,7 @@ export async function dropOnNode(targetNodeId: string | null) {
 
 // --- Asset upload ------------------------------------------------------------
 
-// The server decides what an upload becomes: anything it can read as text comes
-// back as a `File` (a source it will let people edit), everything else as an
-// `Asset`. It also renames on collision, which is why the created row — not the
-// one we sent — is what goes into the stores. Binary assets are cached on the
-// way in so the compiler and the viewer do not have to fetch back what this
-// browser just uploaded.
+// The server decides what an upload becomes — text comes back as a `File`,
+// everything else as an `Asset` — and renames on collision, so the row it
+// returns is what goes into the stores. Binary assets are cached on the way in
+// so the compiler and viewer need not fetch back what was just uploaded.

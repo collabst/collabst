@@ -1,15 +1,7 @@
 import { writable } from "svelte/store";
 import { loadLayoutState, saveLayoutState } from "$lib/utils/layoutStorage";
 
-/**
- * Panel geometry.
- *
- * This used to live in `editor/context/context.ts`, which was wrong on two
- * counts: the geometry outlives any one project, so `destroyContext()` had to
- * remember *not* to reset it, and its three `saveLayoutState` subscriptions ran
- * at import time, which is what broke server rendering. It is an app-wide
- * preference and belongs here with `theme` and `editorSettings`.
- */
+/** Panel geometry: an app-wide preference that outlives any one project. */
 
 const MIN_LEFT_PANEL_WIDTH = 180;
 const MAX_LEFT_PANEL_WIDTH = 640;

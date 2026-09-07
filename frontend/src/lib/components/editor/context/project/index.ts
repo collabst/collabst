@@ -162,8 +162,3 @@ export async function handlePermissionSignal(
     isRefreshingPermissions = false;
   }
 }
-
-// Bumped by initContext (new session starting) and destroyContext (session
-// torn down), so an in-flight initContext or editorElement.subscribe callback
-// can tell its work has been superseded and stop before touching stores or
-// opening connections for an abandoned project.

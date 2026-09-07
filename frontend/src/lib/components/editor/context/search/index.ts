@@ -26,15 +26,7 @@ import { get } from "svelte/store";
  * all of them, and painting the current file's matches in the editor.
  */
 
-/**
- * Recompute matches whenever the query or one of its modifiers changes.
- *
- * These four used to be module-scope subscriptions that ran from the moment the
- * module was imported and were never unsubscribed — see `PHASE2.md` §2.2. They
- * are now started by `initContext()` and stopped by `destroyContext()`, which
- * is what stops `searchText.set("")` during teardown from re-entering a search
- * over a half-reset world.
- */
+/** Recompute matches whenever the query or one of its modifiers changes. */
 export function wireSearch(): Disposer {
   const disposers = [
     searchText.subscribe(() => {
@@ -138,10 +130,9 @@ export function updateSearchMatches() {
   updateMatchHighlights();
 }
 
-// The search-match ranges that belong to the file currently open in the editor,
-// clamped to `docLength` and stripped of empty ranges (a mark decoration may not
-// be empty). Read both when the editor state is rebuilt from scratch — see
-// `getHighlightExtensions()` — and when a new search result set is dispatched.
+// The open file's match ranges, clamped to `docLength` and stripped of empty
+// ones (a mark decoration may not be empty). Read both when the editor state is
+// rebuilt and when a new result set is dispatched.
 function selectedFileMatchRanges(docLength: number) {
   const selectedFileValue = get(selectedFile);
   if (!selectedFileValue) return [];
@@ -236,9 +227,8 @@ const matchHighlight = Decoration.mark({
 
 export function getHighlightExtensions() {
   const matchHighlightField = StateField.define({
-    // Seeded from `searchMatches`, not empty: this field is re-created on every
-    // `setState` (file switch, theme/settings change) and on every new view, and
-    // the highlights must survive those rebuilds.
+    // Seeded rather than empty: the field is re-created on every `setState`,
+    // and the highlights must survive those rebuilds.
     create(state) {
       return Decoration.set(
         selectedFileMatchRanges(state.doc.length).map(({ from, to }) =>

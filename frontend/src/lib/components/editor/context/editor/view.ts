@@ -25,16 +25,13 @@ import * as Y from "yjs";
  * are both there, rebuilding its state when the open file changes, and the
  * selection listener behind the floating comment button.
  *
- * It owns `undoManager`, which `./commands` and `./extensions` reach through
- * `getUndoManager()` rather than by importing the binding (`PHASE2.md` §3.6).
+ * It owns `undoManager`, which other modules reach through `getUndoManager()`.
  */
 
 let undoManager: Y.UndoManager | null = null;
 
-// A `Y.UndoManager` registers observers on the type it tracks and on the
-// document itself; dropping the reference is not enough, so the one built for
-// the previous file has to be destroyed before it is replaced — otherwise every
-// file switch leaks a manager still listening on the file we left.
+// A `Y.UndoManager` observes the type and the document, so the previous file's
+// manager has to be destroyed rather than merely dropped.
 export function setUndoManager(next: Y.UndoManager | null) {
   undoManager?.destroy();
   undoManager = next;
@@ -66,7 +63,6 @@ function setupSelectionListener() {
         selection.from !== selection.to &&
         selection.text.trim()
       ) {
-        // Get the coordinates of the selection
         const coords = viewValue.coordsAtPos(selection.to);
         if (coords) {
           const containerRect = viewValue.dom.getBoundingClientRect();
@@ -94,10 +90,6 @@ function setupSelectionListener() {
   };
 }
 
-// The compiler entry point. `compile()` used to fall back to the literal
-// "/main.typ", so a project whose entry point is named anything else never
-// compiled. The choice is remembered per project, because it is a property of
-// how the author works on that document, not of this browser session.
 export function cycleLeftPanelTab(direction: 1 | -1) {
   const tabs: LeftPanelTab[] = [
     "files",
@@ -130,21 +122,15 @@ async function updateEditorContent() {
 }
 
 /**
- * Bring the view up, and keep it in step with the element and the document.
- *
- * Three module-scope subscriptions until now (`PHASE2.md` §2.2). The
- * `editorElement` one is why `contextGeneration` exists: it awaits
- * `createExtensions()`, and the project can be torn down while it does.
+ * Bring the view up, and keep it in step with the element and the document. The
+ * `editorElement` subscription awaits `createExtensions()`, so it checks the
+ * context generation: the project can be torn down while it waits.
  */
 export function wireEditorView(): Disposer {
   const disposers = [
     view.subscribe(() => {
       setupSelectionListener();
     }),
-    // The compiler entry point. `compile()` used to fall back to the literal
-    // "/main.typ", so a project whose entry point is named anything else never
-    // compiled. The choice is remembered per project, because it is a property
-    // of how the author works on that document, not of this browser session.
     editorElement.subscribe(async (el) => {
       if (!el) return;
       const generation = getContextGeneration();

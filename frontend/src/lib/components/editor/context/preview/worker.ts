@@ -23,10 +23,8 @@ import { get } from "svelte/store";
 /**
  * The Typst compile worker and the file/asset mirror it compiles against.
  *
- * Everything here is worker-private: `worker` itself and the three latches that
- * track what it currently holds. Other modules reach them through the accessors
- * at the bottom rather than importing the bindings, so the invariants the
- * generation counter guards stay in one file.
+ * The worker and the latches tracking what it holds stay private; other modules
+ * go through the accessors at the bottom.
  */
 
 let compileEnabled = true;
@@ -41,18 +39,13 @@ let workerReady = false;
 // Mirrors the worker's own `hasCompiled`: once it is set, the worker only
 // produces diffs, and only a `reset` makes it emit a full artifact again.
 let workerHasCompiled = false;
-// A sync walks the assets asynchronously, so a reset or a teardown can land
-// while one is still in flight. Its remaining `addAsset` messages would reach a
-// worker that no longer holds the sources they belong to, and the cache entries
-// it writes afterwards would make the next sync skip re-adding them.
+// Bumped on reset and teardown so an in-flight sync drops its remaining
+// `addAsset` messages instead of feeding a worker that no longer holds them.
 let syncGeneration = 0;
 
-// A preview socket that has just opened called `svgDoc.reset()` and holds no
-// document, so it needs a full artifact. Only the worker can produce one, and
-// only after a reset — which also drops the sources it was given, so the caches
-// mirroring them have to be dropped too or `_syncFilesAndAssets` would skip
-// re-adding files the worker no longer has.
-
+// A freshly opened preview socket holds no document and needs a full artifact,
+// which the worker only emits after a reset. The reset also drops its sources,
+// so the caches mirroring them must be cleared or the next sync skips them.
 function resetWorkerDocument() {
   if (!worker || !workerReady || !workerHasCompiled) return;
   syncGeneration++;
@@ -64,13 +57,9 @@ function resetWorkerDocument() {
 
 function compile() {
   if (!worker || !workerReady) return;
-  // The compiler emits one full artifact and diffs from then on, and the
-  // preview iframe can only merge a diff into the document it already holds.
-  // An artifact produced before the iframe is listening is therefore not just
-  // lost: every later diff rebases onto a document it never received, its
-  // renderer faults and drops the socket, and it reconnects into the same
-  // fault forever. So hold compilation until the iframe has asked for the
-  // document; `handleIframeSend` compiles as soon as it does.
+  // The compiler emits one full artifact then diffs, and the iframe can only
+  // merge a diff into a document it already holds. Hold compilation until the
+  // iframe has asked for the document; `handleIframeSend` then compiles.
   if (!isIframeInitialized()) {
     compileStatus.set('Preparing files...');
     return;
@@ -85,23 +74,15 @@ function compile() {
 }
 
 async function _syncFilesAndAssets() {
-  // The worker registers its message handler immediately but only creates
-  // `compiler` once the WASM bundle finishes loading; an `addFile`/`addAsset`
-  // sent before that is silently dropped on the worker side (`if (!compiler)
-  // return;`) with no signal back here. Without this guard this function still
-  // records the file as loaded in `loadedFiles`/`loadedAssets`, so the real
-  // sync that runs once the worker actually reports ready (see the
-  // `'initialized'` handler) sees no diff and never re-sends it — the worker
-  // ends up missing sources `compile()` then fails to find. Bailing out before
-  // touching either cache keeps them honest until there is a worker to sync to.
+  // The worker silently drops `addFile`/`addAsset` sent before its WASM bundle
+  // loads. Bail out before touching the caches, otherwise they record files the
+  // worker never got and the sync after `'initialized'` sees no diff to re-send.
   if (!worker || !workerReady) return;
 
   const generation = syncGeneration;
 
-  // Handle files
   const currentFilesMap = new Map(get(files).map(f => [f.id, f]));
 
-  // Remove deleted/moved files
   for (const [fileId, cached] of loadedFiles) {
     const current = currentFilesMap.get(fileId);
     if (!current || current.path !== cached.path) {
@@ -114,7 +95,6 @@ async function _syncFilesAndAssets() {
     }
   }
 
-  // Add new/updated files
   for (const file of get(files)) {
     if (file.is_folder) continue;
 
@@ -131,10 +111,8 @@ async function _syncFilesAndAssets() {
     }
   }
 
-  // Handle assets
   const currentAssetsMap = new Map(get(assets).map(a => [a.id, a]));
 
-  // Remove deleted/moved assets
   for (const [assetId, cached] of loadedAssets) {
     const current = currentAssetsMap.get(assetId);
     if (!current || current.path !== cached.path) {
@@ -147,7 +125,6 @@ async function _syncFilesAndAssets() {
     }
   }
 
-  // Add new/updated assets
   for (const asset of get(assets)) {
     const cached = loadedAssets.get(asset.id);
     const path = asset.path.startsWith('/') ? asset.path : `/${asset.path}`;
@@ -156,19 +133,15 @@ async function _syncFilesAndAssets() {
       try {
         let arrayBuffer: ArrayBuffer;
 
-        // Try IndexedDB cache first
         const cachedBlob = await getCachedAsset(String(asset.project_id), asset.id, asset.storage_path);
 
         if (cachedBlob) {
-          // Use cached data
           arrayBuffer = cachedBlob.blob;
         } else {
-          // Fetch from API and cache
           const { url } = await assetsApi.getUrl(String(asset.project_id), asset.id);
           const response = await fetch(url);
           arrayBuffer = await response.arrayBuffer();
 
-          // Store in IndexedDB cache (fire and forget)
           cacheAsset(String(asset.project_id), asset.id, asset.storage_path, asset.mime_type, arrayBuffer)
             .catch(err => console.warn('Failed to cache asset:', err));
         }
@@ -180,7 +153,7 @@ async function _syncFilesAndAssets() {
         worker.postMessage({
           type: 'addAsset',
           payload: { path, data: uint8Array }
-        }, [uint8Array.buffer]); // Transfer ownership of the buffer
+        }, [uint8Array.buffer]);
 
         loadedAssets.set(asset.id, { path: asset.path, storage_path: asset.storage_path });
       } catch (error) {
@@ -191,7 +164,6 @@ async function _syncFilesAndAssets() {
 
   if (generation !== syncGeneration) return;
 
-  // Trigger compilation
   compile();
 }
 
@@ -199,7 +171,7 @@ function syncFilesAndAssets() {
   if (syncTimeout) clearTimeout(syncTimeout);
   syncTimeout = setTimeout(() => {
     _syncFilesAndAssets();
-  }, 30); // 30ms debounce
+  }, 30);
 }
 
 export function initWorker() {
@@ -212,9 +184,8 @@ export function initWorker() {
 
     worker.onmessage = async (e) => {
       const { type, vectorData, compileTime, isFirstCompile, diagnostics } = e.data;
-      // Only compile results carry diagnostics. `status`, `pdf` and `reset`
-      // messages do not, and passing their `undefined` through defaulted to an
-      // empty list — which wiped the issues panel right after a failed compile.
+      // Only compile results carry diagnostics; other messages must not clear
+      // the issues panel.
       if (Array.isArray(diagnostics)) onDiagnostics(diagnostics);
 
       switch (type) {
@@ -228,7 +199,6 @@ export function initWorker() {
             ? 'Compiler ready - waiting for iframe...'
             : 'Preparing files...');
 
-          // Force a sync only when file hydration is ready.
           if (compileEnabled) {
             syncFilesAndAssets();
           }
@@ -236,8 +206,7 @@ export function initWorker() {
           break;
 
         case 'compiled':
-          // Mirrors the worker, which only flips its own `hasCompiled` when it
-          // actually emitted an artifact.
+          // The worker flips its own `hasCompiled` only when it emitted one.
           if (vectorData) workerHasCompiled = true;
           if (!isIframeInitialized()) {
             compileStatus.set('Waiting for iframe...');
@@ -253,8 +222,6 @@ export function initWorker() {
           try {
             compileStatus.set('Rendering...');
 
-            // `sendVectorDataToIframe` aims at whichever surface is showing
-            // the preview — the panel's frame or the separate window's.
             sendVectorDataToIframe(vectorData, isFirstCompile);
 
             compileStatus.set(`Ready (${compileTime}ms)`);
@@ -281,7 +248,6 @@ export function initWorker() {
 
         case 'reset':
           console.log('Worker: Resetting document as requested');
-          // if (typstDoc) typstDoc.reset();
           compileStatus.set('Reset complete');
           break;
       }
@@ -296,14 +262,8 @@ export function initWorker() {
   }
 }
 
-// --- Exports -----------------------------------------------------------------
-
-// --- Accessors ---------------------------------------------------------------
-//
-// `worker` and `workerReady` are read by `./exports`, which needs to know there
-// is a compiler to post to. They stay private here so that nothing outside can
-// post to a worker that is not ready, or hold a reference across a teardown.
-
+// `./exports` needs to know there is a compiler to post to, without being able
+// to hold the reference across a teardown.
 export function getWorker(): Worker | undefined {
   return worker;
 }

@@ -1,4 +1,3 @@
-// Export PDF using typst.pdf and send to main thread
 async function exportPDF(targetMainFilePath: string) {
   console.log('Worker: Exporting PDF for:', targetMainFilePath);
   if (!typst) {
@@ -19,8 +18,8 @@ async function exportPDF(targetMainFilePath: string) {
   } catch (error) {
   }
 }
-// Typst Worker with Incremental Compilation
-// Compiles typst source and sends artifact data to main thread for rendering
+// Compiles Typst sources incrementally and sends artifact data to the main
+// thread for rendering.
 
 console.log('Worker: Starting initialization...');
 
@@ -37,13 +36,11 @@ console.warn = (...args: unknown[]) => {
   originalConsoleWarn(...args);
 };
 
-// Shim window for libraries that expect it (only in worker context)
 if (typeof self !== 'undefined' && typeof Window === 'undefined') {
   (self as any).window = self;
   (self as any).document = { currentScript: null };
 }
 
-// Catch unhandled errors (only in worker context)
 if (typeof self !== 'undefined' && self.addEventListener) {
   self.addEventListener('error', (event) => {
     console.error('Worker uncaught error:', event.error);
@@ -71,7 +68,6 @@ let hasCompiled = false; // Track if we've done at least one compile
 let mainFilePath: string = '/main.typ';
 let lastMainFilePath: string | null = null;
 
-// Initialize typst with incremental server
 async function init() {
   if (initialized) return;
 
@@ -92,21 +88,19 @@ async function init() {
 
     self.postMessage({ type: 'status', message: 'Initializing compiler...' });
 
-    // Get the compiler instance
     compiler = await typst.getCompiler();
 
     self.postMessage({ type: 'status', message: 'Creating incremental server...' });
     console.log('Worker: Creating incremental server...');
 
-    // Create incremental server that persists for the session
-    // DON'T await - the Promise never resolves (intentionally keeps session alive)
+    // Not awaited: the Promise never resolves, which is what keeps the
+    // incremental server alive for the session.
     compiler.withIncrementalServer((srv: any) => {
       return new Promise((dispose) => {
         incrServer = srv;
         (self as any)._disposeIncrServer = dispose;
         initialized = true;
 
-        // Signal that we're ready now that we have the server
         console.log('Worker: Incremental server ready');
         self.postMessage({ type: 'initialized' });
       });
@@ -121,28 +115,24 @@ async function init() {
   }
 }
 
-// Add a file to the compiler
 function addFile(path: string, content: string) {
   if (!compiler) return;
   console.log('Worker: Adding file:', path);
   compiler.addSource(path, content);
 }
 
-// Add an asset to the compiler
 function addAsset(path: string, data: Uint8Array) {
   if (!compiler) return;
   console.log('Worker: Adding asset:', path, 'size:', data.length);
   compiler.mapShadow(path, data);
 }
 
-// Remove a file/asset from the compiler
 function removeFile(path: string) {
   if (!compiler) return;
   console.log('Worker: Removing file:', path);
   compiler.unmapShadow(path);
 }
 
-// Compile with incremental server and send artifact data to main thread
 async function compile(targetMainFilePath: string) {
   if (!initialized) {
     await init();
@@ -151,7 +141,6 @@ async function compile(targetMainFilePath: string) {
   const startTime = performance.now();
 
   try {
-    // Track if main file changed
     console.log('Worker: Compiling, main file path:', targetMainFilePath, lastMainFilePath);
     const mainFileChanged = targetMainFilePath !== lastMainFilePath;
     console.log('Worker: Compiling, main file changed:', mainFileChanged);
@@ -162,8 +151,7 @@ async function compile(targetMainFilePath: string) {
       console.log('Worker: Main file changed to:', mainFilePath);
     }
 
-    // Compile with incremental server - returns artifact data (full or diff)
-    // Don't specify format - incremental server returns its own artifact format
+    // No format: the incremental server returns its own artifact format.
     const result = await compiler.compile({
       mainFilePath,
       incrementalServer: incrServer,
@@ -174,7 +162,6 @@ async function compile(targetMainFilePath: string) {
 
     const compileTime = (performance.now() - startTime).toFixed(2);
 
-    // Check for errors in diagnostics
     const diagnostics = result.diagnostics || [];
     const hasErrors = diagnostics.some((d: any) => d.severity === 'error');
 
@@ -187,8 +174,7 @@ async function compile(targetMainFilePath: string) {
       return;
     }
 
-    // The result.result contains the artifact data
-    // First compile: full data, subsequent: incremental diff
+    // Full data on the first compile, a diff afterwards.
     const artifactData = result.result;
 
     if (!artifactData || artifactData.length === 0) {
@@ -202,14 +188,11 @@ async function compile(targetMainFilePath: string) {
       return;
     }
 
-    // Send the artifact data to main thread for rendering
-    // First compile sends full data, subsequent compiles send diffs
     const isFirstCompile = !hasCompiled;
     hasCompiled = true;
 
     console.log('Worker: Sending compiled artifact data, size:', artifactData.length);
 
-    // Transfer the buffer if it's a transferable object
     const transfer = artifactData?.buffer instanceof ArrayBuffer ? [artifactData.buffer] : [];
     self.postMessage(
       {
@@ -245,7 +228,6 @@ function reset() {
   self.postMessage({ type: 'reset' });
 }
 
-// Handle messages from main thread (only in worker context)
 if (typeof self !== 'undefined' && 'onmessage' in self) {
   self.onmessage = async (e) => {
     const { type, payload } = e.data;
@@ -276,6 +258,5 @@ if (typeof self !== 'undefined' && 'onmessage' in self) {
     }
   };
 
-  // Start initialization
   init();
 }

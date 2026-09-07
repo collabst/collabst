@@ -15,7 +15,6 @@ export interface YjsConnection {
   isLocalSynced: boolean
 }
 
-// Generate a random color for user avatar
 function generateUserColor(): string {
   const colors = [
     '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
@@ -50,7 +49,6 @@ export function createProjectYjs(
     }
   )
 
-  // Set user awareness state for presence
   if (user) {
     provider.awareness.setLocalStateField('user', {
       id: user.id,
@@ -80,11 +78,10 @@ export function createProjectYjs(
     isSynced = synced
   }
 
-  // Listen for awareness changes from other clients
-  // When a new client joins, they trigger an awareness update, so we re-broadcast ours
+  // A joining client triggers an awareness update, which is our cue to
+  // re-broadcast our own presence so it sees us.
   const handleAwarenessChange = ({ added, updated, removed }: { added: number[], updated: number[], removed: number[] }) => {
     if (added.length > 0 && user) {
-      // New client(s) joined, re-broadcast our presence so they see us
       provider.awareness.setLocalStateField('user', {
         id: user.id,
         name: user.display_name,

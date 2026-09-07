@@ -1,12 +1,6 @@
-/**
- * Utility functions to generate dynamic API and WebSocket URLs
- * based on the current browser hostname instead of hardcoding
- */
+/** API and WebSocket URLs derived from the current hostname rather than hardcoded. */
 
-/**
- * Get the base API URL using the current hostname with port from env
- * Uses http/https based on current protocol
- */
+/** The base API URL: current hostname, port from env, protocol from the page. */
 export function getApiUrl() {
   const configuredUrl = import.meta.env.VITE_API_URL
   if (!configuredUrl) {
@@ -20,10 +14,7 @@ export function getProfilePicUrl(userId: string) {
   return `${apiUrl}/profile-pic/${userId}`
 }
 
-/**
- * Get the WebSocket URL using the current hostname with port from env
- * Automatically converts http -> ws and https -> wss
- */
+/** Same as `getApiUrl`, with http -> ws and https -> wss. */
 export function getWsUrl() {
   const configuredApiUrl = getApiUrl()
   const apiUrl = configuredApiUrl.startsWith('http://') || configuredApiUrl.startsWith('https://')

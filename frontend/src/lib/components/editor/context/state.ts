@@ -21,33 +21,13 @@ import type { EditorView } from "@codemirror/view";
 import { derived, writable } from "svelte/store";
 
 /**
- * Every store the editor context owns, in one place.
+ * Every store the editor context owns, in one place, so the mutually recursive
+ * behaviour modules under `context/` can share state without an import cycle
+ * putting a `writable()` in the temporal dead zone.
  *
- * This module exists to break cycles, not because the state has any cohesion of
- * its own. The behaviour modules under `context/` are mutually recursive by
- * nature — the file tree dispatches into the editor view, the editor compiles
- * through the preview, the preview reads the file list — and that is fine for
- * hoisted `function` declarations, but not for `const store = writable()`,
- * which would hit the temporal dead zone on an import cycle. So: every module
- * imports state from here, and this module imports from none of them.
- *
- * "None of them" has to be read strictly, and `import type` is the only form
- * that satisfies it. `verbatimModuleSyntax` is on, so the *inline* modifier —
- * `import { type Foo } from "./files/tree"` — erases the specifier but keeps
- * the statement, emitting a bare `import "./files/tree"` that runs the module.
- * That is how this file ended up importing four behaviour modules while looking
- * type-only, and how `fileTree`'s `derived([files, assets])` came to run before
- * the `writable()`s below had been evaluated:
- *
- *     Error: derived() expects stores as input, got a falsy value
- *
- * Hence the rule, which is worth more than the four type declarations it cost:
- * every import in this file is `import type`, and every type it names comes
- * from `./types`, which imports nothing of ours.
- *
- * `resetState()` is the single list `initContext()` and `destroyContext()` both
- * call. Before it existed there were two hand-maintained lists that had already
- * drifted apart by fifteen stores.
+ * Rule: every import here is a top-level `import type` (the inline `{ type Foo }`
+ * modifier still emits a side-effecting `import`, which reintroduces the cycle),
+ * and every type comes from `./types`, which imports nothing of ours.
  */
 
 /** What a `wireX()` returns: call it to undo the wiring it set up. */
@@ -59,9 +39,7 @@ export type Disposer = () => void;
 export const previewIframe = writable<HTMLIFrameElement | undefined>();
 
 // The compiler's human-readable line ("Ready (123 ms)", "Compile error: …") and
-// the coarse lifecycle state the preview toolbar renders. Both used to be plain
-// module variables — and `status` was not even declared, so every assignment
-// silently wrote `window.status` and no UI could ever read it.
+// the coarse lifecycle state the preview toolbar renders.
 export const compileStatus = writable<string>("");
 export const previewStatus = writable<"idle" | "compiling" | "ready" | "error">("idle");
 
@@ -72,10 +50,6 @@ export const currentZoomValue = writable(1);
 export const currentZoomMode = writable('custom');
 
 // --- Search ------------------------------------------------------------------
-//
-// These were declared `export let` in `context.ts`, which handed every importer a
-// rebindable view of a store that is in fact never reassigned. They are `const`
-// here, like every other store.
 
 export const searchText = writable("");
 export const replaceText = writable("");
@@ -90,9 +64,7 @@ export const regexSearch = writable(false);
 export const comments = writable<Comment[]>([]);
 export const commentors = writable<UserProfile[]>([]);
 export const activeCommentId = writable<string | null>(null);
-// Hovering a thread in the panel emphasises its range in the document. Purely
-// presentational, but two components have to agree on it — the panel writes it,
-// the editor reads it — so it is context state, not local state.
+// Written by the comments panel, read by the editor to emphasise the range.
 export const hoveredCommentId = writable<string | null>(null);
 export const editorNewCommentDraft = writable<{
   text: string;
@@ -165,14 +137,7 @@ export const findRegex = writable(false);
 export const findMatchCount = writable(0);
 export const findMatchIndex = writable(0);
 
-/**
- * Reset every store this module owns to its empty value.
- *
- * Called by both `initContext()` and `destroyContext()`. Each slice moved into
- * `state.ts` adds its stores *and* their lines here in the same change, so a
- * store that is never reset is visible in review.
- */
-
+/** Reset every store this module owns; called by `initContext` and `destroyContext`. */
 export function resetState() {
   // Preview
   currentZoomValue.set(1);
@@ -199,9 +164,8 @@ export function resetState() {
   showCommentButton.set(false);
   commentButtonPosition.set({ top: 0, left: 0 });
 
-  // Files and assets. `selectedAssetUrl` is set to null here, but the blob URLs
-  // behind it are revoked by `releaseAssetBlobUrls()` in `files/`; dropping the
-  // store alone would leak them.
+  // Files and assets. The blob URLs behind `selectedAssetUrl` are revoked
+  // separately by `releaseAssetBlobUrls()` in `files/`.
   files.set([]);
   assets.set([]);
   selectedFile.set(null);

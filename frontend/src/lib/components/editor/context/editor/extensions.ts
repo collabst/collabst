@@ -53,16 +53,8 @@ function getLineWrappingExtensions() {
 
 function getLineNumbersExtension() {
   return lineNumbers({
-    formatNumber: (lineNo) => {
-      // Show × symbol instead of line number for lines with errors
-      if (getErrorLines().has(lineNo)) {
-        return "×";
-      }
-      return String(lineNo);
-    },
-    domEventHandlers: {
-      // Add data-error attribute to gutter elements with errors
-    },
+    formatNumber: (lineNo) =>
+      getErrorLines().has(lineNo) ? "×" : String(lineNo),
   });
 }
 
@@ -75,7 +67,6 @@ async function getSyntaxHighlighting() {
   const fileName = get(selectedFile)?.name || "";
   const extension = fileName.split(".").pop()?.toLowerCase();
 
-  // For Typst files, use custom Typst highlighting
   if (extension === "typ") {
     if (typeof window !== "undefined") {
       const { typstDark, typstLight } = await import(
@@ -85,7 +76,6 @@ async function getSyntaxHighlighting() {
     }
   }
 
-  // For BibTeX files, use custom BibTeX highlighting
   if (extension === "bib") {
     if (typeof window !== "undefined") {
       const { bibtexDark, bibtexLight } = await import(
@@ -95,7 +85,6 @@ async function getSyntaxHighlighting() {
     }
   }
 
-  // For other files, use default theme syntax highlighting
   return currentTheme === "light" ? greyLightSyntax : greyDarkSyntax;
 }
 
@@ -106,14 +95,9 @@ async function getLanguageExtensions() {
   if (extension === "typ") {
     if (typeof window !== "undefined") {
       const { typst } = await import("codemirror-lang-typst");
-      // `codemirror-lang-typst` does declare `commentTokens`, but only with a
-      // block token and — because it builds its `Language` with the base
-      // constructor instead of `LRLanguage.define()` — it never attaches that
-      // facet to its top node, so `state.languageDataAt("commentTokens")` comes
-      // back empty and *both* comment commands are no-ops in a `.typ` file.
-      // A language-data provider bypasses the syntax-tree lookup entirely; it
-      // is scoped to this compartment, which is reconfigured per file, so it
-      // only ever answers for Typst documents.
+      // `codemirror-lang-typst` never attaches its `commentTokens` facet to
+      // the top node, so the comment commands are no-ops without this
+      // provider. Scoped to the compartment, which is per-file.
       return [
         EditorState.languageData.of(() => [
           { commentTokens: { line: "//", block: { open: "/*", close: "*/" } } },
@@ -170,11 +154,9 @@ function getLigaturesExtension() {
   });
 }
 
-// `commentsExtension()` carries its own click handler, but it dispatches through
-// the `CommentRangeTracker` singleton — part of the old Yjs-map comment storage,
-// which this tree does not use — so it can never fire. Same behaviour, wired
-// straight to the context: a plain click (no selection) inside a highlight opens
-// its thread.
+// `commentsExtension()`'s own click handler dispatches through a singleton this
+// tree does not use, so it can never fire. A plain click (no selection) inside a
+// highlight opens its thread.
 function createCommentClickHandler() {
   return EditorView.domEventHandlers({
     mouseup(event, viewValue) {
@@ -233,8 +215,7 @@ function createErrorIconPlugin() {
 export async function createExtensions() {
   const ytextValue = get(ytext);
   const provider = get(projectYjs)?.provider;
-  // Read into a const: `undoManager` is reassigned on every file switch, and
-  // the extension list must be built against the one that existed when it ran.
+  // Read into a const: `undoManager` is reassigned on every file switch.
   const undoManagerValue = getUndoManager();
   const collabReady = ytextValue && provider && undoManagerValue;
   const extensions = [
@@ -242,8 +223,7 @@ export async function createExtensions() {
     lineWrappingCompartment.of(getLineWrappingExtensions()),
     lineNumbersCompartment.of(getLineNumbersExtension()),
     basicSetup,
-    // The search *state* only; the panel is `editorPanel/Find.svelte`, a normal
-    // component driven by the stores above.
+    // Search state only; the panel is `editorPanel/Find.svelte`.
     search({ top: true }),
     createFindKeymap(),
     themeCompartment.of(getThemeExtensions()),
@@ -255,7 +235,7 @@ export async function createExtensions() {
     bracketMatching(),
     closeBrackets(),
     indentOnInput(),
-    indentUnit.of("  "), // Set indentation to 2 spaces
+    indentUnit.of("  "),
     readOnlyCompartment.of(EditorState.readOnly.of(!get(canWrite))),
     editableCompartment.of(EditorView.editable.of(get(canWrite))),
     ...(collabReady ? [yCollab(ytextValue, provider.awareness, { undoManager: undoManagerValue })] : []),
@@ -268,13 +248,9 @@ export async function createExtensions() {
 }
 
 
-// `createExtensions()` only *seeds* the compartments — nothing ever called
-// `reconfigure()`, so a theme, font or file-type change did not reach a view that
-// was already built, and only took effect at the next full rebuild. Each
-// subscription below bails out when there is no view yet (the next
-// `createExtensions()` reads the new value anyway) and re-checks the view after
-// every `await`, so a rebuild that happens mid-flight is not clobbered.
-
+// `createExtensions()` only seeds the compartments; these keep an already-built
+// view in step. Each bails out when there is no view yet, and re-checks it after
+// every `await` so a rebuild mid-flight is not clobbered.
 async function reconfigureSyntaxHighlighting(viewValue: EditorView) {
   const syntax = await getSyntaxHighlighting();
   if (get(view) !== viewValue) return;
@@ -287,14 +263,7 @@ async function reconfigureLanguage(viewValue: EditorView) {
   viewValue.dispatch({ effects: languageCompartment.reconfigure(language) });
 }
 
-/**
- * Keep the compartments in step with what they depend on.
- *
- * Four module-scope subscriptions until now (`PHASE2.md` §2.2). `wrapLines` is
- * the odd one out: the store itself is an app-wide preference living in
- * `lib/stores/preferences.ts`, but *applying* it to the view is project-scoped,
- * so only that half is wired here.
- */
+/** Keep the compartments in step with what they depend on. */
 export function wireEditorExtensions(): Disposer {
   const disposers = [
     theme.subscribe(() => {
@@ -315,8 +284,7 @@ export function wireEditorExtensions(): Disposer {
         ],
       });
     }),
-    // `wrapLines` is persisted by `lib/stores/preferences.ts`; what belongs to the
-    // editor is applying it, by reconfiguring the line-wrapping compartment.
+    // `wrapLines` is persisted app-wide; only applying it is project-scoped.
     wrapLines.subscribe(() => {
       const viewValue = get(view);
       if (!viewValue) return;
@@ -324,8 +292,8 @@ export function wireEditorExtensions(): Disposer {
         effects: lineWrappingCompartment.reconfigure(getLineWrappingExtensions()),
       });
     }),
-    // The file extension is what picks Typst over BibTeX. `ytext` normally rebuilds
-    // the whole state just after this, but not when the Yjs document is not up yet.
+    // The file extension picks Typst over BibTeX. `ytext` normally rebuilds the
+    // whole state just after, but not before the Yjs document is up.
     selectedFile.subscribe(() => {
       const viewValue = get(view);
       if (!viewValue) return;
@@ -348,13 +316,7 @@ export function reconfigureLineNumbers(viewValue: EditorView) {
   });
 }
 
-/**
- * Lock or unlock the open document after a live role change.
- *
- * `createExtensions()` seeds both compartments from `canWrite`, so only an
- * already-built view needs reconfiguring — which is why this is a wire and not
- * part of the extension set.
- */
+/** Lock or unlock the open document after a live role change. */
 export function wireEditability(): Disposer {
   return canWrite.subscribe((writeAllowed) => {
     const viewValue = get(view);

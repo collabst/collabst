@@ -31,18 +31,16 @@ function sendVectorDataToIframe(vectorData: ArrayBuffer, isFirstCompile: boolean
     return;
   }
 
-  // Format message as the typst preview expects: "messageType,binaryData"
+  // The preview expects "messageType,binaryData".
   const messageType = isFirstCompile ? 'new' : 'diff-v1';
   const encoder = new TextEncoder();
   const typeBytes = encoder.encode(messageType + ',');
 
-  // Combine type and data
   const combined = new Uint8Array(typeBytes.length + vectorData.byteLength);
   combined.set(typeBytes, 0);
   combined.set(new Uint8Array(vectorData), typeBytes.length);
 
-  // Send via postMessage to iframe
-  // Note: We copy the buffer to avoid transferring ownership which would detach the original
+  // Copied, not transferred: transferring would detach the original buffer.
   target.postMessage({
     type: 'typst-ws-message',
     data: combined.buffer.slice(0)
@@ -115,7 +113,6 @@ function handleIframeSend(data: string | ArrayBuffer) {
   if (typeof data === 'string') {
     if (data === 'current') {
       if (!iframeMockReady) {
-        // First time receiving 'current' - iframe mock is ready
         iframeMockReady = true;
         initialized = true;
       }
@@ -123,23 +120,17 @@ function handleIframeSend(data: string | ArrayBuffer) {
       // 'current' after we have already compiled means the next artifact it
       // gets must be a full one, not a diff.
       resetWorkerDocument();
-      // Iframe is requesting current state - trigger a recompile
       syncFilesAndAssets();
     }
   }
 }
 
 export function handleIframeMessage(event: MessageEvent) {
-  // Security: verify origin in production
   const { type, data, command, zoom, mode } = event.data || {};
 
   switch (type) {
     case 'typst-ws-mock-ready':
-      // Iframe mock WebSocket is ready to receive connections - can be usefull ¯\_(ツ)_/¯
-      break;
-
     case 'typst-ws-connect':
-      // Iframe mock WebSocket is now connected - can be usefull too ¯\_(ツ)_/¯
       break;
 
     case 'typst-ws-send':
@@ -147,12 +138,11 @@ export function handleIframeMessage(event: MessageEvent) {
       break;
 
     case 'typst-ws-close':
-      // Iframe mock WebSocket closed - can be usefull also ¯\_(ツ)_/¯
       break;
 
     case 'typst-zoom-changed':
       if (inhibNextZoomChange) {
-        // Ignore this change - it was a backlash of our own command
+        // Echo of our own command.
         inhibNextZoomChange = false;
         return;
       }
@@ -163,7 +153,6 @@ export function handleIframeMessage(event: MessageEvent) {
       break;
 
     case 'typst-request-current':
-      // Iframe is requesting current state - trigger a recompile
       resetWorkerDocument();
       syncFilesAndAssets();
       break;
@@ -185,10 +174,8 @@ export function isIframeInitialized(): boolean {
 }
 
 /**
- * Forget everything about the frame that is going away. The next project mounts
- * a fresh iframe with an empty document; leaving these set made us treat it as
- * ready for diffs before it had asked for anything, so it never received a full
- * artifact.
+ * Forget the frame that is going away: the next project mounts a fresh iframe
+ * with an empty document, which must not be treated as ready for diffs.
  */
 export function resetIframeBridge() {
   iframeMockReady = false;

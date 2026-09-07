@@ -7,13 +7,11 @@ import { get } from "svelte/store";
 
 // --- Separate preview window ---------------------------------------------
 //
-// The popup is a bare same-origin document holding one `<iframe src="/typst-preview">`
-// — the very page the preview panel embeds. That keeps a single renderer
-// implementation: the artifact stream and the zoom commands are simply pointed
-// at the popup's frame instead of the panel's, and the bridge scripts inside
-// the frame still talk to `window.parent`, which is now the popup. The main
-// window listens on the popup for those messages, so `handleIframeMessage`
-// serves both surfaces unchanged.
+// The popup is a bare same-origin document holding one `<iframe
+// src="/typst-preview">` — the same page the preview panel embeds, so there is
+// one renderer. The artifact stream and zoom commands are pointed at the
+// popup's frame, whose bridge talks to `window.parent` (the popup); the main
+// window listens there, so `handleIframeMessage` serves both surfaces.
 let separateWindow: Window | null = null;
 let separateFrame: HTMLIFrameElement | null = null;
 let separateThemeUnsubscribe: (() => void) | null = null;

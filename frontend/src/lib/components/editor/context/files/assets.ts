@@ -107,11 +107,8 @@ export function uploadAssetsNextTo(
 // --- Asset viewing -----------------------------------------------------------
 
 // Blob URLs, keyed by asset *and* storage path: replacing an asset keeps its id
-// but changes where the bytes live, and handing back the previous URL would show
-// the previous picture. The old URL is revoked when its key is superseded, and
-// the whole map when the context is torn down — an un-revoked blob URL pins its
-// data in memory for the lifetime of the document.
-
+// but moves its bytes. Superseded URLs are revoked (the map wholesale on
+// teardown), since an un-revoked blob URL pins its data for the document's life.
 const assetBlobUrls = new Map<string, string>();
 
 function assetBlobKey(asset: Asset) {
@@ -125,8 +122,6 @@ export function releaseAssetBlobUrls(keep?: string) {
     assetBlobUrls.delete(key);
   }
 }
-
-// The URL the asset view renders, or `null` while it is being fetched.
 
 export function selectAsset(assetId: string) {
   const asset = get(assets).find((a) => a.id === assetId);
@@ -171,13 +166,7 @@ async function loadAssetBlobUrl(asset: Asset): Promise<string> {
 
 let assetUrlGeneration = 0;
 
-// These observers are what turns an edit — anyone's, local or remote — into a
-// recompile and a refreshed search index.
-
-/**
- * Show the selected asset, fetching and caching its bytes if this is the first
- * time. Used to be a module-scope subscription that outlived every project.
- */
+/** Show the selected asset, fetching and caching its bytes the first time. */
 export function wireAssetViewer(): Disposer {
   return selectedAsset.subscribe(async (asset) => {
     const generation = ++assetUrlGeneration;
@@ -194,8 +183,7 @@ export function wireAssetViewer(): Disposer {
       return;
     }
 
-    // Clear first: showing the previous asset's picture under the new asset's
-    // name is worse than showing nothing for a moment.
+    // Clear first, rather than show the previous picture under the new name.
     selectedAssetUrl.set(null);
     try {
       const url = await loadAssetBlobUrl(asset);

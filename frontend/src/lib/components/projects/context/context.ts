@@ -1,11 +1,6 @@
-// Manager of the projects dashboard.
-//
-// Same split as `editor/context`: every piece of dashboard state lives here as a
-// store, every side effect (HTTP, localStorage, navigation) lives here as a
-// primitive, and the components under `lib/components/projects/` only render
-// stores and call primitives. The editor context is deliberately *not* reused —
-// it is scoped to one open project and owns a Yjs connection this page has no
-// business starting.
+// Manager of the projects dashboard: every piece of state is a store here,
+// every side effect (HTTP, localStorage, navigation) a primitive here, and the
+// components under `lib/components/projects/` only render and call them.
 
 import { derived, get, writable } from "svelte/store";
 import { browser } from "$app/environment";
@@ -118,8 +113,7 @@ export function setSortBy(by: SortBy): void {
   if (browser) localStorage.setItem(SORT_BY_KEY, by);
 }
 
-/** Sorting a column that is already the sort key is a no-op, not a toggle —
- * the old dashboard had no ascending/descending switch either. */
+/** A column that is already the sort key is a no-op: there is no direction switch. */
 export function sortByColumn(column: SortBy): void {
   if (get(sortBy) === column) return;
   setSortBy(column);
@@ -173,9 +167,8 @@ export function closeCreateDialog(): void {
 }
 
 /**
- * Create a project, seed its entry point, and open it. The seeding is what the
- * dashboard stub did inline; the editor does not create `main.typ` itself, so a
- * project without it opens on an empty file list.
+ * Create a project, seed its entry point, and open it. The editor does not
+ * create `main.typ` itself, so a project without it opens on an empty file list.
  */
 export async function createProject(
   name: string,
@@ -190,8 +183,7 @@ export async function createProject(
     try {
       await filesApi.create(project.id, "main.typ", STARTER_MAIN_TYP);
     } catch (error) {
-      // The project exists; a missing entry point is recoverable from the file
-      // panel, so this is a warning rather than a failure of the whole action.
+      // The project exists and the file panel can add the entry point.
       console.error("Failed to seed main.typ:", error);
       notifications.show(
         errorMessage(error, "Project created, but its main.typ could not be added"),
@@ -215,9 +207,7 @@ export async function createProject(
 
 /* ------------------------------------------------------- delete a project */
 
-/** The project the confirmation dialog is asking about, or `null` when closed.
- * Held in the context because the row that asks and the dialog that confirms
- * are siblings. */
+/** The project the confirmation dialog is asking about, or `null` when closed. */
 export const pendingDeletion = writable<Project | null>(null);
 export const deletingProject = writable(false);
 
@@ -260,8 +250,7 @@ export async function loadMyInvitations(): Promise<void> {
   try {
     myInvitations.set(await invitationsApi.listPending());
   } catch (error) {
-    // A dashboard without its invitations is still usable, so this failure is
-    // logged rather than shown.
+    // A dashboard without its invitations is still usable.
     console.error("Failed to load pending invitations:", error);
     myInvitations.set([]);
   }
@@ -293,8 +282,7 @@ export async function acceptInvitation(invitationId: string): Promise<void> {
     "Failed to accept the invitation",
     "Invitation accepted",
   );
-  // Accepting adds a project to the workspace; reload rather than reasoning
-  // about what the server just granted.
+  // Accepting adds a project to the workspace.
   await loadProjects();
 }
 

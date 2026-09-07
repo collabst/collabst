@@ -28,9 +28,8 @@ import { get } from "svelte/store";
  * The live connections behind a project: the Yjs document and its provider, and
  * the two WebSockets that push file / asset / project rows and comment threads.
  *
- * The handlers below are the server's echo of every mutation — including this
- * client's own, since the REST handlers broadcast without a `sender` — which is
- * why the CRUD in `../files` never writes to the stores itself.
+ * The handlers below see the server's echo of every mutation, this client's own
+ * included, which is why the CRUD in `../files` never writes to the stores.
  */
 
 let stopAwarenessListener: (() => void) | null = null;
@@ -97,9 +96,6 @@ function onFileDeleted(fileId: string) {
 }
 
 export function onAssetCreated(asset: Asset) {
-  // if (!assets.find((a) => a.id === asset.id)) {
-  //   assets = [...assets, asset];
-  // }
   assets.update((currentAssets) => {
     if (!currentAssets.find((a) => a.id === asset.id)) {
       return [...currentAssets, asset];
@@ -118,7 +114,6 @@ function onAssetUpdated(asset: Asset) {
 }
 
 function onAssetDeleted(assetId: string) {
-  // Remove from cache
   removeCachedAsset(get(projectId), assetId).catch((err) =>
     console.warn("Failed to remove deleted asset from cache:", err),
   );

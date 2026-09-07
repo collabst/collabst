@@ -178,14 +178,12 @@ export function addComment() {
 
   leftPanelTab.set("comments");
 
-  // Create a draft comment and open it in the panel
   commentDraft.set({
     text: "",
     range: { from: selection.from, to: selection.to },
     selectedText: selection.text,
   });
 
-  // Hide the button
   showCommentButton.set(false);
 }
 
@@ -362,11 +360,8 @@ export async function replyComment(commentId: string, content: string) {
 
 // --- Comment decorations -----------------------------------------------------
 //
-// `commentsExtension()` has always been installed, but nothing ever dispatched
-// into it, so commented ranges had no highlight and clicking one did nothing.
-// The ranges come from the threads themselves — their Yjs relative anchors,
-// resolved by `resolveRangeFromComment` against the live document — so they
-// follow other people's edits without any extra bookkeeping.
+// Ranges come from the threads' own Yjs relative anchors, resolved against the
+// live document, so they follow other people's edits without bookkeeping.
 
 export function syncCommentDecorations() {
   const viewValue = get(view);
@@ -396,13 +391,7 @@ export function syncCommentDecorations() {
   });
 }
 
-/**
- * Keep the document's comment decorations in step with the panel.
- *
- * All four used to be module-scope subscriptions that outlived every project
- * (`PHASE2.md` §2.2). `comments.set([])` during teardown therefore dispatched a
- * decoration update into a view that was about to be destroyed.
- */
+/** Keep the document's comment decorations in step with the panel. */
 export function wireComments(): Disposer {
   const disposers = [
     hoveredCommentId.subscribe((commentId) => {

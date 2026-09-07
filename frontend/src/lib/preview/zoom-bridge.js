@@ -1,6 +1,6 @@
 /** @typedef {"set-zoom" | "zoom-in" | "zoom-out" | "fit-width" | "fit-height" | "fit-page"} CommandType */
 
-// Create a 1inch by 1inch div to help with zoom calculations
+// A 1in by 1in div, to measure the device's pixels per inch.
 const createInchReference = () => {
   const ref = document.createElement('div');
   ref.id = 'inch-reference';
@@ -12,20 +12,17 @@ const createInchReference = () => {
   return ref;
 }
 
-// Get pixels per inch based on the reference div
 const getPPI = () => {
   const ref = document.getElementById('inch-reference') || createInchReference();
   return ref.getBoundingClientRect().width;
 }
 
-// Get the container visible width in inches
 const getContainerWidthInInches = () => {
   const container = document.getElementById('typst-container');
   if (!container) return 0;
   return container.clientWidth / getPPI();
 }
 
-// Get the max page width in inches
 const getMaxPageWidthInInches = () => {
   const pages = document.querySelectorAll('rect.typst-page-inner');
   const maxPageWidth = Array.from(pages).reduce((maxWidth, page) => {
@@ -35,14 +32,12 @@ const getMaxPageWidthInInches = () => {
 }
 
 
-// Convert zoom level to scale ratio
 const zoomToScale = (/** @type {number} */ zoom) => {
   const containerWidth = getContainerWidthInInches() || 0;
   const maxPageWidth = getMaxPageWidthInInches();
   return zoom * maxPageWidth / containerWidth;
 }
 
-// Convert scale ratio to zoom level
 const scaleToZoom = (/** @type {number} */ scale) => {
   const containerWidth = getContainerWidthInInches() || 0;
   const maxPageWidth = getMaxPageWidthInInches();
@@ -111,7 +106,6 @@ const centerTypstApp = () => {
   }
 };
 
-// Send zoom change notification to parent window
 const notifyZoomChange = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   if (doc?.impl?.currentScaleRatio) {
@@ -119,13 +113,12 @@ const notifyZoomChange = () => {
 
     if (currentScaleRatio !== doc.impl.currentScaleRatio) {
       if (inhibNextZoomChange) {
-        // Ignore this change - it was a backlash of our own command
+        // Echo of our own command.
         inhibNextZoomChange = false;
         currentScaleRatio = doc.impl.currentScaleRatio;
         return;
       }
 
-      // Zoom level changed
       currentScaleRatio = doc.impl.currentScaleRatio;
       currentZoomValue = zoom;
       currentZoomMode = 'custom';
@@ -144,7 +137,6 @@ const notifyZoomChange = () => {
   }
 };
 
-// Reapply the current zoom mode to adjust to container size changes
 const reapplyCurrentZoomMode = () => {
   inhibNextZoomChange = true;
   switch (currentZoomMode) {
@@ -165,7 +157,6 @@ const reapplyCurrentZoomMode = () => {
   }
 };
 
-// Initialize zoom settings on load
 const initializeZoom = () => {
   const typstApp = document.querySelector('#typst-app .typst-page-outer');
   const pageWidthAttr = typstApp?.getAttribute('data-page-width');
@@ -173,12 +164,10 @@ const initializeZoom = () => {
     reapplyCurrentZoomMode();
     window.parent.postMessage({ type: 'typst-zoom-initialized', }, '*');
   } else {
-    // Retry if not ready yet
     setTimeout(initializeZoom, 100);
   }
 };
 
-// Set up hook for viewport changes to track zoom changes
 const setupZoomHook = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   if (doc?.impl) {
@@ -194,7 +183,6 @@ const setupZoomHook = () => {
   initializeZoom();
 };
 
-// Set the scale ratio directly
 const setScale = (/** @type {number} */ scale) => {
   if (scale <= 0) return;
   const doc = document.getElementById('typst-container')?.documents?.[0];
@@ -204,7 +192,6 @@ const setScale = (/** @type {number} */ scale) => {
   }
 };
 
-// Set zoom level directly
 const setZoom = (/** @type {number} */ zoom) => {
   const scale = zoomToScale(zoom);
   setScale(scale);
@@ -212,10 +199,9 @@ const setZoom = (/** @type {number} */ zoom) => {
   currentZoomValue = zoom;
 }
 
-// Scale down factor to ensure fit modes do not cause scrollbars and make it look better
+// Keeps fit modes from cause scrollbars and make it look better
 const fitDownScaleFactor = 0.90;
 
-// Zoom to fit width of the container
 const zoomFitWidth = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   const page = document.querySelector('rect.typst-page-inner');
@@ -228,7 +214,6 @@ const zoomFitWidth = () => {
   currentZoomMode = 'fit-width';
 }
 
-// Zoom to fit height of the container
 const zoomFitHeight = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   const page = document.querySelector('rect.typst-page-inner');
@@ -241,7 +226,6 @@ const zoomFitHeight = () => {
   currentZoomMode = 'fit-height';
 }
 
-// Zoom to fit entire page in the container
 const zoomFitPage = () => {
   const doc = document.getElementById('typst-container')?.documents?.[0];
   const page = document.querySelector('rect.typst-page-inner');
@@ -257,7 +241,6 @@ const zoomFitPage = () => {
   currentZoomMode = 'fit-page';
 }
 
-// Handle zoom commands from parent window
 const handleZoomCommand = (
   /** @type {CommandType} */ command,
   /** @type {any} */ payload
@@ -292,7 +275,6 @@ const handleZoomCommand = (
   }
 };
 
-// Listen for zoom commands from parent window
 window.addEventListener("message", (event) => {
   const { type, command, payload } = event.data || {};
   if (type === "typst-command" && command) {

@@ -223,10 +223,8 @@ class RedisYStore(BaseYStore):
         from_context_manager: bool = False,
     ):
         """Start the store and background snapshot task."""
-        # Create long-lived database session for snapshots
         self._db_session = self._async_session_factory()
 
-        # Start periodic snapshot task
         self._snapshot_task = asyncio.create_task(self._periodic_snapshot_loop())
 
         task_status.started()
@@ -235,7 +233,6 @@ class RedisYStore(BaseYStore):
 
     async def stop(self) -> None:
         """Stop the store, save final snapshot, and cleanup resources."""
-        # Cancel snapshot task
         if self._snapshot_task:
             self._snapshot_task.cancel()
             try:
@@ -243,11 +240,9 @@ class RedisYStore(BaseYStore):
             except asyncio.CancelledError:
                 pass
 
-        # Save final snapshot to PostgreSQL
         if self._updates_since_snapshot > 0:
             await self._snapshot_to_postgres()
 
-        # Clean up Redis state
         if self._project_id is not None:
             try:
                 await self._redis_client.delete(self._redis_key())
@@ -255,12 +250,10 @@ class RedisYStore(BaseYStore):
             except Exception as e:
                 print(f"[YJS] Error cleaning up Redis: {e}")
 
-        # Clean up internal doc to free memory
         if self._internal_doc is not None:
             del self._internal_doc
             self._internal_doc = None
 
-        # Close the long-lived database session
         if self._db_session is not None:
             await self._db_session.close()
             self._db_session = None
@@ -277,7 +270,7 @@ class RedisYStore(BaseYStore):
         if self._project_id is None:
             return
 
-        # Try Redis first (live state)
+        # Redis holds the live state.
         try:
             redis_state = await self._redis_client.get(self._redis_key())
             if redis_state:
@@ -287,7 +280,6 @@ class RedisYStore(BaseYStore):
         except Exception as e:
             print(f"[YJS] Error reading from Redis: {e}")
 
-        # Fallback to PostgreSQL (snapshot)
         if self._db_session is None:
             return
 
@@ -299,7 +291,7 @@ class RedisYStore(BaseYStore):
 
             if yjs_state and yjs_state.state:
                 print(f"[YJS] Loaded state from PostgreSQL: {self._path} ({len(yjs_state.state)} bytes)")
-                # Also restore to Redis for future fast access
+                # Restore to Redis so later reads are fast.
                 await self._redis_client.set(self._redis_key(), yjs_state.state)
                 yield (yjs_state.state, b"", time.time())
         except Exception as e:
@@ -315,26 +307,20 @@ class RedisYStore(BaseYStore):
         if self._project_id is None:
             return
 
-        # Apply update to internal doc to build full state
         if self._internal_doc is None:
             self._internal_doc = Doc()
-            # Load existing state first
             async for update, metadata, timestamp in self.read():
                 self._internal_doc.apply_update(update)
 
-        # Apply new update
         self._internal_doc.apply_update(data)
 
-        # Save full document state to Redis immediately
         update_bytes = self._internal_doc.get_update()
         if not update_bytes:
             return
 
         try:
-            # Write to Redis for fast real-time access
             await self._redis_client.set(self._redis_key(), update_bytes)
             self._updates_since_snapshot += 1
-            # Note: No logging here to avoid spam - updates are frequent
         except Exception as e:
             print(f"[YJS] Error writing to Redis: {e}")
     
@@ -353,13 +339,11 @@ class RedisYStore(BaseYStore):
         if not update_bytes:
             return
 
-        # Save to Redis immediately
         try:
             await self._redis_client.set(self._redis_key(), update_bytes)
         except Exception as e:
             print(f"[YJS] Error saving to Redis: {e}")
 
-        # Save to PostgreSQL as well
         if self._db_session is None:
             return
 
@@ -405,7 +389,6 @@ class YjsConnectionManager:
         if self._initialized:
             return
 
-        # Redis client for live state
         self._redis_client = await redis.from_url(
             settings.REDIS_URL,
             encoding="utf-8",
@@ -413,23 +396,19 @@ class YjsConnectionManager:
         )
         print("[YJS] Redis client connected")
 
-        # Database engine and session factory for snapshots
         engine = create_async_engine(settings.DATABASE_URL)
         self._async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         print("[YJS] Database session factory created")
 
-        # Create WebsocketServer - it manages rooms automatically
-        # exception_logger logs errors instead of crashing
+        # Manages rooms automatically; exception_logger logs instead of crashing.
         self._websocket_server = WebsocketServer(
             rooms_ready=True,
             auto_clean_rooms=True,
             exception_handler=exception_logger,
         )
 
-        # Start the server in a background task
-        # WebsocketServer.start() blocks until stop() is called
+        # start() blocks until stop() is called.
         self._server_task = asyncio.create_task(self._websocket_server.start())
-        # Wait for it to be ready
         await self._websocket_server.started.wait()
         print("[YJS] WebsocketServer started")
 
@@ -440,14 +419,12 @@ class YjsConnectionManager:
         print("[YJS] Shutting down...")
 
         if self._websocket_server:
-            # Save all room states before shutting down
             for room_name, room in list(self._websocket_server.rooms.items()):
                 if room.ystore:
                     await room.ystore.encode_state_as_update(room.ydoc)
 
             await self._websocket_server.stop()
 
-        # Cancel the background task
         if self._server_task:
             self._server_task.cancel()
             try:
@@ -455,7 +432,6 @@ class YjsConnectionManager:
             except asyncio.CancelledError:
                 pass
 
-        # Close Redis connection
         if self._redis_client:
             await self._redis_client.close()
             print("[YJS] Redis client closed")
@@ -599,23 +575,17 @@ class YjsConnectionManager:
 
         print(f"[YJS] Client connecting to room: {room_path}")
 
-        # Use a lock to prevent race conditions when creating rooms
         room_lock = await self._get_room_lock(room_path)
         async with room_lock:
-            # Check if room exists, if not we need to set up the ystore
             if room_path not in self._websocket_server.rooms:
-                # Pre-create the room with ystore
                 ystore = self._create_ystore(room_path, context.project_id)
                 room = YRoom(ready=False, ystore=ystore)  # ready=False until we load state
 
-                # Load existing state from PostgreSQL
                 ydoc = room.ydoc
                 await ystore.apply_updates(ydoc)
 
-                # Now mark as ready
                 room.ready = True
 
-                # Add to server's rooms
                 self._websocket_server.rooms[room_path] = room
                 await self._websocket_server.start_room(room)
                 print(f"[YJS] Created room with persistence: {room_path}")
@@ -688,8 +658,7 @@ class YjsConnectionManager:
             )
             return False
 
-        # Create adapter for FastAPI websocket.
-        # The path is used by WebsocketServer to determine the room name.
+        # The path is what WebsocketServer uses to determine the room name.
         ws_adapter = FastAPIWebsocket(
             websocket,
             room_path,
@@ -698,31 +667,24 @@ class YjsConnectionManager:
         )
         
         try:
-            # WebsocketServer.serve handles everything:
-            # - Gets or creates the room based on ws_adapter.path
-            # - Document sync protocol
-            # - Awareness (cursors, selections, presence)
-            # - Broadcasting to all connected clients
-            # - Auto-cleanup when no clients remain
+            # serve() handles the room, the sync protocol, awareness,
+            # broadcasting and cleanup.
             await self._websocket_server.serve(ws_adapter)
         except WebSocketDisconnect:
             pass
         except Exception as e:
             print(f"[YJS] WebSocket error: {e}")
         finally:
-            # Save state when client disconnects
             room_path = f"/{document_id}"
             if room_path in self._websocket_server.rooms:
                 room = self._websocket_server.rooms[room_path]
                 if room.ystore and not room.clients:
-                    # Save state to PostgreSQL when last client leaves
                     await room.ystore.encode_state_as_update(room.ydoc)
                     print(f"[YJS] Saved state on last client disconnect: {room_path}")
             
             print(f"[YJS] Client disconnected from room: {room_path}")
 
 
-# Global manager instance
 manager = YjsConnectionManager()
 
 

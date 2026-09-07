@@ -5,7 +5,6 @@ import type { DecorationSet } from '@codemirror/view'
 import * as Y from 'yjs'
 import type { Comment } from '$lib/types'
 
-// State effects for comment operations
 export const addCommentEffect = StateEffect.define<{
   commentId: string
   from: number
@@ -18,10 +17,8 @@ export const updateCommentsEffect = StateEffect.define<{
   comments: Map<string, { from: number; to: number }>
 }>()
 
-// State effect for setting the active comment
 export const setActiveCommentEffect = StateEffect.define<string | null>()
 
-// State effect for setting the hovered comment (a thread hovered in the panel)
 export const setHoveredCommentEffect = StateEffect.define<string | null>()
 
 // Decoration for highlighted comment ranges. Active and hovered are independent
@@ -42,7 +39,6 @@ const commentMark = (
   })
 }
 
-// State field to track the active comment ID
 export const activeCommentField = StateField.define<string | null>({
   create() {
     return null
@@ -57,7 +53,6 @@ export const activeCommentField = StateField.define<string | null>({
   }
 })
 
-// State field to track the comment hovered in the comments panel
 export const hoveredCommentField = StateField.define<string | null>({
   create() {
     return null
@@ -72,7 +67,6 @@ export const hoveredCommentField = StateField.define<string | null>({
   }
 })
 
-// State field to track comment decorations
 export const commentField = StateField.define<DecorationSet>({
   create() {
     return Decoration.none
@@ -80,9 +74,8 @@ export const commentField = StateField.define<DecorationSet>({
   update(decorations, tr) {
     decorations = decorations.map(tr.changes)
 
-    // Check whether the active or the hovered comment changed. The fields are
-    // updated in the same transaction, so their new values have to be read from
-    // the effects rather than from `tr.state`.
+    // The active/hovered fields update in this same transaction, so their new
+    // values must be read from the effects rather than from `tr.state`.
     let activeChanged = false
     let newActiveId: string | null = tr.startState.field(activeCommentField)
     let hoveredChanged = false
@@ -119,8 +112,7 @@ export const commentField = StateField.define<DecorationSet>({
       }
     }
 
-    // If only the active or hovered comment changed (no other effects), rebuild
-    // the existing decorations with their new classes.
+    // Active/hovered changed alone: rebuild the marks with their new classes.
     if ((activeChanged || hoveredChanged) && !tr.effects.some(e => e.is(updateCommentsEffect))) {
       const iter = decorations.iter()
       const ranges: any[] = []
@@ -139,7 +131,6 @@ export const commentField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f)
 })
 
-// Yjs integration for syncing comment ranges
 export class CommentRangeTracker {
   private yComments: Y.Map<any>
   private yText: Y.Text
@@ -175,27 +166,21 @@ export class CommentRangeTracker {
     this.view = view
     this.rangeCache = new Map()
 
-    // Bind the handler once to avoid issues with unobserve
     this.boundHandleYjsChange = this.handleYjsChange.bind(this)
 
-    // Listen for Yjs changes and update decorations
     this.yComments.observe(this.boundHandleYjsChange)
 
-    // Initialize existing comments
     this.syncFromYjs()
   }
 
-  // Set a callback that will be called when comments change
   onCommentsChange(callback: () => void) {
     this.changeCallback = callback
   }
 
-  // Set a callback that will be called when the document content changes (new lines, edits, etc.)
   onDocChange(callback: () => void) {
     this.docChangeCallback = callback
   }
 
-  // Notify doc change callback with debouncing (called from the update listener extension)
   notifyDocChange() {
     if (this.docChangeCallback) {
       if (this.docChangeTimer) clearTimeout(this.docChangeTimer)
@@ -205,38 +190,32 @@ export class CommentRangeTracker {
     }
   }
 
-  // Set a callback that will be called when a comment highlight is hovered in the editor
   onCommentHover(callback: (commentId: string | null) => void) {
     this.hoverCallback = callback
   }
 
-  // Notify hover callback (called from the hover handler extension)
   notifyCommentHover(commentId: string | null) {
     if (this.hoverCallback) {
       this.hoverCallback(commentId)
     }
   }
 
-  // Set a callback that will be called when a comment highlight is clicked in the editor
   onCommentClick(callback: (commentId: string) => void) {
     this.clickCallback = callback
   }
 
-  // Notify click callback (called from the click handler extension)
   notifyCommentClick(commentId: string) {
     if (this.clickCallback) {
       this.clickCallback(commentId)
     }
   }
 
-  // Set the active comment and update decorations
   setActiveComment(commentId: string | null) {
     this.view.dispatch({
       effects: setActiveCommentEffect.of(commentId)
     })
   }
 
-  // Scroll the editor to show the range of a given comment
   scrollToComment(commentId: string) {
     const range = this.getCommentRange(commentId)
     if (range) {
@@ -249,7 +228,6 @@ export class CommentRangeTracker {
 
   private handleYjsChange(_event: Y.YMapEvent<any>) {
     this.syncFromYjs()
-    // Notify the callback if set
     if (this.changeCallback) {
       this.changeCallback()
     }
@@ -274,10 +252,8 @@ export class CommentRangeTracker {
           comments.set(commentId, { from, to })
         }
 
-        // Update cache
         this.rangeCache.set(commentId, { anchor, head })
 
-        // Update line number in Yjs
         const line = this.view.state.doc.lineAt(from).number
         if (commentData.line !== line) {
           this.yComments.set(commentId, { ...commentData, line })
@@ -285,21 +261,17 @@ export class CommentRangeTracker {
       }
     })
 
-    // Update editor decorations
     this.view.dispatch({
       effects: updateCommentsEffect.of({ comments })
     })
   }
 
   addComment(commentId: string, from: number, to: number, comment: Comment) {
-    // Create relative positions that will adjust as document changes
     const anchor = Y.createRelativePositionFromTypeIndex(this.yText, from)
     const head = Y.createRelativePositionFromTypeIndex(this.yText, to)
 
-    // Get the line number
     const line = this.view.state.doc.lineAt(from).number
 
-    // Store in Yjs (without the selected text)
     this.yComments.set(commentId, {
       anchor: Y.relativePositionToJSON(anchor),
       head: Y.relativePositionToJSON(head),
@@ -313,7 +285,6 @@ export class CommentRangeTracker {
       replies: comment.replies
     })
 
-    // Cache the relative positions
     this.rangeCache.set(commentId, { anchor, head })
   }
 
@@ -388,7 +359,6 @@ export class CommentRangeTracker {
     return null
   }
 
-  // Get the pixel y-position of each comment's start relative to editor content top
   getCommentPositions(): Map<string, number> {
     const positions = new Map<string, number>()
     const scrollDOM = this.view.scrollDOM
@@ -400,7 +370,6 @@ export class CommentRangeTracker {
       if (range) {
         const coords = this.view.coordsAtPos(range.from)
         if (coords) {
-          // Position relative to the top of the scroll content (not viewport)
           const top = coords.top - editorRect.top + scrollTop
           positions.set(commentId, top)
         }
@@ -410,7 +379,6 @@ export class CommentRangeTracker {
     return positions
   }
 
-  // Get the editor scroll DOM element for scroll syncing
   getScrollDOM(): HTMLElement {
     return this.view.scrollDOM
   }
@@ -438,14 +406,12 @@ export class CommentRangeTracker {
   }
 }
 
-// Store a reference to the tracker so the click handler can access it
 let currentTracker: CommentRangeTracker | null = null
 
 export function setCurrentTracker(tracker: CommentRangeTracker | null) {
   currentTracker = tracker
 }
 
-// Hover handler extension for comment highlights
 let lastHoveredCommentId: string | null = null
 const commentHoverHandler = EditorView.domEventHandlers({
   mouseover(event) {
@@ -463,7 +429,7 @@ const commentHoverHandler = EditorView.domEventHandlers({
   mouseout(event) {
     const target = event.target as HTMLElement
     const related = (event as MouseEvent).relatedTarget as HTMLElement | null
-    // Only clear if we're leaving a comment highlight and not entering another one
+    // Only clear when leaving a highlight without entering another.
     if (target.closest('.cm-comment-highlight') && !related?.closest('.cm-comment-highlight')) {
       lastHoveredCommentId = null
       if (currentTracker) {
@@ -474,11 +440,9 @@ const commentHoverHandler = EditorView.domEventHandlers({
   }
 })
 
-// Click handler extension for comment highlights
-// Uses mouseup so it doesn't interfere with text selection
+// mouseup, so it does not interfere with text selection.
 const commentClickHandler = EditorView.domEventHandlers({
   mouseup(event, view) {
-    // Only notify if there was no text selection (i.e. a simple click)
     const selection = view.state.selection.main
     if (selection.from !== selection.to) return false
 
@@ -494,7 +458,6 @@ const commentClickHandler = EditorView.domEventHandlers({
   }
 })
 
-// Update listener that notifies tracker of doc changes
 const docChangeListener = EditorView.updateListener.of((update) => {
   if (update.docChanged || update.geometryChanged) {
     if (currentTracker) {
@@ -503,7 +466,6 @@ const docChangeListener = EditorView.updateListener.of((update) => {
   }
 })
 
-// Extension to add comment functionality to CodeMirror
 export function commentsExtension(): Extension {
   return [
     activeCommentField,

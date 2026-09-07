@@ -1,16 +1,9 @@
 import { writable, type Writable } from "svelte/store";
 
 /**
- * Reader preferences for the editor page.
- *
- * Like the panel geometry in `./layout`, these outlive one project: the context
- * used to own them and had to remember not to reset them in `destroyContext()`.
- * Each keeps the `localStorage` key the old editor already used, so a reader's
- * existing preferences survive this move.
- *
- * `wrapLines` is only *persisted* here. Applying it to the editor — reconfiguring
- * the CodeMirror line-wrapping compartment — stays in the editor context, which
- * subscribes to this store.
+ * Reader preferences for the editor page. Like the panel geometry in `./layout`,
+ * they outlive one project. `wrapLines` is only persisted here; applying it to
+ * the CodeMirror compartment stays in the editor context.
  */
 
 function persistedBoolean(key: string, fallback: boolean): Writable<boolean> {
@@ -21,8 +14,7 @@ function persistedBoolean(key: string, fallback: boolean): Writable<boolean> {
     try {
       localStorage.setItem(key, String(value));
     } catch {
-      // Storage can be unavailable (private mode, quota); the preference is
-      // then simply not remembered across reloads.
+      // Storage can be unavailable (private mode, quota); not remembered then.
     }
   });
 

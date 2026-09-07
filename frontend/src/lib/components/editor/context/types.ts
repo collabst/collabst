@@ -35,11 +35,8 @@ export type EditorState = {
 
 // --- Moved here so that `state.ts` can name them ------------------------------
 //
-// These seven belong, by subject, to the modules that use them: the explorer
-// tree, the search panel, the comment draft, the outline. They live here because
-// `state.ts` declares stores of these types, and `state.ts` may not import from
-// a behaviour module *at all* — see the header comment there for what happens
-// when it does.
+// They belong by subject to the modules that use them, but `state.ts` declares
+// stores of these types and may not import a behaviour module at all.
 
 /** A row in the file explorer: a file or an asset, in tree shape. */
 export type ExplorerNode = FileTreeNode & { kind: "file" | "asset" };

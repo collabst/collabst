@@ -60,10 +60,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    // If error is 401 and we haven't tried to refresh yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         }).then(() => {
@@ -79,7 +77,6 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken')
 
       if (!refreshToken) {
-        // No refresh token, clear storage and reject
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
@@ -87,7 +84,6 @@ api.interceptors.response.use(
       }
 
       try {
-        // Call refresh endpoint
         const formData = new URLSearchParams()
         formData.append('refresh_token', refreshToken)
 
@@ -99,7 +95,6 @@ api.interceptors.response.use(
         const newAccessToken = data.access_token
         const newRefreshToken = data.refresh_token
 
-        // Update tokens in localStorage
         localStorage.setItem('token', newAccessToken)
         localStorage.setItem('refreshToken', newRefreshToken)
         localStorage.setItem('user', JSON.stringify(data.user))
@@ -111,16 +106,13 @@ api.interceptors.response.use(
         // Process queued requests
         processQueue(null, newAccessToken)
 
-        // Retry original request
         return api(originalRequest)
       } catch (refreshError) {
-        // Refresh failed, clear storage and logout
         processQueue(refreshError as Error, null)
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
 
-        // Redirect to login (optional - depends on your app structure)
         if (typeof window !== 'undefined') {
           window.location.href = '/login'
         }
@@ -397,7 +389,6 @@ export const commentsApi = {
 
 // Invitations
 export const invitationsApi = {
-  // Send invitation
   send: async (projectId: string, email: string, role: CollaboratorRole = 'writer'): Promise<Invitation> => {
     const { data } = await api.post<Invitation>(`/projects/${projectId}/invitations`, {
       invitee_email: email,
@@ -406,29 +397,24 @@ export const invitationsApi = {
     return data
   },
 
-  // List pending invitations for current user
   listPending: async (): Promise<Invitation[]> => {
     const { data } = await api.get<Invitation[]>('/projects/invitations/pending')
     return data
   },
 
-  // List invitations for a project
   listForProject: async (projectId: string): Promise<Invitation[]> => {
     const { data } = await api.get<Invitation[]>(`/projects/${projectId}/invitations`)
     return data
   },
 
-  // Accept invitation
   accept: async (invitationId: string): Promise<void> => {
     await api.post(`/projects/invitations/${invitationId}/accept`)
   },
 
-  // Decline invitation
   decline: async (invitationId: string): Promise<void> => {
     await api.post(`/projects/invitations/${invitationId}/decline`)
   },
 
-  // Cancel invitation (owner/admin only)
   cancel: async (projectId: string, invitationId: string): Promise<void> => {
     await api.delete(`/projects/${projectId}/invitations/${invitationId}`)
   },

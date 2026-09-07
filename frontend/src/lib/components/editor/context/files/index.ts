@@ -46,8 +46,7 @@ function writeStoredMainFileId(projectIdValue: string, fileId: string) {
   try {
     localStorage.setItem(`${MAIN_FILE_STORAGE_PREFIX}${projectIdValue}`, fileId);
   } catch {
-    // Storage can be unavailable (private mode, quota); the choice is then
-    // simply not remembered across reloads.
+    // Storage can be unavailable (private mode, quota); not remembered then.
   }
 }
 
@@ -99,17 +98,15 @@ export function selectFile(fileId: string) {
     selectedFile.set(file);
     // Opening a document closes the asset view; the two share the editor panel.
     selectedAsset.set(null);
-    // A file selected from anywhere but the tree — the entry point at init, a
-    // search hit, a diagnostic — has to become visible in it.
+    // A file selected from outside the tree still has to become visible in it.
     expandFolders(getAncestorIds(get(files), fileId));
   }
   void loadCommentsForSelectedFile();
 }
 
-// Resolve the directory part of `path` to the id of an existing folder.
-// `null` means the project root; `undefined` means the path names a folder that
-// does not exist, so the caller must refuse rather than silently create at the
-// root.
+// Resolve the directory part of `path` to an existing folder id. `null` is the
+// project root; `undefined` means the path names a folder that does not exist,
+// so the caller must refuse rather than create at the root.
 export function resolveParentId(path: string): string | null | undefined {
   const lastSlash = path.lastIndexOf("/");
   if (lastSlash <= 0) return null;
@@ -120,12 +117,8 @@ export function resolveParentId(path: string): string | null | undefined {
   return folder ? folder.id : undefined;
 }
 
-// Inline rename is a two-component flow: the panel header creates a node and the
-// tree row that appears for it has to open its editor, so "which node is being
-// renamed" cannot be local state in either of them. It is deliberately *not*
-// cleared when `files` changes: the rename target is created by `newFile()` a
-// moment before the row exists.
-
+// `renamingNodeId` is deliberately not cleared when `files` changes: the rename
+// target is created by `newFile()` a moment before its row exists.
 export async function newFile(path: string) {
   if (!get(canWrite)) return;
 
@@ -146,8 +139,7 @@ export async function newFile(path: string) {
     onFileCreated(createdFile);
     selectedAsset.set(null);
     selectFile(createdFile.id);
-    // The name the caller passed is a placeholder ("newFile.typ"): a freshly
-    // created node opens straight into its inline editor so it can be named.
+    // The caller's name is a placeholder: open the inline editor to name it.
     renamingNodeId.set(createdFile.id);
     if (createdFile.name !== name) {
       notifications.show(`Name already used, created as ${createdFile.name}`, "info");
@@ -176,8 +168,7 @@ export async function newFolder(path: string) {
   }
 
   try {
-    // Deliberately not selected: selecting a folder would steal focus from the
-    // editor for something that has no content to show.
+    // Not selected: a folder has no content to show, so it would steal focus.
     const createdFolder = await filesApi.createFolder($projectId, name, parentId);
     onFileCreated(createdFolder);
     renamingNodeId.set(createdFolder.id);
@@ -271,28 +262,11 @@ export async function deleteAsset(assetId: string) {
 }
 
 
-// --- The explorer tree -------------------------------------------------------
-
-// Files and assets are two tables but one tree on screen: they share the folder
-// rows (an asset's `parent_id` points at a `File` folder), so they have to be
-// merged before the tree is built, not after. `kind` is what the list item needs
-// to know whether clicking it opens a document or an image; everything else is
-// the `File` shape `buildFileTree()` already understands.
-
-/**
- * Keep `mainFile` pointing at a row that still exists.
- *
- * A module-scope subscription until now (`PHASE2.md` §2.2), so it also ran
- * during teardown, when `files.set([])` made it hunt for a replacement entry
- * point in a project that was going away.
- */
+/** Keep `mainFile` pointing at a row that still exists. */
 export function wireMainFile(): Disposer {
-  // The entry point can move under us — a collaborator renames or deletes it, and
-  // the projectSync WS pushes the new list. `mainFile` held the row it was given
-  // at init, so `compile()` kept posting a path the worker no longer has until the
-  // next reload. The stored id is left untouched on the delete path: falling back
-  // to another file is a guess, not a choice the author made, so it should not
-  // overwrite one they did make.
+  // A collaborator can rename or delete the entry point under us. The stored id
+  // is left untouched on the delete path: falling back to another file is a
+  // guess, and should not overwrite a choice the author made.
   return files.subscribe(($files) => {
     const current = get(mainFile);
     if (!current) return;
@@ -300,8 +274,7 @@ export function wireMainFile(): Disposer {
     const updated = $files.find((f) => f.id === current.id && !f.is_folder);
     if (updated) {
       if (updated === current) return;
-      // Same row, new object: a rename or a move changed its path, and the
-      // compiler has to be told which document to build.
+      // Same row, new object: a rename or move changed the path to compile.
       mainFile.set(updated);
       if (updated.path !== current.path) syncFilesAndAssets();
       return;
@@ -309,8 +282,7 @@ export function wireMainFile(): Disposer {
 
     const replacement = resolveMainFile();
     mainFile.set(replacement);
-    // No replacement means the project has no `.typ` file left (or is being torn
-    // down); there is nothing to compile, and `compile()` keeps its own fallback.
+    // No replacement: nothing left to compile, and `compile()` has a fallback.
     if (replacement) syncFilesAndAssets();
   });
 }

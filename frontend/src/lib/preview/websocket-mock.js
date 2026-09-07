@@ -1,27 +1,17 @@
 /**
- * WebSocket Mock for typst-preview-frontend iframe
- *
- * This script is injected into the iframe to intercept WebSocket connections
- * and bridge communication with the parent window using postMessage.
- *
- * The typst-preview-frontend tries to connect to ws://127.0.0.1:23625 but
- * since the parent runs in the browser, it cannot create a WebSocket server.
- * This mock intercepts the WebSocket constructor and uses postMessage instead.
+ * Injected into the preview iframe: typst-preview-frontend connects to
+ * ws://127.0.0.1:23625, which the browser cannot serve, so the WebSocket
+ * constructor is intercepted and bridged to the parent via postMessage.
  */
 
 "use strict";
 
 /** @typedef {"open" | "close" | "message" | "error"} ListenerType */
 
-// Store the original WebSocket constructor
 const OriginalWebSocket = window.WebSocket;
 
-// Track mock WebSocket instances
 const mockInstances = new Set();
 
-/**
- * Mock WebSocket class that bridges communication via postMessage
- */
 class MockWebSocket {
   static CONNECTING = 0;
   static OPEN = 1;
@@ -29,7 +19,6 @@ class MockWebSocket {
   static CLOSED = 3;
 
   /**
-   * MockWebSocket constructor
    * @param {string | URL} url
    * @param {string | string[] | undefined} protocols
    */
@@ -45,7 +34,6 @@ class MockWebSocket {
     this.extensions = "";
     this.protocol = "";
 
-    // Event handlers
     /**
      * @type {((arg0: Event) => void) | null}
      */
@@ -63,7 +51,6 @@ class MockWebSocket {
      */
     this.onerror = null;
 
-    // Event listeners storage
     /**
      * @type {{ open: Array<Function>; close: Array<Function>; message: Array<Function>; error: Array<Function>; }}
      */
@@ -74,10 +61,8 @@ class MockWebSocket {
       error: [],
     };
 
-    // Register this instance
     mockInstances.add(this);
 
-    // Notify parent that iframe wants to connect
     window.parent.postMessage(
       {
         type: "typst-ws-connect",
@@ -86,8 +71,7 @@ class MockWebSocket {
       "*"
     );
 
-    // Simulate connection opening after a brief delay
-    // This allows the parent to set up listeners
+    // Delay the open so the parent can set up its listeners first.
     setTimeout(() => {
       if (this.readyState === MockWebSocket.CONNECTING) {
         this._handleOpen();
@@ -98,7 +82,7 @@ class MockWebSocket {
   _handleOpen() {
     this.readyState = MockWebSocket.OPEN;
     const event = new Event("open");
-    // Set target to this WebSocket instance (needed by RxJS WebSocketSubject)
+    // RxJS's WebSocketSubject reads event.target.
     Object.defineProperty(event, "target", { value: this, writable: false });
     if (this.onopen) this.onopen(event);
     this._listeners.open.forEach((cb) => cb(event));
@@ -124,7 +108,6 @@ class MockWebSocket {
 
     let messageData = data;
 
-    // Handle binary data conversion based on binaryType
     if (data instanceof ArrayBuffer) {
       if (this.binaryType === "blob") {
         messageData = new Blob([data]);
@@ -159,8 +142,6 @@ class MockWebSocket {
       throw new DOMException("WebSocket is not open", "InvalidStateError");
     }
 
-    // Forward message to parent via postMessage
-    // Handle different data types
     if (data instanceof ArrayBuffer) {
       window.parent.postMessage(
         {
@@ -171,7 +152,6 @@ class MockWebSocket {
         [data]
       );
     } else if (data instanceof Blob) {
-      // Convert Blob to ArrayBuffer and send
       data.arrayBuffer().then((buffer) => {
         window.parent.postMessage(
           {
@@ -183,7 +163,6 @@ class MockWebSocket {
         );
       });
     } else {
-      // String data
       window.parent.postMessage(
         {
           type: "typst-ws-send",
@@ -204,7 +183,6 @@ class MockWebSocket {
 
     this.readyState = MockWebSocket.CLOSING;
 
-    // Notify parent
     window.parent.postMessage(
       {
         type: "typst-ws-close",
@@ -214,7 +192,6 @@ class MockWebSocket {
       "*"
     );
 
-    // Complete close
     setTimeout(() => this._handleClose(code, reason), 0);
   }
 
@@ -255,27 +232,22 @@ class MockWebSocket {
   }
 }
 
-// Copy static constants
 MockWebSocket.CONNECTING = 0;
 MockWebSocket.OPEN = 1;
 MockWebSocket.CLOSING = 2;
 MockWebSocket.CLOSED = 3;
 
-// Listen for messages from parent
 window.addEventListener("message", function (event) {
-  // Security: In production, verify event.origin
   const { type, data, code, reason } = event.data || {};
 
   switch (type) {
     case "typst-ws-message":
-      // Forward message to all mock WebSocket instances
       mockInstances.forEach((ws) => {
         ws._handleMessage(data);
       });
       break;
 
     case "typst-ws-server-close":
-      // Server requested close
       mockInstances.forEach((ws) => {
         ws._handleClose(code || 1000, reason || "");
       });
@@ -288,36 +260,30 @@ window.addEventListener("message", function (event) {
       break;
 
     default:
-      // Ignore other messages
       break;
   }
 });
 
-// Replace global WebSocket with mock
-// Only intercept connections to the typst preview server
+// Only connections to the typst preview server are mocked.
 window.WebSocket = function (
   /** @type {string | URL} */ url,
   /** @type {string | string[] | undefined} */ protocols=undefined,
 ) {
-  // Check if this is the typst preview WebSocket URL
   if (url instanceof URL) {
     url = url.toString();
   }
   if (url.includes("127.0.0.1:23625") || url.includes("localhost:23625")) {
     return new MockWebSocket(url, protocols);
   }
-  // For other WebSocket connections, use the original
   console.warn(
     `[WebSocket Mock] WebSocket connection not requesting local typst preview server, using original WebSocket: ${url}`
   );
   return new OriginalWebSocket(url, protocols);
 };
 
-// Copy static properties
 window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
 window.WebSocket.OPEN = OriginalWebSocket.OPEN;
 window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
 window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
 
-// Notify parent that mock is ready
 window.parent.postMessage({ type: "typst-ws-mock-ready" }, "*");

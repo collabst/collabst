@@ -1,10 +1,8 @@
 <script lang="ts">
   interface Props {
     /**
-     * Called during a drag with the horizontal delta since it started, plus the
-     * widths the two neighbouring panels had at that moment. The handle sits
-     * between them, so it is the one place those are cheap to measure — the
-     * caller never has to reason about gaps or padding.
+     * Called during a drag with the horizontal delta since it started and the
+     * widths the two neighbouring panels had at that moment.
      */
     onresize: (deltaX: number, startBefore: number, startAfter: number) => void;
     ariaLabel: string;
@@ -27,8 +25,7 @@
     dragging = true;
     startX = event.clientX;
     measure();
-    // Pointer capture keeps the moves coming even when the cursor outruns the
-    // handle, which is what the old drag-overlay div was working around.
+    // Pointer capture keeps the moves coming when the cursor outruns the handle.
     element?.setPointerCapture(event.pointerId);
     event.preventDefault();
   }

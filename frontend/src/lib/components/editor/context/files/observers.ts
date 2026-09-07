@@ -13,11 +13,8 @@ import * as Y from "yjs";
  */
 
 let fileObservers = new Map<string, () => void>();
-// The document the observers in `fileObservers` are attached to. Keying them by
-// file id alone was not enough: `initContext` and
-// `resetRealtimeConnectionsForWriteLoss` both swap the `Y.Doc` out from under
-// them, and because the ids do not change, no observer was ever re-attached to
-// the new document — edits went unnoticed and the preview stopped recompiling.
+// The document the observers are attached to: file ids alone are not enough,
+// since the `Y.Doc` can be swapped out under them without any id changing.
 let observedYdoc: Y.Doc | null = null;
 
 export function clearFileObservers() {
@@ -39,7 +36,6 @@ export function syncFileObservers() {
 
   const filesValue = get(files);
 
-  // Clean up observers for deleted files
   for (const [fileId, unobserve] of fileObservers) {
     if (!filesValue.find((file) => file.id === fileId)) {
       unobserve();
@@ -47,20 +43,14 @@ export function syncFileObservers() {
     }
   }
 
-  // Set up observers for new files
   for (const file of filesValue) {
     if (!fileObservers.has(file.id)) {
       const ytext = getFileText(ydocValue, file.id);
       if (ytext) {
-        // Yjs fires `observe` handlers synchronously, and for a local edit that
-        // happens from inside yCollab's own CodeMirror `ViewPlugin.update()` —
-        // i.e. while `view.dispatch()` for the keystroke is still on the call
-        // stack. `updateSearchMatches()` can reach `updateMatchHighlights()`,
-        // which calls `view.dispatch()` again; CodeMirror throws ("Calls to
-        // EditorView.update are not allowed while an update is in progress"),
-        // and its plugin error boundary disables yCollab for the view — after
-        // that, local edits stop reaching Yjs entirely. Deferring past the
-        // current call stack lets the in-flight dispatch finish first.
+        // Yjs fires observers synchronously, for a local edit from inside
+        // yCollab's own `ViewPlugin.update()`. Dispatching again from there
+        // throws and makes CodeMirror disable yCollab for the view, so the
+        // work that dispatches is deferred past the in-flight update.
         const handler = () => {
           syncFilesAndAssets();
           setTimeout(updateSearchMatches, 0);
@@ -73,22 +63,7 @@ export function syncFileObservers() {
   }
 }
 
-/**
- * Wire the file tree to the document.
- *
- * Three subscriptions that used to sit at module scope and never come down
- * (`PHASE2.md` §2.2): the main-file tracker, the asset viewer, and the pair
- * that keeps the Yjs text observers in step with the file list. The last is
- * why teardown needed a generation counter — `files.set([])` re-entered
- * `syncFileObservers` against a document that was being destroyed.
- */
-
-/**
- * Keep the observers in step with the file list and the document they belong
- * to. Both used to be module-scope subscriptions, which is why teardown needed
- * a generation counter: `files.set([])` re-entered `syncFileObservers()`
- * against a document that was being destroyed.
- */
+/** Keep the observers in step with the file list and the document they belong to. */
 export function wireFileObservers(): Disposer {
   const disposers = [
     files.subscribe(syncFileObservers),
