@@ -4,11 +4,12 @@
 
   interface Props {
     children: Snippet;
-    onclick?: () => void;
+    onclick?: (event: MouseEvent) => void;
     strokeWidth?: number;
     size?: number;
     width?: string;
     selected?: boolean;
+    title?: string;
   }
 
   let {
@@ -18,12 +19,14 @@
     size = 24,
     width = "2.6rem",
     selected = false,
+    title,
   }: Props = $props();
 </script>
 
 <BaseButton
   class="navbar-button {selected ? 'selected' : ''}"
   {onclick}
+  {title}
   style="--stroke-width: {strokeWidth}; --icon-size: {size}px; --width: {width};"
 >
   {@render children()}

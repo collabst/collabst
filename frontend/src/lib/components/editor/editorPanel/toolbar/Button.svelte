@@ -4,7 +4,7 @@
 
   interface Props {
     children: Snippet;
-    onclick?: () => void;
+    onclick?: (event: MouseEvent) => void;
     strokeWidth?: number;
     size?: number;
     class?: string;

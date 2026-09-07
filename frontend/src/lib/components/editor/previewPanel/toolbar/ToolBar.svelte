@@ -4,6 +4,10 @@
   import Separator from "./Separator.svelte";
   import Status from "./Status.svelte";
   import Zoom from "./Zoom.svelte";
+  import OverflowBar, {
+    type OverflowItem,
+  } from "$lib/components/ui/OverflowBar.svelte";
+  import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import Minus from "@lucide/svelte/icons/minus";
   import Plus from "@lucide/svelte/icons/plus";
   import Columns2 from "@lucide/svelte/icons/columns-2";
@@ -15,28 +19,71 @@
     zoomIn,
     zoomOut,
   } from "$lib/components/editor/context";
+
+  // Zoom stays longest: the status line and the window controls are the ones a
+  // narrow preview can do without first.
+  const controls: OverflowItem[] = $derived([
+    { render: zoomOutControl, label: "Zoom out" },
+    { render: zoomControl, label: "Zoom", submenu: true },
+    { render: zoomInControl, label: "Zoom in" },
+    { render: separator, separator: true },
+    { render: statusControl },
+    { render: separator, separator: true },
+    { render: exportControl, label: "Export", submenu: true },
+    { render: separator, separator: true },
+    {
+      render: windowControl,
+      label: $separatePreviewOpen
+        ? "Back to split view"
+        : "Open in a separate window",
+    },
+  ]);
 </script>
 
+{#snippet separator()}
+  <Separator />
+{/snippet}
+
+{#snippet zoomOutControl()}
+  <Button onclick={zoomOut} title="Zoom out"><Minus /></Button>
+{/snippet}
+
+{#snippet zoomControl()}
+  <Zoom />
+{/snippet}
+
+{#snippet zoomInControl()}
+  <Button onclick={zoomIn} title="Zoom in"><Plus /></Button>
+{/snippet}
+
+{#snippet statusControl()}
+  <Status />
+{/snippet}
+
+{#snippet exportControl()}
+  <Export />
+{/snippet}
+
+{#snippet windowControl()}
+  {#if $separatePreviewOpen}
+    <Button onclick={closeSeparatePreview} title="Back to split view">
+      <Columns2 />
+    </Button>
+  {:else}
+    <Button onclick={openSeparatePreview} title="Open in a separate window">
+      <ExternalLink />
+    </Button>
+  {/if}
+{/snippet}
+
+{#snippet more({ onclick }: { onclick: (e: MouseEvent) => void })}
+  <Button {onclick} title="More options">
+    <Ellipsis />
+  </Button>
+{/snippet}
+
 <div class="container">
-  <div class="tool-bar">
-    <Button onclick={zoomOut}><Minus /></Button>
-    <Zoom />
-    <Button onclick={zoomIn}><Plus /></Button>
-    <Separator />
-    <Status />
-    <Separator />
-    <Export />
-    <Separator />
-    {#if $separatePreviewOpen}
-      <Button onclick={closeSeparatePreview} title="Back to split view">
-        <Columns2 />
-      </Button>
-    {:else}
-      <Button onclick={openSeparatePreview} title="Open in a separate window">
-        <ExternalLink />
-      </Button>
-    {/if}
-  </div>
+  <OverflowBar class="preview-tool-bar" items={controls} {more} />
 </div>
 
 <style>
@@ -49,8 +96,8 @@
     width: 100%;
   }
 
-  .tool-bar {
-    display: flex;
+  /* `OverflowBar` owns the element; see the note on `.nav-bar`. */
+  :global(.overflow-bar.preview-tool-bar) {
     align-items: center;
     background-color: var(--bg-primary);
     padding: 0.2rem 0.35rem;
