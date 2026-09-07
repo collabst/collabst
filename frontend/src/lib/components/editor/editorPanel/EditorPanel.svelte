@@ -4,11 +4,16 @@
   import Editor from "$lib/components/editor/editorPanel/Editor.svelte";
   import Find from "$lib/components/editor/editorPanel/Find.svelte";
   import { findOpen, selectedAsset } from "$lib/components/editor/context";
-  import { editorPreviewRatio } from "$lib/stores/layout";
+  import { MIN_EDITOR_WIDTH } from "$lib/stores/layout";
   import { showToolbar } from "$lib/stores/preferences";
 </script>
 
-<Panel sizeWeight={$editorPreviewRatio}>
+<!--
+  The row's elastic column: it takes whatever the side panel and the preview
+  leave, so it is the one that moves when either handle is dragged, and it is
+  the whole width when the preview is popped out.
+-->
+<Panel minWidth={MIN_EDITOR_WIDTH}>
   <div class="container">
     <Editor />
     {#if !$selectedAsset}

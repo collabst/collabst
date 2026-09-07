@@ -5,12 +5,13 @@
   interface Props {
     children: Snippet;
     onclick?: () => void;
+    title?: string;
   }
 
-  let { children, onclick }: Props = $props();
+  let { children, onclick, title }: Props = $props();
 </script>
 
-<Button class="top-button" {onclick}>
+<Button class="top-button" {onclick} {title} ariaLabel={title}>
   {@render children()}
 </Button>
 

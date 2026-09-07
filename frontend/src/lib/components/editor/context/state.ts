@@ -45,6 +45,11 @@ export const previewStatus = writable<"idle" | "compiling" | "ready" | "error">(
 
 /** Whether the preview currently lives in its own window. */
 export const separatePreviewOpen = writable(false);
+/**
+ * The popup's root element while the preview lives there, so the toolbar can be
+ * mounted into that document; `null` whenever the preview is in the split view.
+ */
+export const separatePreviewHost = writable<HTMLElement | null>(null);
 
 export const currentZoomValue = writable(1);
 export const currentZoomMode = writable('custom');
@@ -145,6 +150,7 @@ export function resetState() {
   compileStatus.set("");
   previewStatus.set("idle");
   separatePreviewOpen.set(false);
+  separatePreviewHost.set(null);
 
   // Search
   searchText.set("");

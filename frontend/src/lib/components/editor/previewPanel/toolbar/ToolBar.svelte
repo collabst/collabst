@@ -42,7 +42,6 @@
 <style>
   .container {
     position: absolute;
-    /* Above the separate-window overlay, which covers the idle iframe. */
     z-index: 3;
     display: flex;
     align-items: center;

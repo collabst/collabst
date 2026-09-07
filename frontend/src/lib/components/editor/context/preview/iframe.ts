@@ -19,6 +19,9 @@ import { get } from "svelte/store";
 let iframeMockReady = false;
 let isPreviewZoomInitialized = false;
 let initialized = false;
+// A frame that has just come up applies its own default zoom, which is not the
+// one the reader left the preview at when the surface changed underneath them.
+let pendingZoomReapply = false;
 
 /** The window the artifact stream and the zoom commands are aimed at. */
 function activePreviewWindow(): Window | null {
@@ -90,6 +93,15 @@ export function fitToPage() {
   sendCommandToIframe('fit-page');
 }
 
+/**
+ * Push the reader's zoom onto the next frame that reports itself ready. Called
+ * when the preview moves between the split view and its own window, each of
+ * which mounts a frame that would otherwise start at its own default.
+ */
+export function requestZoomReapplyOnNextInit() {
+  pendingZoomReapply = true;
+}
+
 export function reapplyCurrentZoomMode() {
   const $currentZoomMode = get(currentZoomMode);
   switch ($currentZoomMode) {
@@ -159,6 +171,10 @@ export function handleIframeMessage(event: MessageEvent) {
 
     case 'typst-zoom-initialized':
       isPreviewZoomInitialized = true;
+      if (pendingZoomReapply) {
+        pendingZoomReapply = false;
+        reapplyCurrentZoomMode();
+      }
       break;
   }
 }
@@ -181,6 +197,7 @@ export function resetIframeBridge() {
   iframeMockReady = false;
   initialized = false;
   isPreviewZoomInitialized = false;
+  pendingZoomReapply = false;
 }
 
 export { sendVectorDataToIframe };

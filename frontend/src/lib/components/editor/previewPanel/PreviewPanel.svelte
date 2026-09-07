@@ -1,12 +1,15 @@
 <script lang="ts">
   import Panel from "$lib/components/editor/Panel.svelte";
   import { previewIframe } from "$lib/components/editor/context";
-  import { editorPreviewRatio } from "$lib/stores/layout";
+  import { MIN_PREVIEW_WIDTH, previewWidth } from "$lib/stores/layout";
   import ToolBar from "./toolbar/ToolBar.svelte";
-  import SeparateOverlay from "./SeparateOverlay.svelte";
 </script>
 
-<Panel sizeWeight={1 - $editorPreviewRatio}>
+<!--
+  Mounted only in the split view: while the preview is popped out this whole
+  column goes away, and the popup renders `ToolBar` over its own frame instead.
+-->
+<Panel width={$previewWidth} shrinkable minWidth={MIN_PREVIEW_WIDTH}>
   <div class="container">
     <ToolBar />
     <iframe
@@ -17,7 +20,6 @@
       src="/typst-preview"
     >
     </iframe>
-    <SeparateOverlay />
   </div>
 </Panel>
 

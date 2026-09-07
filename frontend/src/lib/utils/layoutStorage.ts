@@ -4,8 +4,8 @@ interface LayoutState {
     leftPanelVisible: boolean;
     leftPanelWidth: number;
 
-    // Editor width / total width.
-    editorPreviewRatio: number;
+    // The preview is a column of a set width; the editor takes what is left.
+    previewWidth: number;
 
     zoomMode: 'fit-width' | 'fit-height' | 'fit-page' | 'custom';
     zoomScale: number;
@@ -16,7 +16,7 @@ const STORAGE_KEY = 'editor.layoutState';
 const DEFAULT_LAYOUT: LayoutState = {
     leftPanelVisible: true,
     leftPanelWidth: 250,
-    editorPreviewRatio: 0.6, // 60% editor, 40% preview
+    previewWidth: 480,
     zoomMode: 'custom',
     zoomScale: 1,
 };

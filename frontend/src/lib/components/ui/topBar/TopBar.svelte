@@ -5,6 +5,7 @@
   import ProjectName from "./ProjectName.svelte";
   import Breadcrumb from "./Breadcrumb.svelte";
   import ThemeToggle from "./ThemeToggle.svelte";
+  import SplitViewButton from "./SplitViewButton.svelte";
   import AwarenessIndicator from "./AwarenessIndicator.svelte";
   import ShareButton from "./ShareButton.svelte";
   import SettingsButton from "./SettingsButton.svelte";
@@ -25,6 +26,7 @@
 
   <div class="right-section">
     <AwarenessIndicator />
+    <SplitViewButton />
     <ShareButton />
     <ThemeToggle />
     <SettingsButton />

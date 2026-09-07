@@ -3,16 +3,33 @@
   import LeftPanel from "$lib/components/editor/leftPanel/LeftPanel.svelte";
   import EditorPanel from "$lib/components/editor/editorPanel/EditorPanel.svelte";
   import PreviewPanel from "$lib/components/editor/previewPanel/PreviewPanel.svelte";
+  import SeparateWindow from "$lib/components/editor/previewPanel/SeparateWindow.svelte";
   import ResizeHandle from "$lib/components/editor/ResizeHandle.svelte";
   import CollapsedBar from "$lib/components/editor/leftPanel/CollapsedBar.svelte";
+  import { separatePreviewOpen } from "$lib/components/editor/context";
   import {
+    MIN_EDITOR_WIDTH,
     leftPanelVisible,
-    setEditorPreviewRatio,
     setLeftPanelWidth,
+    setPreviewWidth,
   } from "$lib/stores/layout";
 
-  function resizeLeftPanel(deltaX: number, startBefore: number) {
-    setLeftPanelWidth(startBefore + deltaX);
+  /**
+   * Both handles resize the panel beside them and leave the other one alone:
+   * the editor between them is elastic, so it is what gives and takes. Each
+   * drag is therefore capped at the point where the editor would run out —
+   * `startBefore + startAfter` is the width the two panels either side of the
+   * handle have between them, and the editor is one of the two.
+   */
+
+  function resizeLeftPanel(
+    deltaX: number,
+    startBefore: number,
+    startAfter: number,
+  ) {
+    setLeftPanelWidth(
+      Math.min(startBefore + deltaX, startBefore + startAfter - MIN_EDITOR_WIDTH),
+    );
   }
 
   function resizeEditorPreview(
@@ -20,9 +37,11 @@
     startBefore: number,
     startAfter: number,
   ) {
-    const total = startBefore + startAfter;
-    if (total <= 0) return;
-    setEditorPreviewRatio((startBefore + deltaX) / total);
+    // Dragging right widens the editor at the preview's expense, so the delta
+    // comes off the preview rather than onto it.
+    setPreviewWidth(
+      Math.min(startAfter - deltaX, startBefore + startAfter - MIN_EDITOR_WIDTH),
+    );
   }
 </script>
 
@@ -36,13 +55,22 @@
       <CollapsedBar />
     {/if}
     <EditorPanel />
-    <ResizeHandle
-      onresize={resizeEditorPreview}
-      ariaLabel="Resize the editor and preview"
-    />
-    <PreviewPanel />
+    <!--
+      Popped out, the preview owns its own window, so the split view gives the
+      whole width back to the editor rather than holding an empty column. The
+      way back is the top bar's split-view button.
+    -->
+    {#if !$separatePreviewOpen}
+      <ResizeHandle
+        onresize={resizeEditorPreview}
+        ariaLabel="Resize the editor and preview"
+      />
+      <PreviewPanel />
+    {/if}
   </div>
 </div>
+
+<SeparateWindow />
 
 <style>
   .main {

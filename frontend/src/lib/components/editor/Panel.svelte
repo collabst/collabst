@@ -3,19 +3,37 @@
 
   interface Props {
     children: Snippet;
-    sizeWeight?: number;
-    /** Fixed width in pixels. When set, the panel is a column, not a flex share. */
+    /**
+     * Fixed width in pixels. Without it the panel is the row's elastic column:
+     * the one that absorbs whatever the fixed ones beside it leave over.
+     */
     width?: number;
+    /**
+     * Whether a fixed-width column gives width back when the row runs out of it.
+     * The elastic column stops at its own `minWidth`, so without this the row
+     * would simply overflow instead.
+     */
+    shrinkable?: boolean;
+    /** The width the panel will not go below, in pixels. */
+    minWidth?: number;
   }
 
-  let { children, sizeWeight = 1, width }: Props = $props();
+  let { children, width, shrinkable = false, minWidth = 0 }: Props = $props();
+
+  // A `flex-basis` of 0 on the elastic column is what makes the two handles
+  // independent: with no basis to share out proportionally, both growth and
+  // shrinkage land on this one panel and the fixed columns keep the width they
+  // were given.
+  let flex = $derived(
+    width === undefined ? "1 1 0" : `0 ${shrinkable ? 1 : 0} auto`,
+  );
 </script>
 
 <div
   class="panel"
-  style={width === undefined
-    ? `flex: ${sizeWeight};`
-    : `flex: none; width: ${width}px;`}
+  style="flex: {flex}; min-width: {minWidth}px;{width === undefined
+    ? ''
+    : ` width: ${width}px;`}"
 >
   {@render children()}
 </div>
@@ -26,6 +44,5 @@
     border-radius: 1rem;
     overflow: hidden;
     height: 100%;
-    min-width: 0;
   }
 </style>

@@ -9,20 +9,24 @@
   import FileIcon from "@lucide/svelte/icons/file";
   import ZoomDropdown from "./ZoomDropdown.svelte";
 
+  let element: HTMLDivElement | undefined = $state();
   let dropdownOpen = $state(false);
 
   function handleClick(e: MouseEvent) {
     dropdownOpen = !dropdownOpen;
+    // Whichever document the toolbar was mounted into: in the separate preview
+    // window it is not the one `window` refers to.
+    const view = element?.ownerDocument.defaultView ?? window;
     if (dropdownOpen) {
       e.stopPropagation();
-      window.addEventListener("click", handleClick);
+      view.addEventListener("click", handleClick);
     } else {
-      window.removeEventListener("click", handleClick);
+      view.removeEventListener("click", handleClick);
     }
   }
 </script>
 
-<div class="zoom">
+<div class="zoom" bind:this={element}>
   <Button onclick={handleClick}>
     {#if $currentZoomMode === "custom"}
       {($currentZoomValue * 100).toFixed(0)}%
