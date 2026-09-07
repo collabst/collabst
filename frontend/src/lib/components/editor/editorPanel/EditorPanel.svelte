@@ -3,12 +3,9 @@
   import ToolBar from "$lib/components/editor/editorPanel/toolbar/ToolBar.svelte";
   import Editor from "$lib/components/editor/editorPanel/Editor.svelte";
   import Find from "$lib/components/editor/editorPanel/Find.svelte";
-  import {
-    editorPreviewRatio,
-    findOpen,
-    selectedAsset,
-    showToolbar,
-  } from "$lib/components/editor/context";
+  import { findOpen, selectedAsset } from "$lib/components/editor/context";
+  import { editorPreviewRatio } from "$lib/stores/layout";
+  import { showToolbar } from "$lib/stores/preferences";
 </script>
 
 <Panel sizeWeight={$editorPreviewRatio}>

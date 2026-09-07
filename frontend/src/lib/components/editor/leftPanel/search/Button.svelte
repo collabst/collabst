@@ -1,5 +1,6 @@
 <script lang="ts">
   import { type Snippet } from "svelte";
+  import BaseButton from "../../../ui/Button.svelte";
 
   interface Props {
     children: Snippet;
@@ -11,44 +12,41 @@
   let { children, onclick, selected = false, class: className = "" }: Props = $props();
 </script>
 
-<button class="button {className}" class:selected {onclick}>
+<BaseButton
+  class="search-button {className} {selected ? 'selected' : ''}"
+  {onclick}
+>
   {@render children()}
-</button>
+</BaseButton>
 
 <style>
-  .button {
-    background: none;
-    border: none;
+  :global(.ui-button.search-button) {
     padding: 0.25rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     color: var(--text-secondary);
     border-radius: 5px;
   }
 
-  .button :global(svg) {
+  :global(.ui-button.search-button svg) {
     stroke-width: 2;
     width: 16px;
     height: 16px;
   }
 
-  .button:hover {
+  :global(.ui-button.search-button:hover) {
     color: var(--text-active);
   }
 
-  .button:hover :global(svg) {
+  :global(.ui-button.search-button:hover svg) {
     stroke-width: 2.4;
     transform: scale(1.05);
   }
 
-  .button:active :global(svg) {
+  :global(.ui-button.search-button:active svg) {
     transform: scaleY(0.9) scaleX(1.2);
   }
 
-  .button:active :global(svg),
-  .button.selected :global(svg) {
+  :global(.ui-button.search-button:active svg),
+  :global(.ui-button.search-button.selected svg) {
     stroke-width: 2.4;
     color: var(--color-primary-500);
   }

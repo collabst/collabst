@@ -9,8 +9,8 @@
     leftPanelTab,
     type LeftPanelTab,
     cycleLeftPanelTab,
-    toggleLeftPanel,
   } from "$lib/components/editor/context/index";
+  import { toggleLeftPanel } from "$lib/stores/layout";
 
   // Clicking the tab that is already showing collapses the panel — the same
   // toggle the old activity bar had.
@@ -31,30 +31,35 @@
 <div class="container">
   <div class="nav-bar" onwheel={handleNavWheel}>
     <Button
-      icon={File}
       onclick={() => handleTabClick("files")}
       selected={$leftPanelTab === "files"}
-    />
+    >
+      <File />
+    </Button>
     <Button
-      icon={Search}
       onclick={() => handleTabClick("search")}
       selected={$leftPanelTab === "search"}
-    />
+    >
+      <Search />
+    </Button>
     <Button
-      icon={Map}
       onclick={() => handleTabClick("outline")}
       selected={$leftPanelTab === "outline"}
-    />
+    >
+      <Map />
+    </Button>
     <Button
-      icon={TriangleAlert}
       onclick={() => handleTabClick("issues")}
       selected={$leftPanelTab === "issues"}
-    />
+    >
+      <TriangleAlert />
+    </Button>
     <Button
-      icon={MessageSquareText}
       onclick={() => handleTabClick("comments")}
       selected={$leftPanelTab === "comments"}
-    />
+    >
+      <MessageSquareText />
+    </Button>
   </div>
 </div>
 

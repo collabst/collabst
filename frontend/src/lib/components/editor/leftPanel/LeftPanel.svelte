@@ -2,7 +2,7 @@
   import Panel from "$lib/components/editor/Panel.svelte";
   import NavBar from "./navBar/NavBar.svelte";
   import Content from "./Content.svelte";
-  import { leftPanelWidth } from "$lib/components/editor/context";
+  import { leftPanelWidth } from "$lib/stores/layout";
 </script>
 
 <Panel width={$leftPanelWidth}>

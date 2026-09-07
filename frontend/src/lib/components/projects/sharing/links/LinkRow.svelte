@@ -28,11 +28,12 @@
   {#if link}
     <input class="url" readonly value={absoluteShareUrl(link.url)} />
     <IconButton
-      icon={Copy}
       label="Copy link"
       size={15}
       onclick={() => void copyShareLink(link.url)}
-    />
+    >
+      <Copy />
+    </IconButton>
     {#if $canManageSharing}
       <Button
         variant="danger"

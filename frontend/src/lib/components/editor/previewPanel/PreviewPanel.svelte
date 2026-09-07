@@ -1,9 +1,7 @@
 <script lang="ts">
   import Panel from "$lib/components/editor/Panel.svelte";
-  import {
-    editorPreviewRatio,
-    previewIframe,
-  } from "$lib/components/editor/context";
+  import { previewIframe } from "$lib/components/editor/context";
+  import { editorPreviewRatio } from "$lib/stores/layout";
   import ToolBar from "./toolbar/ToolBar.svelte";
   import SeparateOverlay from "./SeparateOverlay.svelte";
 </script>

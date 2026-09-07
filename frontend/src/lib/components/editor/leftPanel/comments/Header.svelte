@@ -1,9 +1,9 @@
 <script lang="ts">
+  import { comments } from "$lib/components/editor/context";
   import {
-    comments,
     showResolvedComments,
     toggleShowResolvedComments,
-  } from "$lib/components/editor/context";
+  } from "$lib/stores/preferences";
   import Button from "../Button.svelte";
   import Eye from "@lucide/svelte/icons/eye";
   import EyeOff from "@lucide/svelte/icons/eye-off";

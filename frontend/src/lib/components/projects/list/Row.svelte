@@ -33,28 +33,32 @@
 
   <div class="cell actions-cell">
     <div class="actions">
-      <IconButton icon={Play} label="Open" href="/editor/{project.id}" />
+      <IconButton label="Open" href="/editor/{project.id}">
+        <Play />
+      </IconButton>
       {#if project.current_user_role === "owner" || project.current_user_role === "admin"}
         <IconButton
-          icon={UserPlus}
           label="Share"
           tone="positive"
           onclick={(e) => {
             e.stopPropagation();
             openShareDialog(project);
           }}
-        />
+        >
+          <UserPlus />
+        </IconButton>
       {/if}
       {#if project.current_user_role === "owner"}
         <IconButton
-          icon={Trash2}
           label="Delete"
           tone="danger"
           onclick={(e) => {
             e.stopPropagation();
             requestDeletion(project);
           }}
-        />
+        >
+          <Trash2 />
+        </IconButton>
       {/if}
     </div>
   </div>

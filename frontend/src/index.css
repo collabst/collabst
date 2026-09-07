@@ -99,3 +99,68 @@ a:hover {
   overflow: auto;
   overflow-clip-margin: 0;
 }
+/*
+  Button animations.
+
+  These used to be declared three times over inside individual button
+  components (`jumpAnimation` in `ui/topBar/TopButton` and
+  `projects/IconButton`, `iconJumpAnimation` in `editor/leftPanel/navBar/Button`)
+  with drifted numbers. `icon-jump` is the reconciled version, using the
+  values the two `jumpAnimation` copies agreed on.
+*/
+@keyframes icon-jump {
+  0% {
+    transform: translateY(-3px) scaleX(0.8) scaleY(1.2);
+  }
+  80% {
+    transform: translateY(1px) scaleX(1.2) scaleY(0.95);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* The taller variant the theme toggle plays. */
+@keyframes icon-jump-big {
+  0% {
+    transform: translateY(-8px) scaleX(0.8) scaleY(1.1);
+  }
+  80% {
+    transform: translateY(1px) scaleX(1.2) scaleY(0.95);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* The delayed variant the nav bar plays when a tab becomes selected. */
+@keyframes icon-jump-delayed {
+  55% {
+    transform: translateY(-8px) scaleX(0.8) scaleY(1.1);
+  }
+  95% {
+    transform: translateY(1px) scaleX(1.2) scaleY(0.95);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* The nav bar's tab itself rising out of the bar as it is selected. */
+@keyframes nav-button-jump {
+  0% {
+    height: var(--width);
+    margin-top: 0px;
+  }
+  10% {
+    height: calc(var(--width) + 8px);
+    margin-top: -8px;
+    box-shadow: inset 0px -8px 0px 0px var(--navbar-shadow);
+    transform: scaleY(1.1) scaleX(0.9);
+  }
+  100% {
+    height: calc(var(--width) + 2px);
+    margin-top: -2px;
+    box-shadow: inset 0px -4px 0px 0px var(--navbar-shadow);
+  }
+}

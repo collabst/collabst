@@ -3,9 +3,9 @@
     cancelNewComment,
     commentDraft,
     comments,
-    showResolvedComments,
     submitNewComment,
   } from "$lib/components/editor/context";
+  import { showResolvedComments } from "$lib/stores/preferences";
   import CommentThread from "./thread/Thread.svelte";
 
   let visibleComments = $derived(

@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { Component } from "svelte";
+  import type { Snippet } from "svelte";
+  import Button from "../ui/Button.svelte";
 
   interface Props {
-    icon: Component;
+    children: Snippet;
     label: string;
     href?: string;
     onclick?: (e: MouseEvent) => void;
@@ -11,7 +12,7 @@
   }
 
   let {
-    icon: Icon,
+    children,
     label,
     href,
     onclick,
@@ -20,62 +21,49 @@
   }: Props = $props();
 </script>
 
-{#if href}
-  <a class="icon-button {tone}" {href} title={label} aria-label={label}>
-    <Icon {size} />
-  </a>
-{:else}
-  <button class="icon-button {tone}" {onclick} title={label} aria-label={label}>
-    <Icon {size} />
-  </button>
-{/if}
+<Button
+  class="projects-icon-button {tone}"
+  {href}
+  {onclick}
+  title={label}
+  ariaLabel={label}
+  style="--icon-size: {size}px;"
+>
+  {@render children()}
+</Button>
 
 <style>
-  .icon-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  :global(.ui-button.projects-icon-button) {
     padding: 0.35rem;
-    border: none;
     border-radius: 0.5rem;
-    background: transparent;
     color: var(--text-secondary);
-    cursor: pointer;
-    text-decoration: none;
     pointer-events: auto;
   }
 
-  .icon-button:hover {
+  :global(.ui-button.projects-icon-button svg) {
+    width: var(--icon-size);
+    height: var(--icon-size);
+  }
+
+  :global(.ui-button.projects-icon-button:hover) {
     color: var(--text-primary);
     background-color: var(--surface-hover);
   }
 
-  .icon-button:hover :global(svg) {
-    animation: jumpAnimation 0.2s ease-out;
+  :global(.ui-button.projects-icon-button:hover svg) {
+    animation: icon-jump 0.2s ease-out;
     stroke-width: 2.5;
   }
 
-  @keyframes jumpAnimation {
-    0% {
-      transform: translateY(-3px) scaleX(0.8) scaleY(1.2);
-    }
-    80% {
-      transform: translateY(1px) scaleX(1.2) scaleY(0.95);
-    }
-    100% {
-      transform: none;
-    }
-  }
-
-  .icon-button:active :global(svg) {
+  :global(.ui-button.projects-icon-button:active svg) {
     transform: translateY(1px) scaleX(1.15) scaleY(0.95);
   }
 
-  .icon-button.positive:hover {
+  :global(.ui-button.projects-icon-button.positive:hover) {
     color: var(--color-success);
   }
 
-  .icon-button.danger:hover {
+  :global(.ui-button.projects-icon-button.danger:hover) {
     color: var(--color-error);
   }
 </style>

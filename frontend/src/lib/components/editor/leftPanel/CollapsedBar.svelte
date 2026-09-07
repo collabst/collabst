@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { showLeftPanel } from "$lib/components/editor/context";
+  import { showLeftPanel } from "$lib/stores/layout";
   import PanelLeftOpen from "@lucide/svelte/icons/panel-left-open";
 </script>
 

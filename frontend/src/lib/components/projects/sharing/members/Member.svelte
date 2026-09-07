@@ -40,11 +40,12 @@
       onchange={(role) => void updateMemberRole(member.user_id, role)}
     />
     <IconButton
-      icon={UserMinus}
       label="Remove {name}"
       tone="danger"
       onclick={() => void removeMember(member.user_id)}
-    />
+    >
+      <UserMinus />
+    </IconButton>
   {:else}
     <RoleBadge role={isOwner ? "owner" : member.role} />
   {/if}

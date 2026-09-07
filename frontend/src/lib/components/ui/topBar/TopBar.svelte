@@ -14,11 +14,12 @@
 
 <div class="top-bar">
   <TopButton
-    icon={House}
     onclick={() => {
       goto("/projects");
     }}
-  />
+  >
+    <House />
+  </TopButton>
   <ProjectName />
   <Breadcrumb />
 

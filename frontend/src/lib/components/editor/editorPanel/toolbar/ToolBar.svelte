@@ -27,60 +27,72 @@
 
 <div class="container">
   <div class="tool-bar">
-    <Button icon={Undo2} title="Undo" onclick={undo} disabled={!$canWrite} />
-    <Button icon={Redo2} title="Redo" onclick={redo} disabled={!$canWrite} />
+    <Button title="Undo" onclick={undo} disabled={!$canWrite}>
+      <Undo2 />
+    </Button>
+    <Button title="Redo" onclick={redo} disabled={!$canWrite}>
+      <Redo2 />
+    </Button>
     <Separator />
     <Button
-      icon={Bold}
       class="bold-btn"
       title="Bold"
       onclick={toggleBold}
       disabled={!$canWrite}
-    />
+    >
+      <Bold />
+    </Button>
     <Button
-      icon={Italic}
       title="Italic"
       onclick={toggleItalic}
       disabled={!$canWrite}
-    />
+    >
+      <Italic />
+    </Button>
     <Button
-      icon={Underline}
       title="Underline"
       onclick={toggleUnderline}
       disabled={!$canWrite}
-    />
+    >
+      <Underline />
+    </Button>
     <Separator />
     <Button
-      icon={List}
       title="Bullet list"
       onclick={() => toggleLinePrefix("- ")}
       disabled={!$canWrite}
-    />
+    >
+      <List />
+    </Button>
     <Button
-      icon={ListOrdered}
       title="Numbered list"
       onclick={() => toggleLinePrefix("+ ")}
       disabled={!$canWrite}
-    />
+    >
+      <ListOrdered />
+    </Button>
     <Button
-      icon={Sigma}
       title="Math"
       onclick={() => toggleWrap("$", "$")}
       disabled={!$canWrite}
-    />
+    >
+      <Sigma />
+    </Button>
     <Button
-      icon={Code}
       title="Code"
       onclick={() => toggleWrap("`", "`")}
       disabled={!$canWrite}
-    />
+    >
+      <Code />
+    </Button>
     <Separator />
     <Button
-      icon={MessageSquarePlus}
       title="Add a comment"
       onclick={addComment}
       disabled={!$canComment}
-    />
+    >
+      <MessageSquarePlus />
+    </Button>
   </div>
 </div>
 

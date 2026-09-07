@@ -2,6 +2,7 @@
   import Sun from "@lucide/svelte/icons/sun";
   import Moon from "@lucide/svelte/icons/moon";
   import { theme } from "$lib/stores/theme";
+  import Button from "../Button.svelte";
 
   function onclick() {
     theme.toggle();
@@ -11,56 +12,37 @@
   const size = 20;
 </script>
 
-<button class="button" {onclick} style="--stroke-width: {strokeWidth};">
+<Button class="topbar-theme-toggle" {onclick} style="--stroke-width: {strokeWidth};">
   {#if $theme === "dark"}
     <Sun {size} />
   {:else}
     <Moon {size} />
   {/if}
-</button>
+</Button>
 
 <style>
-  .button {
-    background: none;
-    border: none;
+  :global(.ui-button.topbar-theme-toggle) {
     padding: 0.35rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     border-radius: 999px;
-    color: var(--text-primary);
   }
 
-  :global([data-theme="light"]) .button:hover {
+  :global([data-theme="light"] .ui-button.topbar-theme-toggle:hover) {
     background: #2a2a2a;
     color: #cccccc;
     border-color: #4a4a4e;
   }
 
-  :global([data-theme="dark"]) .button:hover {
+  :global([data-theme="dark"] .ui-button.topbar-theme-toggle:hover) {
     background: #e8e8e8;
     color: #1e1e1e;
     border-color: #b8b8b8;
   }
 
-  .button:hover :global(svg) {
-    animation: bigJumpAnimation 0.2s ease-out;
+  :global(.ui-button.topbar-theme-toggle:hover svg) {
+    animation: icon-jump-big 0.2s ease-out;
   }
 
-  @keyframes bigJumpAnimation {
-    0% {
-      transform: translateY(-8px) scaleX(0.8) scaleY(1.1);
-    }
-    80% {
-      transform: translateY(1px) scaleX(1.2) scaleY(0.95);
-    }
-    100% {
-      transform: none;
-    }
-  }
-
-  .button:active :global(svg) {
+  :global(.ui-button.topbar-theme-toggle:active svg) {
     transform: translateY(1px) scaleX(1.15) scaleY(0.95);
   }
 </style>

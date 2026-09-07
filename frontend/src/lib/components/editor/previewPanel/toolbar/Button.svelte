@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Component, Snippet } from "svelte";
+  import type { Snippet } from "svelte";
+  import BaseButton from "../../../ui/Button.svelte";
 
   interface Props {
     children: Snippet;
@@ -18,51 +19,43 @@
   }: Props = $props();
 </script>
 
-<button
-  class="button"
+<BaseButton
+  class="preview-toolbar-button"
   {onclick}
   {title}
   style="--stroke-width: {strokeWidth}; --icon-size: {size}px;"
 >
   {@render children()}
-</button>
+</BaseButton>
 
 <style>
-  .button {
-    background: none;
-    border: none;
+  :global(.ui-button.preview-toolbar-button) {
     padding: 0.25rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
     border-radius: 5px;
   }
 
-  .button :global(svg) {
+  :global(.ui-button.preview-toolbar-button svg) {
     stroke-width: var(--stroke-width);
     width: var(--icon-size);
     height: var(--icon-size);
   }
 
-  .button:hover {
+  :global(.ui-button.preview-toolbar-button:hover) {
     background: var(--surface-hover);
     color: var(--text-primary);
     border-color: var(--border-secondary);
   }
 
-  .button:hover :global(svg) {
+  :global(.ui-button.preview-toolbar-button:hover svg) {
     width: var(--icon-size);
     height: var(--icon-size);
   }
 
-  .button:active {
+  :global(.ui-button.preview-toolbar-button:active) {
     color: var(--text-active);
-    /* transform: scaleX(1.15); */
   }
 
-  .button:active :global(svg) {
+  :global(.ui-button.preview-toolbar-button:active svg) {
     stroke-width: 2.3;
     width: var(--icon-size);
     height: var(--icon-size);

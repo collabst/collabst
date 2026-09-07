@@ -5,7 +5,7 @@
     toggleLineWrapping,
     toggleShowToolbar,
     wrapLines,
-  } from "$lib/components/editor/context";
+  } from "$lib/stores/preferences";
   import Panel from "./Panel.svelte";
   import Row from "./Row.svelte";
   import Toggle from "./Toggle.svelte";

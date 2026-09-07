@@ -7,5 +7,7 @@
   let open = $state(false);
 </script>
 
-<TopButton icon={Settings} onclick={() => (open = !open)} />
+<TopButton onclick={() => (open = !open)}>
+  <Settings />
+</TopButton>
 <EditorSettings bind:open />

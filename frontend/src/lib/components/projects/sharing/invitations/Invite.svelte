@@ -58,12 +58,13 @@
         <span class="email">{invitation.invitee_email}</span>
         <RoleBadge role={invitation.role} />
         <IconButton
-          icon={Trash2}
           label="Cancel invitation"
           tone="danger"
           size={15}
           onclick={() => void cancelInvitation(invitation.id)}
-        />
+        >
+          <Trash2 />
+        </IconButton>
       </div>
     {/each}
   {/if}

@@ -28,14 +28,14 @@
     <img class="file-icon" src={fileIcon} alt="" />
     <div class="actions">
       <IconButton
-        icon={Play}
         label="Open"
         href="/editor/{project.id}"
         size={16}
-      />
+      >
+        <Play />
+      </IconButton>
       {#if project.current_user_role === "owner" || project.current_user_role === "admin"}
         <IconButton
-          icon={UserPlus}
           label="Share"
           tone="positive"
           size={16}
@@ -43,11 +43,12 @@
             e.stopPropagation();
             openShareDialog(project);
           }}
-        />
+        >
+          <UserPlus />
+        </IconButton>
       {/if}
       {#if project.current_user_role === "owner"}
         <IconButton
-          icon={Trash2}
           label="Delete"
           tone="danger"
           size={16}
@@ -55,7 +56,9 @@
             e.stopPropagation();
             requestDeletion(project);
           }}
-        />
+        >
+          <Trash2 />
+        </IconButton>
       {/if}
     </div>
   </div>

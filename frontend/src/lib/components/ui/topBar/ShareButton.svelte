@@ -5,4 +5,6 @@
   import Share2 from "@lucide/svelte/icons/share-2";
 </script>
 
-<TopButton icon={Share2} onclick={() => openShareDialog($project)} />
+<TopButton onclick={() => openShareDialog($project)}>
+  <Share2 />
+</TopButton>

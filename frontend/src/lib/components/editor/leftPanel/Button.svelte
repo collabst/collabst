@@ -1,5 +1,6 @@
 <script lang="ts">
   import { type Snippet } from "svelte";
+  import BaseButton from "../../ui/Button.svelte";
 
   interface Props {
     children: Snippet;
@@ -18,31 +19,29 @@
   }: Props = $props();
 </script>
 
-<button class="button" class:selected {onclick} {disabled} {title}>
+<BaseButton
+  class="left-panel-button {selected ? 'selected' : ''}"
+  {onclick}
+  {disabled}
+  {title}
+>
   {@render children()}
-</button>
+</BaseButton>
 
 <style>
-  .button {
-    background: none;
-    border: none;
+  :global(.ui-button.left-panel-button) {
     padding: 0.4rem 0.4rem 0.5rem 0.4rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
     border-radius: 7px;
     border: 1px transparent solid;
   }
 
-  .button :global(svg) {
+  :global(.ui-button.left-panel-button svg) {
     stroke-width: 2;
     width: 18px;
     height: 18px;
   }
 
-  .button:hover {
+  :global(.ui-button.left-panel-button:hover) {
     background: var(--navbar-bg);
     color: var(--text-primary);
     border-color: var(--navbar-border);
@@ -51,8 +50,8 @@
     transform: translateY(-1px);
   }
 
-  .button:active,
-  .button.selected {
+  :global(.ui-button.left-panel-button:active),
+  :global(.ui-button.left-panel-button.selected) {
     background: var(--navbar-bg);
     color: var(--text-active);
     border-color: var(--navbar-border);
@@ -61,25 +60,24 @@
     transform: translateY(-1px);
   }
 
-  .button:active :global(svg),
-  .button.selected :global(svg) {
+  :global(.ui-button.left-panel-button:active svg),
+  :global(.ui-button.left-panel-button.selected svg) {
     transform: translateY(2px) scaleY(0.9) scaleX(1.1);
   }
 
-  .button:disabled {
-    cursor: default;
+  :global(.ui-button.left-panel-button:disabled) {
     opacity: 0.4;
   }
 
-  .button:disabled:hover,
-  .button:disabled:active {
+  :global(.ui-button.left-panel-button:disabled:hover),
+  :global(.ui-button.left-panel-button:disabled:active) {
     background: none;
     border-color: transparent;
     box-shadow: none;
     transform: none;
   }
 
-  .button:disabled:active :global(svg) {
+  :global(.ui-button.left-panel-button:disabled:active svg) {
     transform: none;
   }
 </style>

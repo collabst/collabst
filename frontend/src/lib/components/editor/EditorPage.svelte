@@ -9,7 +9,7 @@
     leftPanelVisible,
     setEditorPreviewRatio,
     setLeftPanelWidth,
-  } from "$lib/components/editor/context";
+  } from "$lib/stores/layout";
 
   function resizeLeftPanel(deltaX: number, startBefore: number) {
     setLeftPanelWidth(startBefore + deltaX);

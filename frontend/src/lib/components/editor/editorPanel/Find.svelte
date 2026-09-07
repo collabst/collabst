@@ -66,28 +66,39 @@
       />
       <span class="status">{status}</span>
       <Button
-        icon={CaseSensitive}
         title="Match case"
         class={$findCaseSensitive ? "on" : ""}
         onclick={() => ($findCaseSensitive = !$findCaseSensitive)}
-      />
+      >
+        <CaseSensitive />
+      </Button>
       <Button
-        icon={WholeWord}
         title="Whole word"
         class={$findWholeWord ? "on" : ""}
         onclick={() => ($findWholeWord = !$findWholeWord)}
-      />
+      >
+        <WholeWord />
+      </Button>
       <Button
-        icon={Regex}
         title="Regular expression"
         class={$findRegex ? "on" : ""}
         onclick={() => ($findRegex = !$findRegex)}
-      />
+      >
+        <Regex />
+      </Button>
     </div>
-    <Button icon={ChevronDown} title="Next" onclick={findNextMatch} />
-    <Button icon={ChevronUp} title="Previous" onclick={findPreviousMatch} />
-    <Button icon={AlignJustify} title="Select all" onclick={selectAllFindMatches} />
-    <Button icon={X} title="Close" onclick={closeFind} />
+    <Button title="Next" onclick={findNextMatch}>
+      <ChevronDown />
+    </Button>
+    <Button title="Previous" onclick={findPreviousMatch}>
+      <ChevronUp />
+    </Button>
+    <Button title="Select all" onclick={selectAllFindMatches}>
+      <AlignJustify />
+    </Button>
+    <Button title="Close" onclick={closeFind}>
+      <X />
+    </Button>
   </div>
 
   {#if $canWrite}
@@ -100,12 +111,15 @@
           placeholder="Replace"
         />
       </div>
-      <Button icon={Replace} title="Replace" onclick={replaceFindMatch} />
+      <Button title="Replace" onclick={replaceFindMatch}>
+        <Replace />
+      </Button>
       <Button
-        icon={ReplaceAll}
         title="Replace all"
         onclick={replaceAllFindMatches}
-      />
+      >
+        <ReplaceAll />
+      </Button>
     </div>
   {/if}
 </div>
@@ -163,11 +177,11 @@
     padding-right: 0.25rem;
   }
 
-  .find :global(.button.on) {
+  .find :global(.ui-button.on) {
     color: var(--color-primary-500);
   }
 
-  .find :global(.button.on svg) {
+  .find :global(.ui-button.on svg) {
     stroke-width: 2.4;
   }
 </style>
